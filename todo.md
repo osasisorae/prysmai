@@ -1,0 +1,23 @@
+# Prysm AI - Project TODO
+
+- [x] Dark Observatory landing page design
+- [x] Identity-driven V3 copy with psychological hook
+- [x] Hero section with animated elements
+- [x] Problem section (The Blind Spot)
+- [x] Identity section (A Different Kind of Builder)
+- [x] Solution section (What You Get)
+- [x] Dashboard preview section
+- [x] How It Works (3-step integration)
+- [x] Pricing section (4 tiers: Explorer, Builder, Architect, Enterprise)
+- [x] Waitlist CTA section with email form
+- [x] Logo generation
+- [x] Full-stack upgrade (database + server + user management)
+- [x] Waitlist email capture to database
+- [x] Owner notification on new signups
+- [x] Vitest tests for waitlist functionality
+- [x] Blog page with first article
+- [x] Blog route (/blog)
+- [x] Social proof: framework logos strip (LangChain, CrewAI, OpenAI, etc.)
+- [x] Social proof: research credibility strip (Anthropic, OpenAI, DeepMind, MIT)
+- [x] Blog link in navbar
+- [x] Business registration document for lawyer

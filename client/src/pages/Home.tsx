@@ -7,9 +7,11 @@
  */
 
 import { useState } from "react";
+import { useAuth } from "@/_core/hooks/useAuth";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { trpc } from "@/lib/trpc";
 import {
   Shield,
   Dices,
@@ -51,8 +53,28 @@ const stagger = {
 };
 
 export default function Home() {
+  // The userAuth hooks provides authentication state
+  // To implement login/logout functionality, simply call logout() or redirect to getLoginUrl()
+  let { user, loading, error, isAuthenticated, logout } = useAuth();
+
   const [email, setEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const joinWaitlist = trpc.waitlist.join.useMutation({
+    onSuccess: (data) => {
+      if (data.alreadyExists) {
+        toast.success("You're already on the list. We'll be in touch.");
+      } else {
+        toast.success("You're on the list. Welcome to the builders who go deeper.");
+      }
+      setEmail("");
+      setIsSubmitting(false);
+    },
+    onError: () => {
+      toast.error("Something went wrong. Please try again.");
+      setIsSubmitting(false);
+    },
+  });
 
   const handleWaitlist = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,10 +83,7 @@ export default function Home() {
       return;
     }
     setIsSubmitting(true);
-    await new Promise((r) => setTimeout(r, 1200));
-    toast.success("You're on the list. Welcome to the builders who go deeper.");
-    setEmail("");
-    setIsSubmitting(false);
+    joinWaitlist.mutate({ email, source: "landing_page" });
   };
 
   const scrollTo = (id: string) =>
@@ -87,6 +106,7 @@ export default function Home() {
             <a href="#problem" className="hover:text-foreground transition-colors">Why Prysm</a>
             <a href="#solution" className="hover:text-foreground transition-colors">Product</a>
             <a href="#pricing" className="hover:text-foreground transition-colors">Pricing</a>
+            <a href="/blog" className="hover:text-foreground transition-colors">Blog</a>
           </div>
           <Button
             size="sm"
@@ -175,6 +195,34 @@ export default function Home() {
           "Most teams deploy AI they don't understand. We think the best builders deserve better."
         </p>
       </div>
+
+      {/* ========== FRAMEWORK LOGOS — SOCIAL PROOF ========== */}
+      <section className="py-12 border-b border-border/30">
+        <div className="container">
+          <p
+            className="text-center text-xs font-medium tracking-widest uppercase text-muted-foreground mb-8"
+            style={{ fontFamily: "var(--font-mono)" }}
+          >
+            Works with your stack
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-8 md:gap-12 opacity-60 hover:opacity-80 transition-opacity">
+            {[
+              { name: "LangChain", icon: "\u26D3\uFE0F" },
+              { name: "CrewAI", icon: "\uD83E\uDD16" },
+              { name: "OpenAI", icon: "\u2728" },
+              { name: "Anthropic", icon: "\uD83E\uDDE0" },
+              { name: "Llama", icon: "\uD83E\uDD99" },
+              { name: "Hugging Face", icon: "\uD83E\uDD17" },
+              { name: "AutoGen", icon: "\u2699\uFE0F" },
+            ].map((fw) => (
+              <div key={fw.name} className="flex items-center gap-2 text-muted-foreground">
+                <span className="text-lg">{fw.icon}</span>
+                <span className="text-sm font-medium" style={{ fontFamily: "var(--font-mono)" }}>{fw.name}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
 
       {/* ========== PROBLEM SECTION ========== */}
       <section id="problem" className="py-24 lg:py-32 relative">
@@ -794,6 +842,31 @@ export default function Home() {
               No credit card required. Free forever on the Explorer plan.
             </motion.p>
           </motion.div>
+        </div>
+      </section>
+
+      {/* ========== RESEARCH CREDIBILITY STRIP ========== */}
+      <section className="py-12 border-t border-border/30">
+        <div className="container">
+          <p
+            className="text-center text-xs font-medium tracking-widest uppercase text-muted-foreground mb-6"
+            style={{ fontFamily: "var(--font-mono)" }}
+          >
+            Built on research from
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-10 md:gap-16">
+            {[
+              { name: "Anthropic", desc: "Sparse Autoencoders" },
+              { name: "OpenAI", desc: "Superposition Research" },
+              { name: "DeepMind", desc: "Circuit Discovery" },
+              { name: "MIT", desc: "Mechanistic Interpretability" },
+            ].map((org) => (
+              <div key={org.name} className="text-center">
+                <p className="text-sm font-semibold text-foreground" style={{ fontFamily: "var(--font-display)" }}>{org.name}</p>
+                <p className="text-xs text-muted-foreground" style={{ fontFamily: "var(--font-mono)" }}>{org.desc}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
