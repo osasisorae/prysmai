@@ -1,7 +1,8 @@
 /*
- * PRYSM AI LANDING PAGE — V2 (Value-Driven)
+ * PRYSM AI LANDING PAGE — V3 (Identity-Driven)
  * Design: "Dark Observatory" — Cybersecurity Command Center
- * Copy: Outcome-focused, customer POV, non-technical language
+ * Copy: Identity-based, aspiration-driven, psychological hook
+ * Hook: "The best agents are built by teams who see the deepest"
  * Typography: Space Grotesk (display), JetBrains Mono (code accents)
  */
 
@@ -11,24 +12,25 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Shield,
-  Clock,
-  ShieldOff,
-  Users,
-  Moon,
-  Zap,
-  FileCheck,
-  Rocket,
+  Dices,
+  ShieldAlert,
+  EyeOff,
+  Brain,
+  ShieldCheck,
+  Timer,
+  MessageSquareWarning,
   Terminal,
-  Link,
-  Coffee,
+  Plug,
+  Eye,
   ArrowRight,
   ChevronDown,
   CheckCircle,
   ExternalLink,
+  X,
+  Check,
 } from "lucide-react";
 import { toast } from "sonner";
 
-// CDN Image URLs
 const HERO_BG = "https://private-us-east-1.manuscdn.com/sessionFile/Q0GdsnUFZ8bvWNXmTe1Tx2/sandbox/GSvs4qYJdgmPuexB5sb2lI-img-1_1771174049000_na1fn_cHJ5c20taGVyby1iZw.png?x-oss-process=image/resize,w_1920,h_1920/format,webp/quality,q_80&Expires=1798761600&Policy=eyJTdGF0ZW1lbnQiOlt7IlJlc291cmNlIjoiaHR0cHM6Ly9wcml2YXRlLXVzLWVhc3QtMS5tYW51c2Nkbi5jb20vc2Vzc2lvbkZpbGUvUTBHZHNuVUZaOGJ2V05YbVRlMVR4Mi9zYW5kYm94L0dTdnM0cVlKZGdtUHVleEI1c2IybEktaW1nLTFfMTc3MTE3NDA0OTAwMF9uYTFmbl9jSEo1YzIwdGFHVnlieTFpWncucG5nP3gtb3NzLXByb2Nlc3M9aW1hZ2UvcmVzaXplLHdfMTkyMCxoXzE5MjAvZm9ybWF0LHdlYnAvcXVhbGl0eSxxXzgwIiwiQ29uZGl0aW9uIjp7IkRhdGVMZXNzVGhhbiI6eyJBV1M6RXBvY2hUaW1lIjoxNzk4NzYxNjAwfX19XX0_&Key-Pair-Id=K2HSFNDJXOU9YS&Signature=dtcY4oAznH93cd-cHdrX8Ssuw~tHp8gipzltdcvN4-F~PAwQxFNwwaeS9Pun9kf6NZ6nUron6ilKNoYFiLt1C1-a-u7i3II65gHDrDiMKT3GK81jxhABeHljI6B4dBS7QKrHUs1EKHURhOo9pydveRxPO-fdNHguOfBW3NlMxVVSJuzbpCtu28XPcv4Q5Fgr8fAXTYVJ3UCXUyiy72KsjeYw9SWZKCcT9hc5exrugKgy7qRC-fvpb~-~vfARELwY0ru1dKp7jg7G-aiAx7otl7nBw0MwOmiZZRAIQ~2q2HMX-g4UX8DVTFxVl~2einfKxbStajJ8092-FEAngppRgw__";
 
 const DASHBOARD_IMG = "https://private-us-east-1.manuscdn.com/sessionFile/Q0GdsnUFZ8bvWNXmTe1Tx2/sandbox/GSvs4qYJdgmPuexB5sb2lI-img-3_1771174040000_na1fn_cHJ5c20tZGFzaGJvYXJkLXByZXZpZXc.png?x-oss-process=image/resize,w_1920,h_1920/format,webp/quality,q_80&Expires=1798761600&Policy=eyJTdGF0ZW1lbnQiOlt7IlJlc291cmNlIjoiaHR0cHM6Ly9wcml2YXRlLXVzLWVhc3QtMS5tYW51c2Nkbi5jb20vc2Vzc2lvbkZpbGUvUTBHZHNuVUZaOGJ2V05YbVRlMVR4Mi9zYW5kYm94L0dTdnM0cVlKZGdtUHVleEI1c2IybEktaW1nLTNfMTc3MTE3NDA0MDAwMF9uYTFmbl9jSEo1YzIwdFpHRnphR0p2WVhKa0xYQnlaWFpwWlhjLnBuZz94LW9zcy1wcm9jZXNzPWltYWdlL3Jlc2l6ZSx3XzE5MjAsaF8xOTIwL2Zvcm1hdCx3ZWJwL3F1YWxpdHkscV84MCIsIkNvbmRpdGlvbiI6eyJEYXRlTGVzc1RoYW4iOnsiQVdTOkVwb2NoVGltZSI6MTc5ODc2MTYwMH19fV19&Key-Pair-Id=K2HSFNDJXOU9YS&Signature=WR6bKS12t1LgK-9DbjAlCTlBbrVsS4xxG49DIMt3aKuDR7ezc2ZMmJ7d5H38~JbwBcknQ3vvAMVdZfKo6I02tHB4Pxu5nNJ-ODCXstQxJ~jSpYpsV5EtSZZ6uz8~8o494V-vs~0ULKiItHxeEawKmud0cX5Y8p7pnTr1zGFXdsOyn8odfWyL3xFh8TQQL-Rdbl3F0ByakUTWQFWM4XbImJWmT7QDyh1TR22~7VaL96tz0Y7jRKRnx02svY9avVrXSxxOoL-EFecpYVLK-0im8ozbG3wgtRnawRtecv3TIaN-o4DkC91MmSHAc83hwtZSGNx2ys1QgCXSwrypSuOcVA__";
@@ -60,13 +62,13 @@ export default function Home() {
     }
     setIsSubmitting(true);
     await new Promise((r) => setTimeout(r, 1200));
-    toast.success("You're on the list! We'll be in touch soon.");
+    toast.success("You're on the list. Welcome to the builders who go deeper.");
     setEmail("");
     setIsSubmitting(false);
   };
 
-  const scrollToWaitlist = () =>
-    document.getElementById("waitlist")?.scrollIntoView({ behavior: "smooth" });
+  const scrollTo = (id: string) =>
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
 
   return (
     <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
@@ -89,7 +91,7 @@ export default function Home() {
           <Button
             size="sm"
             className="bg-primary text-primary-foreground hover:bg-primary/90 font-medium"
-            onClick={scrollToWaitlist}
+            onClick={() => scrollTo("waitlist")}
           >
             Start Free
           </Button>
@@ -99,9 +101,9 @@ export default function Home() {
       {/* ========== HERO ========== */}
       <section className="relative min-h-screen flex items-center pt-16">
         <div className="absolute inset-0">
-          <img src={HERO_BG} alt="" className="w-full h-full object-cover opacity-30" />
-          <div className="absolute inset-0 bg-gradient-to-b from-background/70 via-background/50 to-background" />
-          <div className="absolute inset-0 grid-overlay opacity-20" />
+          <img src={HERO_BG} alt="" className="w-full h-full object-cover opacity-25" />
+          <div className="absolute inset-0 bg-gradient-to-b from-background/60 via-background/40 to-background" />
+          <div className="absolute inset-0 grid-overlay opacity-15" />
         </div>
 
         <div className="container relative z-10 py-20 lg:py-32">
@@ -112,18 +114,18 @@ export default function Home() {
                 style={{ fontFamily: "var(--font-mono)" }}
               >
                 <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-                NOW IN PRIVATE BETA
+                FOR BUILDERS WHO GO DEEPER
               </span>
             </motion.div>
 
             <motion.h1
               variants={fadeUp}
               custom={1}
-              className="text-4xl sm:text-5xl lg:text-7xl font-bold tracking-tight leading-[1.08] mb-6"
+              className="text-4xl sm:text-5xl lg:text-[4.25rem] font-bold tracking-tight leading-[1.08] mb-6"
               style={{ fontFamily: "var(--font-display)" }}
             >
-              Ship AI agents your customers{" "}
-              <span className="text-primary glow-cyan-text">actually trust.</span>
+              You wouldn't ship code you can't debug.{" "}
+              <span className="text-primary glow-cyan-text">Why ship AI you can't understand?</span>
             </motion.h1>
 
             <motion.p
@@ -131,15 +133,15 @@ export default function Home() {
               custom={2}
               className="text-lg sm:text-xl text-muted-foreground leading-relaxed max-w-2xl mb-10"
             >
-              One prompt injection can leak customer data, break compliance, and destroy
-              months of trust. Prysm catches threats inside your AI before they reach
-              production — so you ship with confidence, not anxiety.
+              The teams building the most reliable AI agents aren't guessing what their
+              models do. They're seeing inside them. Prysm gives you that vision — so
+              you build with understanding, not hope.
             </motion.p>
 
             <motion.div variants={fadeUp} custom={3} className="flex flex-col sm:flex-row gap-3">
               <Button
                 className="h-12 px-8 bg-primary text-primary-foreground hover:bg-primary/90 font-semibold glow-cyan"
-                onClick={scrollToWaitlist}
+                onClick={() => scrollTo("waitlist")}
               >
                 Start Free
                 <ArrowRight className="w-4 h-4 ml-2" />
@@ -147,9 +149,9 @@ export default function Home() {
               <Button
                 variant="outline"
                 className="h-12 px-8 border-border hover:border-primary/50 hover:bg-primary/5 font-medium"
-                onClick={() => document.getElementById("how-it-works")?.scrollIntoView({ behavior: "smooth" })}
+                onClick={() => scrollTo("how-it-works")}
               >
-                See How It Works
+                See Inside
               </Button>
             </motion.div>
           </motion.div>
@@ -163,6 +165,16 @@ export default function Home() {
           <ChevronDown className="w-6 h-6 text-muted-foreground" />
         </motion.div>
       </section>
+
+      {/* ========== MANIFESTO STRIP ========== */}
+      <div className="border-y border-border/30 bg-card/30 py-4">
+        <p
+          className="text-center text-sm text-muted-foreground tracking-wide"
+          style={{ fontFamily: "var(--font-mono)" }}
+        >
+          "Most teams deploy AI they don't understand. We think the best builders deserve better."
+        </p>
+      </div>
 
       {/* ========== PROBLEM SECTION ========== */}
       <section id="problem" className="py-24 lg:py-32 relative">
@@ -179,7 +191,7 @@ export default function Home() {
                 className="text-xs font-medium tracking-widest uppercase"
                 style={{ fontFamily: "var(--font-mono)", color: "oklch(0.82 0.16 80)" }}
               >
-                The Risk You Can't See
+                The Blind Spot
               </span>
             </motion.div>
 
@@ -189,8 +201,8 @@ export default function Home() {
               className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-8"
               style={{ fontFamily: "var(--font-display)" }}
             >
-              Every AI agent you deploy is a{" "}
-              <span style={{ color: "oklch(0.65 0.22 25)" }}>door you can't lock.</span>
+              Right now, you're building{" "}
+              <span style={{ color: "oklch(0.82 0.16 80)" }}>in the dark.</span>
             </motion.h2>
 
             <motion.p
@@ -198,30 +210,32 @@ export default function Home() {
               custom={2}
               className="text-lg text-muted-foreground leading-relaxed mb-16 max-w-3xl"
             >
-              Your agent talks to customers, handles data, and makes decisions. But you have
-              no idea what's happening inside it. A single prompt injection can make it leak
-              private data, ignore your rules, or generate harmful content. And you won't know
-              until a customer complains — or worse, a regulator calls.
+              You've spent weeks perfecting your agent. The prompts are tight. The tools
+              are connected. It works in testing. Then it hits production — and something
+              breaks. A hallucination. A jailbreak. A response that makes no sense. You
+              open the logs and start guessing. Eight hours later, you're still guessing.
+              Not because you're not good enough. Because no one gave you the tools to
+              actually see what's happening inside your model.
             </motion.p>
 
             <motion.div variants={fadeUp} custom={3} className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {[
                 {
-                  icon: Clock,
-                  title: "Hours lost debugging",
-                  desc: "When your agent fails, you're stuck reading thousands of logs trying to figure out why. The average team spends 8+ hours diagnosing a single production incident.",
+                  icon: Dices,
+                  title: "You're guessing, not debugging",
+                  desc: "When your agent fails, you can't trace WHY it failed. You read logs, tweak prompts, and hope. That's not engineering. That's gambling.",
                   color: "oklch(0.82 0.16 80)",
                 },
                 {
-                  icon: ShieldOff,
-                  title: "Invisible vulnerabilities",
-                  desc: "Traditional testing catches known attacks. But new prompt injections are invented daily. Your agent is exposed to threats you haven't imagined yet.",
+                  icon: ShieldAlert,
+                  title: "More vulnerable than you think",
+                  desc: "Jailbreak attacks succeed over 90% of the time against unprotected agents. One bad prompt can make your AI leak data, ignore rules, or go completely off-script.",
                   color: "oklch(0.65 0.22 25)",
                 },
                 {
-                  icon: Users,
-                  title: "Eroding customer trust",
-                  desc: "One bad response — a data leak, a hallucination, an offensive reply — and your users lose confidence in your entire product.",
+                  icon: EyeOff,
+                  title: "You can't explain what you can't see",
+                  desc: "Your board asks how your AI makes decisions. Your compliance team needs an audit trail. Your customers want to trust it. You don't have answers — because you've never been able to look inside.",
                   color: "oklch(0.78 0.17 195)",
                 },
               ].map((item, i) => (
@@ -241,10 +255,103 @@ export default function Home() {
         </div>
       </section>
 
+      {/* ========== IDENTITY SECTION — THE PSYCHOLOGICAL HOOK ========== */}
+      <section className="py-24 lg:py-32 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-b from-background via-primary/[0.03] to-background" />
+        <div className="container relative z-10">
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-100px" }}
+            variants={stagger}
+            className="max-w-5xl mx-auto"
+          >
+            <motion.div variants={fadeUp} custom={0} className="mb-4">
+              <span
+                className="text-xs font-medium text-primary tracking-widest uppercase"
+                style={{ fontFamily: "var(--font-mono)" }}
+              >
+                A Different Kind of Builder
+              </span>
+            </motion.div>
+
+            <motion.h2
+              variants={fadeUp}
+              custom={1}
+              className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-8 max-w-3xl"
+              style={{ fontFamily: "var(--font-display)" }}
+            >
+              Anyone can wrap an API.{" "}
+              <span className="text-primary">Not everyone can understand what's inside.</span>
+            </motion.h2>
+
+            <motion.p
+              variants={fadeUp}
+              custom={2}
+              className="text-lg text-muted-foreground leading-relaxed max-w-3xl mb-16"
+            >
+              There are two kinds of teams building AI agents. The first kind calls an API,
+              writes some prompts, and ships. When it breaks, they shrug. The second kind
+              goes deeper. They want to understand every decision their model makes. They
+              don't just want their agent to work — they want to know WHY it works.
+              Prysm is built for the second kind.
+            </motion.p>
+
+            {/* Contrasting columns */}
+            <motion.div variants={fadeUp} custom={3} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Without Prysm */}
+              <div className="p-8 rounded-xl border border-border bg-card/30 relative">
+                <div
+                  className="absolute top-4 right-4 px-2 py-0.5 rounded text-[10px] font-medium border border-border text-muted-foreground"
+                  style={{ fontFamily: "var(--font-mono)" }}
+                >
+                  WITHOUT PRYSM
+                </div>
+                <div className="space-y-5 mt-6">
+                  {[
+                    "Deploying and hoping",
+                    "Debugging by guessing",
+                    "Explaining by hand-waving",
+                    "Shipping with anxiety",
+                  ].map((item, i) => (
+                    <div key={i} className="flex items-center gap-3">
+                      <X className="w-4 h-4 shrink-0" style={{ color: "oklch(0.65 0.22 25)" }} />
+                      <span className="text-muted-foreground">{item}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* With Prysm */}
+              <div className="p-8 rounded-xl border border-primary/30 bg-primary/[0.04] relative">
+                <div
+                  className="absolute top-4 right-4 px-2 py-0.5 rounded text-[10px] font-medium border border-primary/30 text-primary"
+                  style={{ fontFamily: "var(--font-mono)" }}
+                >
+                  WITH PRYSM
+                </div>
+                <div className="space-y-5 mt-6">
+                  {[
+                    "Deploying with understanding",
+                    "Debugging with precision",
+                    "Explaining with evidence",
+                    "Shipping with confidence",
+                  ].map((item, i) => (
+                    <div key={i} className="flex items-center gap-3">
+                      <Check className="w-4 h-4 text-primary shrink-0" />
+                      <span className="text-foreground">{item}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        </div>
+      </section>
+
       {/* ========== SOLUTION SECTION ========== */}
       <section id="solution" className="py-24 lg:py-32 relative">
-        <div className="absolute inset-0 bg-gradient-to-b from-background via-card/30 to-background" />
-        <div className="container relative z-10">
+        <div className="container">
           <motion.div
             initial="hidden"
             whileInView="visible"
@@ -256,7 +363,7 @@ export default function Home() {
                 className="text-xs font-medium text-primary tracking-widest uppercase"
                 style={{ fontFamily: "var(--font-mono)" }}
               >
-                What Changes With Prysm
+                What You Get
               </span>
             </motion.div>
 
@@ -266,46 +373,35 @@ export default function Home() {
               className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-6 max-w-3xl"
               style={{ fontFamily: "var(--font-display)" }}
             >
-              Know what your AI is thinking —{" "}
-              <span className="text-primary">before it speaks.</span>
+              See every decision your AI makes.{" "}
+              <span className="text-primary">Understand why it made it.</span>
             </motion.h2>
-
-            <motion.p
-              variants={fadeUp}
-              custom={2}
-              className="text-lg text-muted-foreground leading-relaxed max-w-2xl mb-16"
-            >
-              Prysm sits between your agent and your users. Every prompt is analyzed in
-              real-time. Dangerous patterns are flagged and blocked before they cause damage.
-              You get a live view of exactly what's happening — not just what your model
-              outputs, but why.
-            </motion.p>
 
             <motion.div
               variants={fadeUp}
-              custom={3}
-              className="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-4xl"
+              custom={2}
+              className="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-4xl mt-12"
             >
               {[
                 {
-                  icon: Moon,
-                  title: "Sleep through the night",
-                  desc: "Set your threat threshold once. Prysm blocks malicious prompts automatically. No more 3am alerts about your agent going rogue.",
+                  icon: Brain,
+                  title: "Understand, don't guess",
+                  desc: "See which internal patterns activated, which features fired, and why your model chose that response. For the first time, you'll actually know what your AI is doing.",
                 },
                 {
-                  icon: Zap,
+                  icon: ShieldCheck,
+                  title: "Catch threats before your customers do",
+                  desc: "Prysm analyzes every prompt in real-time and blocks attacks before they reach your model. You set the rules. Prysm enforces them.",
+                },
+                {
+                  icon: Timer,
                   title: "Debug in minutes, not days",
-                  desc: "When something looks wrong, Prysm shows you exactly which internal patterns activated and why. What used to take 8 hours now takes 8 minutes.",
+                  desc: "Stop reading logs for hours. Prysm shows you exactly where things went wrong — which layer, which feature, which decision. What took 8 hours now takes 8 minutes.",
                 },
                 {
-                  icon: FileCheck,
-                  title: "Pass your next audit",
-                  desc: "Generate compliance reports showing every prompt your agent processed, every threat it blocked, and every decision it made. EU AI Act and SOC 2 ready.",
-                },
-                {
-                  icon: Rocket,
-                  title: "Ship faster, worry less",
-                  desc: "Stop delaying launches because you're afraid of what your agent might do. Prysm gives you the confidence to deploy on schedule.",
+                  icon: MessageSquareWarning,
+                  title: "Answer any question about your AI",
+                  desc: "When your board, your compliance team, or your customers ask how your AI works — you'll have the answer. With evidence.",
                 },
               ].map((item, i) => (
                 <div
@@ -357,8 +453,8 @@ export default function Home() {
               <span className="text-primary">Miss nothing.</span>
             </motion.h2>
             <motion.p variants={fadeUp} custom={2} className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              A real-time security dashboard built for the teams who build AI. Watch threat
-              scores, track what's happening inside your model, and get instant alerts — all
+              A real-time dashboard built for the teams who build AI. Watch what's
+              happening inside your model, track threats, and get instant alerts — all
               in one view.
             </motion.p>
           </motion.div>
@@ -398,7 +494,7 @@ export default function Home() {
                 className="text-xs font-medium text-primary tracking-widest uppercase"
                 style={{ fontFamily: "var(--font-mono)" }}
               >
-                Get Started in 5 Minutes
+                5 Minutes to Clarity
               </span>
             </motion.div>
             <motion.h2
@@ -408,7 +504,7 @@ export default function Home() {
               style={{ fontFamily: "var(--font-display)" }}
             >
               Three lines of code.{" "}
-              <span className="text-primary">Total peace of mind.</span>
+              <span className="text-primary">Complete understanding.</span>
             </motion.h2>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-16">
@@ -417,19 +513,19 @@ export default function Home() {
                   step: "01",
                   icon: Terminal,
                   title: "Install",
-                  desc: "pip install prysm. Add it to your existing project. No infrastructure changes, no new servers, no migration.",
+                  desc: "pip install prysm. Drop it into your existing project. No new infrastructure. No migration.",
                 },
                 {
                   step: "02",
-                  icon: Link,
+                  icon: Plug,
                   title: "Connect",
-                  desc: "Wrap your agent with prysm.protect(). Works with LangChain, CrewAI, OpenAI, Claude, Llama — any framework, any model.",
+                  desc: "Wrap your agent with prysm.watch(). Works with LangChain, CrewAI, OpenAI, Claude, Llama — any stack.",
                 },
                 {
                   step: "03",
-                  icon: Coffee,
-                  title: "Relax",
-                  desc: "Open your dashboard. Watch threats get caught in real-time. Go back to building features instead of fighting fires.",
+                  icon: Eye,
+                  title: "See",
+                  desc: "Open your dashboard. Watch your model think in real-time. Understand every decision it makes.",
                 },
               ].map((item, i) => (
                 <motion.div
@@ -476,7 +572,7 @@ export default function Home() {
                 className="text-xs font-medium text-primary tracking-widest uppercase"
                 style={{ fontFamily: "var(--font-mono)" }}
               >
-                Simple, Honest Pricing
+                Start Free. Go Deep.
               </span>
             </motion.div>
             <motion.h2
@@ -485,7 +581,7 @@ export default function Home() {
               className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-4 text-center"
               style={{ fontFamily: "var(--font-display)" }}
             >
-              Start free. Scale as you grow.
+              Built for builders at every stage.
             </motion.h2>
             <motion.p
               variants={fadeUp}
@@ -496,48 +592,48 @@ export default function Home() {
             </motion.p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
-              {/* Starter */}
+              {/* Explorer */}
               <motion.div variants={fadeUp} custom={3} className="p-6 rounded-xl border border-border bg-card/50">
                 <h3
                   className="text-sm font-medium text-muted-foreground mb-1 tracking-widest uppercase"
                   style={{ fontFamily: "var(--font-mono)" }}
                 >
-                  Starter
+                  Explorer
                 </h3>
                 <div className="flex items-baseline gap-1 mb-1">
                   <span className="text-3xl font-bold" style={{ fontFamily: "var(--font-display)" }}>Free</span>
                 </div>
-                <p className="text-xs text-muted-foreground mb-6">Perfect for prototypes and side projects</p>
+                <p className="text-xs text-muted-foreground mb-6">For builders who want to see inside their first agent</p>
                 <ul className="space-y-2.5 mb-6">
-                  {["10,000 requests/month", "1 agent", "Basic threat detection", "Community dashboard"].map((item, i) => (
+                  {["10,000 requests/month", "1 agent", "Basic threat detection", "Community dashboard"].map((f, i) => (
                     <li key={i} className="flex items-start gap-2.5 text-sm">
                       <CheckCircle className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                      <span className="text-muted-foreground">{item}</span>
+                      <span className="text-muted-foreground">{f}</span>
                     </li>
                   ))}
                 </ul>
                 <Button
                   variant="outline"
                   className="w-full h-10 border-border hover:border-primary/50 hover:bg-primary/5 text-sm"
-                  onClick={scrollToWaitlist}
+                  onClick={() => scrollTo("waitlist")}
                 >
                   Start Free
                 </Button>
               </motion.div>
 
-              {/* Growth */}
+              {/* Builder */}
               <motion.div variants={fadeUp} custom={4} className="p-6 rounded-xl border border-border bg-card/50">
                 <h3
                   className="text-sm font-medium text-muted-foreground mb-1 tracking-widest uppercase"
                   style={{ fontFamily: "var(--font-mono)" }}
                 >
-                  Growth
+                  Builder
                 </h3>
                 <div className="flex items-baseline gap-1 mb-1">
                   <span className="text-3xl font-bold" style={{ fontFamily: "var(--font-display)" }}>$49</span>
                   <span className="text-muted-foreground text-sm">/mo</span>
                 </div>
-                <p className="text-xs text-muted-foreground mb-6">For teams shipping their first AI product</p>
+                <p className="text-xs text-muted-foreground mb-6">For teams shipping AI to real users</p>
                 <ul className="space-y-2.5 mb-6">
                   {[
                     "50,000 requests/month",
@@ -545,23 +641,23 @@ export default function Home() {
                     "Advanced threat detection",
                     "Slack & email alerts",
                     "30-day history",
-                  ].map((item, i) => (
+                  ].map((f, i) => (
                     <li key={i} className="flex items-start gap-2.5 text-sm">
                       <CheckCircle className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                      <span className="text-muted-foreground">{item}</span>
+                      <span className="text-muted-foreground">{f}</span>
                     </li>
                   ))}
                 </ul>
                 <Button
                   variant="outline"
                   className="w-full h-10 border-border hover:border-primary/50 hover:bg-primary/5 text-sm"
-                  onClick={scrollToWaitlist}
+                  onClick={() => scrollTo("waitlist")}
                 >
                   Start Free Trial
                 </Button>
               </motion.div>
 
-              {/* Pro — Recommended */}
+              {/* Architect — Recommended */}
               <motion.div
                 variants={fadeUp}
                 custom={5}
@@ -577,13 +673,13 @@ export default function Home() {
                   className="text-sm font-medium text-primary mb-1 tracking-widest uppercase"
                   style={{ fontFamily: "var(--font-mono)" }}
                 >
-                  Pro
+                  Architect
                 </h3>
                 <div className="flex items-baseline gap-1 mb-1">
                   <span className="text-3xl font-bold" style={{ fontFamily: "var(--font-display)" }}>$199</span>
                   <span className="text-muted-foreground text-sm">/mo</span>
                 </div>
-                <p className="text-xs text-muted-foreground mb-6">For teams running AI in production</p>
+                <p className="text-xs text-muted-foreground mb-6">For teams who refuse to ship what they can't explain</p>
                 <ul className="space-y-2.5 mb-6">
                   {[
                     "200,000 requests/month",
@@ -592,16 +688,16 @@ export default function Home() {
                     "Real-time feature dashboard",
                     "90-day history",
                     "Priority support",
-                  ].map((item, i) => (
+                  ].map((f, i) => (
                     <li key={i} className="flex items-start gap-2.5 text-sm">
                       <CheckCircle className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                      <span className="text-foreground">{item}</span>
+                      <span className="text-foreground">{f}</span>
                     </li>
                   ))}
                 </ul>
                 <Button
                   className="w-full h-10 bg-primary text-primary-foreground hover:bg-primary/90 glow-cyan text-sm font-semibold"
-                  onClick={scrollToWaitlist}
+                  onClick={() => scrollTo("waitlist")}
                 >
                   Start Free Trial
                 </Button>
@@ -618,26 +714,25 @@ export default function Home() {
                 <div className="flex items-baseline gap-1 mb-1">
                   <span className="text-3xl font-bold" style={{ fontFamily: "var(--font-display)" }}>Let's Talk</span>
                 </div>
-                <p className="text-xs text-muted-foreground mb-6">For regulated industries and large deployments</p>
+                <p className="text-xs text-muted-foreground mb-6">For organizations where AI trust is non-negotiable</p>
                 <ul className="space-y-2.5 mb-6">
                   {[
                     "Custom volume",
                     "Self-hosted deployment",
-                    "SSO & role-based access",
-                    "SIEM integration",
+                    "SSO & SIEM integration",
                     "Dedicated support",
                     "Custom SLA",
-                  ].map((item, i) => (
+                  ].map((f, i) => (
                     <li key={i} className="flex items-start gap-2.5 text-sm">
                       <CheckCircle className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                      <span className="text-muted-foreground">{item}</span>
+                      <span className="text-muted-foreground">{f}</span>
                     </li>
                   ))}
                 </ul>
                 <Button
                   variant="outline"
                   className="w-full h-10 border-border hover:border-primary/50 hover:bg-primary/5 text-sm"
-                  onClick={scrollToWaitlist}
+                  onClick={() => scrollTo("waitlist")}
                 >
                   Contact Sales
                 </Button>
@@ -665,12 +760,11 @@ export default function Home() {
               className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-6"
               style={{ fontFamily: "var(--font-display)" }}
             >
-              Your AI is only as trusted as your ability to{" "}
-              <span className="text-primary glow-cyan-text">explain it.</span>
+              The best AI isn't built by the biggest teams.{" "}
+              <span className="text-primary glow-cyan-text">It's built by the teams who see the deepest.</span>
             </motion.h2>
             <motion.p variants={fadeUp} custom={1} className="text-lg text-muted-foreground mb-10">
-              Join the teams building AI their customers can rely on.
-              Start protecting your agents in under 5 minutes.
+              Stop guessing. Start understanding. Join the builders who go deeper.
             </motion.p>
 
             <motion.form
@@ -697,7 +791,7 @@ export default function Home() {
             </motion.form>
 
             <motion.p variants={fadeUp} custom={3} className="text-xs text-muted-foreground mt-4">
-              No credit card required. Free forever on the Starter plan.
+              No credit card required. Free forever on the Explorer plan.
             </motion.p>
           </motion.div>
         </div>
@@ -715,14 +809,15 @@ export default function Home() {
                 Prysm<span className="text-primary">AI</span>
               </span>
             </div>
-            <p className="text-xs text-muted-foreground" style={{ fontFamily: "var(--font-mono)" }}>
-              &copy; {new Date().getFullYear()} Prysm AI. Ship AI your customers trust.
+            <p
+              className="text-xs text-muted-foreground"
+              style={{ fontFamily: "var(--font-mono)" }}
+            >
+              Built for builders who go deeper.
             </p>
-            <div className="flex items-center gap-6 text-xs text-muted-foreground">
-              <a href="https://prysmai.io" className="hover:text-foreground transition-colors flex items-center gap-1">
-                prysmai.io <ExternalLink className="w-3 h-3" />
-              </a>
-            </div>
+            <p className="text-xs text-muted-foreground" style={{ fontFamily: "var(--font-mono)" }}>
+              &copy; {new Date().getFullYear()} Prysm AI
+            </p>
           </div>
         </div>
       </footer>
