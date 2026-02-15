@@ -5,6 +5,7 @@ import { publicProcedure, protectedProcedure, adminProcedure, router } from "./_
 import { addWaitlistSignup, getWaitlistCount, getWaitlistSignups } from "./db";
 import { z } from "zod";
 import { notifyOwner } from "./_core/notification";
+import { sendWaitlistConfirmation } from "./email";
 
 export const appRouter = router({
   system: systemRouter,
@@ -28,9 +29,15 @@ export const appRouter = router({
       .mutation(async ({ input }) => {
         const result = await addWaitlistSignup(input.email, input.source ?? "landing_page");
         
-        // Notify the owner about new signups
+        // Notify the owner and send confirmation email for new signups
         if (!result.alreadyExists) {
           const count = await getWaitlistCount();
+          
+          // Send confirmation email (fire-and-forget, don't block the response)
+          sendWaitlistConfirmation(input.email).catch((err) =>
+            console.error("[Email] Background send failed:", err)
+          );
+
           await notifyOwner({
             title: `New Waitlist Signup (#${count})`,
             content: `${input.email} just joined the Prysm AI waitlist from ${input.source ?? "landing_page"}. Total signups: ${count}`,

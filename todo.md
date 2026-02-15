@@ -23,7 +23,7 @@
 - [x] Business registration document for lawyer
 - [x] Fix: "Back to Blog" button not working (changed to "Back to Home")
 - [x] Add: Admin dashboard to view waitlist signups (/admin route, admin-only)
-- [ ] Add: Email service integration for sending emails to signups
+- [x] Add: Email service integration for sending emails to signups
 - [x] Replace text logo placeholders with actual company logo images (LangChain, CrewAI, OpenAI, Anthropic, Meta/Llama, Hugging Face, AutoGen, DeepMind, MIT)
 - [x] Upgrade logos to inline SVG icons + text wordmarks (Simple Icons SVG paths) for consistent rendering on dark theme
 - [x] Remove fake dashboard screenshot section ("See everything. Miss nothing.")
@@ -31,3 +31,7 @@
 - [x] Remove premature pricing section (no validated pricing model yet)
 - [x] Remove pricing link from navbar
 - [x] Tighten page flow for honest conversion: hero → problem → identity → solution promises → CTA → research credibility
+- [x] Add Open Graph and Twitter Card meta tags for social sharing
+- [x] Add honest "What we're building" teaser section to landing page
+- [x] Integrate Resend for email confirmation on waitlist signup
+- [x] Write vitest tests for Resend email integration

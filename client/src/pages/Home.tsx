@@ -28,6 +28,10 @@ import {
   ChevronDown,
   X,
   Check,
+  Sparkles,
+  Scan,
+  Layers,
+  Activity,
 } from "lucide-react";
 import { toast } from "sonner";
 import { StackLogo, ResearchLogo } from "@/components/BrandLogos";
@@ -451,6 +455,100 @@ export default function Home() {
                   <p className="text-sm text-muted-foreground leading-relaxed">{item.desc}</p>
                 </div>
               ))}
+            </motion.div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* ========== WHAT WE'RE BUILDING — HONEST TEASER ========== */}
+      <section className="py-24 lg:py-32 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-b from-background via-card/20 to-background" />
+        <div className="container relative z-10">
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-100px" }}
+            variants={stagger}
+            className="max-w-4xl mx-auto"
+          >
+            <motion.div variants={fadeUp} custom={0} className="mb-4">
+              <span
+                className="text-xs font-medium text-primary tracking-widest uppercase"
+                style={{ fontFamily: "var(--font-mono)" }}
+              >
+                What We're Building
+              </span>
+            </motion.div>
+
+            <motion.h2
+              variants={fadeUp}
+              custom={1}
+              className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-6"
+              style={{ fontFamily: "var(--font-display)" }}
+            >
+              A new kind of observability.{" "}
+              <span className="text-primary">Built for AI.</span>
+            </motion.h2>
+
+            <motion.p
+              variants={fadeUp}
+              custom={2}
+              className="text-lg text-muted-foreground leading-relaxed mb-16 max-w-3xl"
+            >
+              We're building tools that let you look inside your AI models in real-time
+              — not just at their outputs, but at the internal processes that produce them.
+              Here's the direction we're heading.
+            </motion.p>
+
+            <motion.div
+              variants={fadeUp}
+              custom={3}
+              className="grid grid-cols-1 md:grid-cols-3 gap-6"
+            >
+              {[
+                {
+                  icon: Scan,
+                  title: "Real-time model inspection",
+                  desc: "Watch internal feature activations as your model processes each request. See which concepts light up and which stay silent.",
+                },
+                {
+                  icon: Activity,
+                  title: "Prompt threat detection",
+                  desc: "Analyze incoming prompts for adversarial patterns, jailbreak attempts, and injection attacks — before they reach your model.",
+                },
+                {
+                  icon: Layers,
+                  title: "Explainability reports",
+                  desc: "Generate human-readable explanations of why your model made a specific decision. Built for compliance, audits, and trust.",
+                },
+              ].map((item, i) => (
+                <div
+                  key={i}
+                  className="p-6 rounded-xl border border-dashed border-primary/20 bg-primary/[0.03] group hover:border-primary/40 transition-all duration-300"
+                >
+                  <div className="w-10 h-10 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center mb-4">
+                    <item.icon className="w-5 h-5 text-primary" />
+                  </div>
+                  <h3
+                    className="text-lg font-semibold mb-2"
+                    style={{ fontFamily: "var(--font-display)" }}
+                  >
+                    {item.title}
+                  </h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{item.desc}</p>
+                </div>
+              ))}
+            </motion.div>
+
+            <motion.div
+              variants={fadeUp}
+              custom={4}
+              className="mt-10 flex items-center justify-center gap-2 text-sm text-muted-foreground"
+            >
+              <Sparkles className="w-4 h-4 text-primary" />
+              <span style={{ fontFamily: "var(--font-mono)" }}>
+                Actively in development — early access coming soon
+              </span>
             </motion.div>
           </motion.div>
         </div>
