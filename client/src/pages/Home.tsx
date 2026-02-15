@@ -1,9 +1,12 @@
 /*
- * PRYSM AI LANDING PAGE — V3 (Identity-Driven)
+ * PRYSM AI LANDING PAGE — V4 (Honest & Identity-Driven)
  * Design: "Dark Observatory" — Cybersecurity Command Center
- * Copy: Identity-based, aspiration-driven, psychological hook
+ * Copy: Identity-based, aspiration-driven, no fake promises
  * Hook: "The best agents are built by teams who see the deepest"
  * Typography: Space Grotesk (display), JetBrains Mono (code accents)
+ *
+ * Flow: Hero → Manifesto → Stack logos → Problem → Identity → Solution → CTA → Research → Footer
+ * Removed: Fake dashboard preview, fake installation steps, premature pricing
  */
 
 import { useState } from "react";
@@ -21,13 +24,8 @@ import {
   ShieldCheck,
   Timer,
   MessageSquareWarning,
-  Terminal,
-  Plug,
-  Eye,
   ArrowRight,
   ChevronDown,
-  CheckCircle,
-  ExternalLink,
   X,
   Check,
 } from "lucide-react";
@@ -35,10 +33,6 @@ import { toast } from "sonner";
 import { StackLogo, ResearchLogo } from "@/components/BrandLogos";
 
 const HERO_BG = "https://private-us-east-1.manuscdn.com/sessionFile/Q0GdsnUFZ8bvWNXmTe1Tx2/sandbox/GSvs4qYJdgmPuexB5sb2lI-img-1_1771174049000_na1fn_cHJ5c20taGVyby1iZw.png?x-oss-process=image/resize,w_1920,h_1920/format,webp/quality,q_80&Expires=1798761600&Policy=eyJTdGF0ZW1lbnQiOlt7IlJlc291cmNlIjoiaHR0cHM6Ly9wcml2YXRlLXVzLWVhc3QtMS5tYW51c2Nkbi5jb20vc2Vzc2lvbkZpbGUvUTBHZHNuVUZaOGJ2V05YbVRlMVR4Mi9zYW5kYm94L0dTdnM0cVlKZGdtUHVleEI1c2IybEktaW1nLTFfMTc3MTE3NDA0OTAwMF9uYTFmbl9jSEo1YzIwdGFHVnlieTFpWncucG5nP3gtb3NzLXByb2Nlc3M9aW1hZ2UvcmVzaXplLHdfMTkyMCxoXzE5MjAvZm9ybWF0LHdlYnAvcXVhbGl0eSxxXzgwIiwiQ29uZGl0aW9uIjp7IkRhdGVMZXNzVGhhbiI6eyJBV1M6RXBvY2hUaW1lIjoxNzk4NzYxNjAwfX19XX0_&Key-Pair-Id=K2HSFNDJXOU9YS&Signature=dtcY4oAznH93cd-cHdrX8Ssuw~tHp8gipzltdcvN4-F~PAwQxFNwwaeS9Pun9kf6NZ6nUron6ilKNoYFiLt1C1-a-u7i3II65gHDrDiMKT3GK81jxhABeHljI6B4dBS7QKrHUs1EKHURhOo9pydveRxPO-fdNHguOfBW3NlMxVVSJuzbpCtu28XPcv4Q5Fgr8fAXTYVJ3UCXUyiy72KsjeYw9SWZKCcT9hc5exrugKgy7qRC-fvpb~-~vfARELwY0ru1dKp7jg7G-aiAx7otl7nBw0MwOmiZZRAIQ~2q2HMX-g4UX8DVTFxVl~2einfKxbStajJ8092-FEAngppRgw__";
-
-const DASHBOARD_IMG = "https://private-us-east-1.manuscdn.com/sessionFile/Q0GdsnUFZ8bvWNXmTe1Tx2/sandbox/GSvs4qYJdgmPuexB5sb2lI-img-3_1771174040000_na1fn_cHJ5c20tZGFzaGJvYXJkLXByZXZpZXc.png?x-oss-process=image/resize,w_1920,h_1920/format,webp/quality,q_80&Expires=1798761600&Policy=eyJTdGF0ZW1lbnQiOlt7IlJlc291cmNlIjoiaHR0cHM6Ly9wcml2YXRlLXVzLWVhc3QtMS5tYW51c2Nkbi5jb20vc2Vzc2lvbkZpbGUvUTBHZHNuVUZaOGJ2V05YbVRlMVR4Mi9zYW5kYm94L0dTdnM0cVlKZGdtUHVleEI1c2IybEktaW1nLTNfMTc3MTE3NDA0MDAwMF9uYTFmbl9jSEo1YzIwdFpHRnphR0p2WVhKa0xYQnlaWFpwWlhjLnBuZz94LW9zcy1wcm9jZXNzPWltYWdlL3Jlc2l6ZSx3XzE5MjAsaF8xOTIwL2Zvcm1hdCx3ZWJwL3F1YWxpdHkscV84MCIsIkNvbmRpdGlvbiI6eyJEYXRlTGVzc1RoYW4iOnsiQVdTOkVwb2NoVGltZSI6MTc5ODc2MTYwMH19fV19&Key-Pair-Id=K2HSFNDJXOU9YS&Signature=WR6bKS12t1LgK-9DbjAlCTlBbrVsS4xxG49DIMt3aKuDR7ezc2ZMmJ7d5H38~JbwBcknQ3vvAMVdZfKo6I02tHB4Pxu5nNJ-ODCXstQxJ~jSpYpsV5EtSZZ6uz8~8o494V-vs~0ULKiItHxeEawKmud0cX5Y8p7pnTr1zGFXdsOyn8odfWyL3xFh8TQQL-Rdbl3F0ByakUTWQFWM4XbImJWmT7QDyh1TR22~7VaL96tz0Y7jRKRnx02svY9avVrXSxxOoL-EFecpYVLK-0im8ozbG3wgtRnawRtecv3TIaN-o4DkC91MmSHAc83hwtZSGNx2ys1QgCXSwrypSuOcVA__";
-
-const CODE_IMG = "https://private-us-east-1.manuscdn.com/sessionFile/Q0GdsnUFZ8bvWNXmTe1Tx2/sandbox/GSvs4qYJdgmPuexB5sb2lI-img-4_1771174049000_na1fn_cHJ5c20tY29kZS10ZXJtaW5hbA.png?x-oss-process=image/resize,w_1920,h_1920/format,webp/quality,q_80&Expires=1798761600&Policy=eyJTdGF0ZW1lbnQiOlt7IlJlc291cmNlIjoiaHR0cHM6Ly9wcml2YXRlLXVzLWVhc3QtMS5tYW51c2Nkbi5jb20vc2Vzc2lvbkZpbGUvUTBHZHNuVUZaOGJ2V05YbVRlMVR4Mi9zYW5kYm94L0dTdnM0cVlKZGdtUHVleEI1c2IybEktaW1nLTRfMTc3MTE3NDA0OTAwMF9uYTFmbl9jSEo1YzIwdFkyOWtaUzEwWlhKdGFXNWhiQS5wbmc~eC1vc3MtcHJvY2Vzcz1pbWFnZS9yZXNpemUsd18xOTIwLGhfMTkyMC9mb3JtYXQsd2VicC9xdWFsaXR5LHFfODAiLCJDb25kaXRpb24iOnsiRGF0ZUxlc3NUaGFuIjp7IkFXUzpFcG9jaFRpbWUiOjE3OTg3NjE2MDB9fX1dfQ__&Key-Pair-Id=K2HSFNDJXOU9YS&Signature=Dwq9-NJzNWFZ1X4ftZkLofy-mCNqqxh0sZ~DBp2Z-qIqTg5yukR3-~XKhnWgd3lJNNrNLDWqADCBpk-bt~0p2WBJGYEjaohTFzCDs6orSF1KOp4vBGzTMkj8nJ9KuZvs-DxRaoZJdFCzYUe9wqik4IW3cxi~wD~-YOxeLTi~hYWLFcof8fBvDDxQAlEXFWCfgDFrIi2oeTPMfn6~FxUyxcrpeF5SvuPMWfxi38iefPhsNpBzpIwJZfOb6NgNSxj8wr3D1gqb0iuYGe8jW-qeFoV6mYtuolxWrbdJVv2icVA13cbHkPZ4VpoC354a-bCF0XaF1~Mo8V-nrdw3Mc11CA__";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 30 },
@@ -106,7 +100,6 @@ export default function Home() {
           <div className="hidden md:flex items-center gap-8 text-sm text-muted-foreground">
             <a href="#problem" className="hover:text-foreground transition-colors">Why Prysm</a>
             <a href="#solution" className="hover:text-foreground transition-colors">Product</a>
-            <a href="#pricing" className="hover:text-foreground transition-colors">Pricing</a>
             <a href="/blog" className="hover:text-foreground transition-colors">Blog</a>
           </div>
           <Button
@@ -114,7 +107,7 @@ export default function Home() {
             className="bg-primary text-primary-foreground hover:bg-primary/90 font-medium"
             onClick={() => scrollTo("waitlist")}
           >
-            Start Free
+            Get Early Access
           </Button>
         </div>
       </nav>
@@ -164,15 +157,15 @@ export default function Home() {
                 className="h-12 px-8 bg-primary text-primary-foreground hover:bg-primary/90 font-semibold glow-cyan"
                 onClick={() => scrollTo("waitlist")}
               >
-                Start Free
+                Get Early Access
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
               <Button
                 variant="outline"
                 className="h-12 px-8 border-border hover:border-primary/50 hover:bg-primary/5 font-medium"
-                onClick={() => scrollTo("how-it-works")}
+                onClick={() => scrollTo("problem")}
               >
-                See Inside
+                Learn More
               </Button>
             </motion.div>
           </motion.div>
@@ -463,323 +456,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ========== DASHBOARD PREVIEW ========== */}
-      <section className="py-24 lg:py-32 relative">
-        <div className="container">
-          <motion.div
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: "-100px" }}
-            variants={stagger}
-            className="text-center mb-16"
-          >
-            <motion.div variants={fadeUp} custom={0} className="mb-4">
-              <span
-                className="text-xs font-medium text-primary tracking-widest uppercase"
-                style={{ fontFamily: "var(--font-mono)" }}
-              >
-                Your Command Center
-              </span>
-            </motion.div>
-            <motion.h2
-              variants={fadeUp}
-              custom={1}
-              className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-6"
-              style={{ fontFamily: "var(--font-display)" }}
-            >
-              See everything.{" "}
-              <span className="text-primary">Miss nothing.</span>
-            </motion.h2>
-            <motion.p variants={fadeUp} custom={2} className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              A real-time dashboard built for the teams who build AI. Watch what's
-              happening inside your model, track threats, and get instant alerts — all
-              in one view.
-            </motion.p>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 40, scale: 0.98 }}
-            whileInView={{ opacity: 1, y: 0, scale: 1 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.8 }}
-            className="relative max-w-5xl mx-auto"
-          >
-            <div className="rounded-xl overflow-hidden border border-border/50 glow-cyan">
-              <img src={DASHBOARD_IMG} alt="Prysm AI security monitoring dashboard" className="w-full h-auto" />
-            </div>
-            <div
-              className="absolute -top-3 -right-3 px-3 py-1.5 rounded-md bg-primary/20 border border-primary/30 text-xs font-medium text-primary"
-              style={{ fontFamily: "var(--font-mono)" }}
-            >
-              LIVE
-            </div>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* ========== HOW IT WORKS ========== */}
-      <section id="how-it-works" className="py-24 lg:py-32 relative">
-        <div className="absolute inset-0 bg-gradient-to-b from-background via-card/20 to-background" />
-        <div className="container relative z-10">
-          <motion.div
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: "-100px" }}
-            variants={stagger}
-          >
-            <motion.div variants={fadeUp} custom={0} className="mb-4">
-              <span
-                className="text-xs font-medium text-primary tracking-widest uppercase"
-                style={{ fontFamily: "var(--font-mono)" }}
-              >
-                5 Minutes to Clarity
-              </span>
-            </motion.div>
-            <motion.h2
-              variants={fadeUp}
-              custom={1}
-              className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-16 max-w-3xl"
-              style={{ fontFamily: "var(--font-display)" }}
-            >
-              Three lines of code.{" "}
-              <span className="text-primary">Complete understanding.</span>
-            </motion.h2>
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-16">
-              {[
-                {
-                  step: "01",
-                  icon: Terminal,
-                  title: "Install",
-                  desc: "pip install prysm. Drop it into your existing project. No new infrastructure. No migration.",
-                },
-                {
-                  step: "02",
-                  icon: Plug,
-                  title: "Connect",
-                  desc: "Wrap your agent with prysm.watch(). Works with LangChain, CrewAI, OpenAI, Claude, Llama — any stack.",
-                },
-                {
-                  step: "03",
-                  icon: Eye,
-                  title: "See",
-                  desc: "Open your dashboard. Watch your model think in real-time. Understand every decision it makes.",
-                },
-              ].map((item, i) => (
-                <motion.div
-                  key={i}
-                  variants={fadeUp}
-                  custom={i + 2}
-                  className="relative p-8 rounded-xl border border-border bg-card/50 backdrop-blur-sm group hover:border-primary/30 transition-colors"
-                >
-                  <span
-                    className="text-6xl font-bold text-border/40 absolute top-4 right-6"
-                    style={{ fontFamily: "var(--font-mono)" }}
-                  >
-                    {item.step}
-                  </span>
-                  <item.icon className="w-8 h-8 text-primary mb-6" />
-                  <h3 className="text-xl font-semibold mb-3" style={{ fontFamily: "var(--font-display)" }}>
-                    {item.title}
-                  </h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{item.desc}</p>
-                </motion.div>
-              ))}
-            </div>
-
-            <motion.div variants={fadeUp} custom={5} className="max-w-3xl mx-auto">
-              <div className="rounded-xl overflow-hidden border border-border/50">
-                <img src={CODE_IMG} alt="Prysm AI integration code example" className="w-full h-auto" />
-              </div>
-            </motion.div>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* ========== PRICING ========== */}
-      <section id="pricing" className="py-24 lg:py-32 relative">
-        <div className="container">
-          <motion.div
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: "-100px" }}
-            variants={stagger}
-          >
-            <motion.div variants={fadeUp} custom={0} className="text-center mb-4">
-              <span
-                className="text-xs font-medium text-primary tracking-widest uppercase"
-                style={{ fontFamily: "var(--font-mono)" }}
-              >
-                Start Free. Go Deep.
-              </span>
-            </motion.div>
-            <motion.h2
-              variants={fadeUp}
-              custom={1}
-              className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-4 text-center"
-              style={{ fontFamily: "var(--font-display)" }}
-            >
-              Built for builders at every stage.
-            </motion.h2>
-            <motion.p
-              variants={fadeUp}
-              custom={2}
-              className="text-lg text-muted-foreground max-w-xl mx-auto text-center mb-16"
-            >
-              No surprises. No hidden fees. Pay only for what you use.
-            </motion.p>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
-              {/* Explorer */}
-              <motion.div variants={fadeUp} custom={3} className="p-6 rounded-xl border border-border bg-card/50">
-                <h3
-                  className="text-sm font-medium text-muted-foreground mb-1 tracking-widest uppercase"
-                  style={{ fontFamily: "var(--font-mono)" }}
-                >
-                  Explorer
-                </h3>
-                <div className="flex items-baseline gap-1 mb-1">
-                  <span className="text-3xl font-bold" style={{ fontFamily: "var(--font-display)" }}>Free</span>
-                </div>
-                <p className="text-xs text-muted-foreground mb-6">For builders who want to see inside their first agent</p>
-                <ul className="space-y-2.5 mb-6">
-                  {["10,000 requests/month", "1 agent", "Basic threat detection", "Community dashboard"].map((f, i) => (
-                    <li key={i} className="flex items-start gap-2.5 text-sm">
-                      <CheckCircle className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                      <span className="text-muted-foreground">{f}</span>
-                    </li>
-                  ))}
-                </ul>
-                <Button
-                  variant="outline"
-                  className="w-full h-10 border-border hover:border-primary/50 hover:bg-primary/5 text-sm"
-                  onClick={() => scrollTo("waitlist")}
-                >
-                  Start Free
-                </Button>
-              </motion.div>
-
-              {/* Builder */}
-              <motion.div variants={fadeUp} custom={4} className="p-6 rounded-xl border border-border bg-card/50">
-                <h3
-                  className="text-sm font-medium text-muted-foreground mb-1 tracking-widest uppercase"
-                  style={{ fontFamily: "var(--font-mono)" }}
-                >
-                  Builder
-                </h3>
-                <div className="flex items-baseline gap-1 mb-1">
-                  <span className="text-3xl font-bold" style={{ fontFamily: "var(--font-display)" }}>$49</span>
-                  <span className="text-muted-foreground text-sm">/mo</span>
-                </div>
-                <p className="text-xs text-muted-foreground mb-6">For teams shipping AI to real users</p>
-                <ul className="space-y-2.5 mb-6">
-                  {[
-                    "50,000 requests/month",
-                    "Up to 5 agents",
-                    "Advanced threat detection",
-                    "Slack & email alerts",
-                    "30-day history",
-                  ].map((f, i) => (
-                    <li key={i} className="flex items-start gap-2.5 text-sm">
-                      <CheckCircle className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                      <span className="text-muted-foreground">{f}</span>
-                    </li>
-                  ))}
-                </ul>
-                <Button
-                  variant="outline"
-                  className="w-full h-10 border-border hover:border-primary/50 hover:bg-primary/5 text-sm"
-                  onClick={() => scrollTo("waitlist")}
-                >
-                  Start Free Trial
-                </Button>
-              </motion.div>
-
-              {/* Architect — Recommended */}
-              <motion.div
-                variants={fadeUp}
-                custom={5}
-                className="p-6 rounded-xl border border-primary/30 bg-primary/5 relative"
-              >
-                <div
-                  className="absolute -top-3 right-4 px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-primary text-primary-foreground"
-                  style={{ fontFamily: "var(--font-mono)" }}
-                >
-                  POPULAR
-                </div>
-                <h3
-                  className="text-sm font-medium text-primary mb-1 tracking-widest uppercase"
-                  style={{ fontFamily: "var(--font-mono)" }}
-                >
-                  Architect
-                </h3>
-                <div className="flex items-baseline gap-1 mb-1">
-                  <span className="text-3xl font-bold" style={{ fontFamily: "var(--font-display)" }}>$199</span>
-                  <span className="text-muted-foreground text-sm">/mo</span>
-                </div>
-                <p className="text-xs text-muted-foreground mb-6">For teams who refuse to ship what they can't explain</p>
-                <ul className="space-y-2.5 mb-6">
-                  {[
-                    "200,000 requests/month",
-                    "Unlimited agents",
-                    "Deep model inspection",
-                    "Real-time feature dashboard",
-                    "90-day history",
-                    "Priority support",
-                  ].map((f, i) => (
-                    <li key={i} className="flex items-start gap-2.5 text-sm">
-                      <CheckCircle className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                      <span className="text-foreground">{f}</span>
-                    </li>
-                  ))}
-                </ul>
-                <Button
-                  className="w-full h-10 bg-primary text-primary-foreground hover:bg-primary/90 glow-cyan text-sm font-semibold"
-                  onClick={() => scrollTo("waitlist")}
-                >
-                  Start Free Trial
-                </Button>
-              </motion.div>
-
-              {/* Enterprise */}
-              <motion.div variants={fadeUp} custom={6} className="p-6 rounded-xl border border-border bg-card/50">
-                <h3
-                  className="text-sm font-medium text-muted-foreground mb-1 tracking-widest uppercase"
-                  style={{ fontFamily: "var(--font-mono)" }}
-                >
-                  Enterprise
-                </h3>
-                <div className="flex items-baseline gap-1 mb-1">
-                  <span className="text-3xl font-bold" style={{ fontFamily: "var(--font-display)" }}>Let's Talk</span>
-                </div>
-                <p className="text-xs text-muted-foreground mb-6">For organizations where AI trust is non-negotiable</p>
-                <ul className="space-y-2.5 mb-6">
-                  {[
-                    "Custom volume",
-                    "Self-hosted deployment",
-                    "SSO & SIEM integration",
-                    "Dedicated support",
-                    "Custom SLA",
-                  ].map((f, i) => (
-                    <li key={i} className="flex items-start gap-2.5 text-sm">
-                      <CheckCircle className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                      <span className="text-muted-foreground">{f}</span>
-                    </li>
-                  ))}
-                </ul>
-                <Button
-                  variant="outline"
-                  className="w-full h-10 border-border hover:border-primary/50 hover:bg-primary/5 text-sm"
-                  onClick={() => scrollTo("waitlist")}
-                >
-                  Contact Sales
-                </Button>
-              </motion.div>
-            </div>
-          </motion.div>
-        </div>
-      </section>
-
       {/* ========== FINAL CTA / WAITLIST ========== */}
       <section id="waitlist" className="py-24 lg:py-32 relative">
         <div className="absolute inset-0 bg-gradient-to-b from-background via-primary/5 to-background" />
@@ -824,12 +500,12 @@ export default function Home() {
                 disabled={isSubmitting}
                 className="h-12 px-8 bg-primary text-primary-foreground hover:bg-primary/90 font-semibold whitespace-nowrap glow-cyan"
               >
-                {isSubmitting ? "Joining..." : "Start Free"}
+                {isSubmitting ? "Joining..." : "Get Early Access"}
               </Button>
             </motion.form>
 
             <motion.p variants={fadeUp} custom={3} className="text-xs text-muted-foreground mt-4">
-              No credit card required. Free forever on the Explorer plan.
+              No credit card required. Be the first to know when we launch.
             </motion.p>
           </motion.div>
         </div>

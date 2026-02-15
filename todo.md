@@ -26,3 +26,8 @@
 - [ ] Add: Email service integration for sending emails to signups
 - [x] Replace text logo placeholders with actual company logo images (LangChain, CrewAI, OpenAI, Anthropic, Meta/Llama, Hugging Face, AutoGen, DeepMind, MIT)
 - [x] Upgrade logos to inline SVG icons + text wordmarks (Simple Icons SVG paths) for consistent rendering on dark theme
+- [x] Remove fake dashboard screenshot section ("See everything. Miss nothing.")
+- [x] Remove fake installation/how-it-works section ("Three lines of code. Complete understanding.")
+- [x] Remove premature pricing section (no validated pricing model yet)
+- [x] Remove pricing link from navbar
+- [x] Tighten page flow for honest conversion: hero → problem → identity → solution promises → CTA → research credibility
