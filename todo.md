@@ -41,3 +41,9 @@
 - [x] Integrate logo into website navbar and footer
 - [x] Add favicon (ICO + PNG + apple-touch-icon)
 - [x] Provide transparent logo for social media
+- [x] Visual refinement: increase whitespace dramatically between sections
+- [x] Visual refinement: reduce color palette to 2 colors max (cyan + neutral)
+- [x] Visual refinement: simplify typography to one font family (Inter)
+- [x] Visual refinement: remove most framer-motion animations (removed from Home)
+- [x] Visual refinement: simplify card styling (vertical bars, no cards in problem section)
+- [x] Visual refinement: add concept visual (AI prism illustration) to replace removed dashboard

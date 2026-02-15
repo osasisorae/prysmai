@@ -1,7 +1,6 @@
 /**
  * Brand logos as inline SVGs for the social proof sections.
- * Uses Simple Icons SVG paths where available, plus text wordmarks
- * for brands without icon-only recognition (OpenAI, AutoGen, MIT).
+ * Uses Simple Icons SVG paths where available, plus text wordmarks.
  * All render as white on dark backgrounds.
  */
 
@@ -55,7 +54,6 @@ function LangChainLogo({ className = "" }: { className?: string }) {
   );
 }
 
-// OpenAI hexagonal flower logo (well-known SVG path from their brand)
 function OpenAILogo({ className = "" }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-label="OpenAI">
@@ -66,7 +64,6 @@ function OpenAILogo({ className = "" }: { className?: string }) {
 
 // ─── Composite Logo + Text Components ───────────────────────────────
 
-// For "Works with your stack" — icon + name side by side
 export function StackLogo({ name, size = "md" }: { name: string; size?: "sm" | "md" | "lg" }) {
   const sizeMap = {
     sm: { icon: "w-5 h-5", text: "text-sm", gap: "gap-1.5" },
@@ -89,14 +86,13 @@ export function StackLogo({ name, size = "md" }: { name: string; size?: "sm" | "
   return (
     <div className={`flex items-center ${s.gap} text-foreground/70`}>
       {icon && icon}
-      <span className={`${s.text} font-medium tracking-tight`} style={{ fontFamily: "var(--font-display)" }}>
+      <span className={`${s.text} font-medium tracking-tight`}>
         {name}
       </span>
     </div>
   );
 }
 
-// For "Built on research from" — icon + name + description
 export function ResearchLogo({ name, desc, size = "md" }: { name: string; desc: string; size?: "sm" | "md" | "lg" }) {
   const sizeMap = {
     sm: { icon: "w-5 h-5", text: "text-sm" },
@@ -117,11 +113,11 @@ export function ResearchLogo({ name, desc, size = "md" }: { name: string; desc: 
     <div className="text-center flex flex-col items-center gap-1.5">
       <div className="flex items-center gap-2 text-foreground/70">
         {icon && icon}
-        <span className={`${s.text} font-semibold tracking-tight`} style={{ fontFamily: "var(--font-display)" }}>
+        <span className={`${s.text} font-semibold tracking-tight`}>
           {name}
         </span>
       </div>
-      <p className="text-xs text-muted-foreground" style={{ fontFamily: "var(--font-mono)" }}>
+      <p className="text-xs text-muted-foreground">
         {desc}
       </p>
     </div>
