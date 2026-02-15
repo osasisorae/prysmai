@@ -35,3 +35,9 @@
 - [x] Add honest "What we're building" teaser section to landing page
 - [x] Integrate Resend for email confirmation on waitlist signup
 - [x] Write vitest tests for Resend email integration
+- [x] Debug: Resend confirmation email not being delivered to signups (was using onboarding@resend.dev, needed verified domain)
+- [x] Update Resend sender to use prysmai.io domain (hello@prysmai.io)
+- [x] Create professional Prysm AI logo (V7 — faceted crystal prism with cyan light rays)
+- [x] Integrate logo into website navbar and footer
+- [x] Add favicon (ICO + PNG + apple-touch-icon)
+- [x] Provide transparent logo for social media

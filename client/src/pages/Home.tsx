@@ -94,9 +94,7 @@ export default function Home() {
       <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border/50 backdrop-blur-xl bg-background/80">
         <div className="container flex items-center justify-between h-16">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-md bg-primary/20 border border-primary/30 flex items-center justify-center">
-              <Shield className="w-4 h-4 text-primary" />
-            </div>
+            <img src="https://files.manuscdn.com/user_upload_by_module/session_file/310519663306080277/pKkWElgCpRmlNvjQ.png" alt="Prysm AI" className="w-8 h-8" />
             <span className="text-lg font-semibold tracking-tight" style={{ fontFamily: "var(--font-display)" }}>
               Prysm<span className="text-primary">AI</span>
             </span>
@@ -636,9 +634,7 @@ export default function Home() {
         <div className="container">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-md bg-primary/20 border border-primary/30 flex items-center justify-center">
-                <Shield className="w-3.5 h-3.5 text-primary" />
-              </div>
+              <img src="https://files.manuscdn.com/user_upload_by_module/session_file/310519663306080277/pKkWElgCpRmlNvjQ.png" alt="Prysm AI" className="w-7 h-7" />
               <span className="text-sm font-semibold" style={{ fontFamily: "var(--font-display)" }}>
                 Prysm<span className="text-primary">AI</span>
               </span>

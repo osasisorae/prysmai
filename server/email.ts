@@ -2,8 +2,8 @@ import { Resend } from "resend";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-// Sender uses Resend's default onboarding domain
-const FROM_EMAIL = "Prysm AI <onboarding@resend.dev>";
+// Use custom domain if available, fallback to Resend onboarding domain
+const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || "Prysm AI <hello@prysmai.io>";
 
 export async function sendWaitlistConfirmation(email: string): Promise<{ success: boolean; error?: string }> {
   try {
