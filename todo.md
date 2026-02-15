@@ -21,3 +21,6 @@
 - [x] Social proof: research credibility strip (Anthropic, OpenAI, DeepMind, MIT)
 - [x] Blog link in navbar
 - [x] Business registration document for lawyer
+- [x] Fix: "Back to Blog" button not working (changed to "Back to Home")
+- [x] Add: Admin dashboard to view waitlist signups (/admin route, admin-only)
+- [ ] Add: Email service integration for sending emails to signups

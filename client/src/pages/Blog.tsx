@@ -55,10 +55,10 @@ export default function Blog() {
           <motion.div initial="hidden" animate="visible" variants={{ visible: { transition: { staggerChildren: 0.08 } } }}>
             {/* Back link */}
             <motion.div variants={fadeUp} custom={0} className="mb-8">
-              <Link href="/blog">
+              <Link href="/">
                 <span className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
                   <ArrowLeft className="w-4 h-4" />
-                  Back to Blog
+                  Back to Home
                 </span>
               </Link>
             </motion.div>

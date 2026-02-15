@@ -1,7 +1,7 @@
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
+import { publicProcedure, protectedProcedure, adminProcedure, router } from "./_core/trpc";
 import { addWaitlistSignup, getWaitlistCount, getWaitlistSignups } from "./db";
 import { z } from "zod";
 import { notifyOwner } from "./_core/notification";
@@ -42,6 +42,10 @@ export const appRouter = router({
 
     count: publicProcedure.query(async () => {
       return { count: await getWaitlistCount() };
+    }),
+
+    list: adminProcedure.query(async () => {
+      return await getWaitlistSignups();
     }),
   }),
 });
