@@ -24,3 +24,5 @@
 - [x] Fix: "Back to Blog" button not working (changed to "Back to Home")
 - [x] Add: Admin dashboard to view waitlist signups (/admin route, admin-only)
 - [ ] Add: Email service integration for sending emails to signups
+- [x] Replace text logo placeholders with actual company logo images (LangChain, CrewAI, OpenAI, Anthropic, Meta/Llama, Hugging Face, AutoGen, DeepMind, MIT)
+- [x] Upgrade logos to inline SVG icons + text wordmarks (Simple Icons SVG paths) for consistent rendering on dark theme

@@ -32,6 +32,7 @@ import {
   Check,
 } from "lucide-react";
 import { toast } from "sonner";
+import { StackLogo, ResearchLogo } from "@/components/BrandLogos";
 
 const HERO_BG = "https://private-us-east-1.manuscdn.com/sessionFile/Q0GdsnUFZ8bvWNXmTe1Tx2/sandbox/GSvs4qYJdgmPuexB5sb2lI-img-1_1771174049000_na1fn_cHJ5c20taGVyby1iZw.png?x-oss-process=image/resize,w_1920,h_1920/format,webp/quality,q_80&Expires=1798761600&Policy=eyJTdGF0ZW1lbnQiOlt7IlJlc291cmNlIjoiaHR0cHM6Ly9wcml2YXRlLXVzLWVhc3QtMS5tYW51c2Nkbi5jb20vc2Vzc2lvbkZpbGUvUTBHZHNuVUZaOGJ2V05YbVRlMVR4Mi9zYW5kYm94L0dTdnM0cVlKZGdtUHVleEI1c2IybEktaW1nLTFfMTc3MTE3NDA0OTAwMF9uYTFmbl9jSEo1YzIwdGFHVnlieTFpWncucG5nP3gtb3NzLXByb2Nlc3M9aW1hZ2UvcmVzaXplLHdfMTkyMCxoXzE5MjAvZm9ybWF0LHdlYnAvcXVhbGl0eSxxXzgwIiwiQ29uZGl0aW9uIjp7IkRhdGVMZXNzVGhhbiI6eyJBV1M6RXBvY2hUaW1lIjoxNzk4NzYxNjAwfX19XX0_&Key-Pair-Id=K2HSFNDJXOU9YS&Signature=dtcY4oAznH93cd-cHdrX8Ssuw~tHp8gipzltdcvN4-F~PAwQxFNwwaeS9Pun9kf6NZ6nUron6ilKNoYFiLt1C1-a-u7i3II65gHDrDiMKT3GK81jxhABeHljI6B4dBS7QKrHUs1EKHURhOo9pydveRxPO-fdNHguOfBW3NlMxVVSJuzbpCtu28XPcv4Q5Fgr8fAXTYVJ3UCXUyiy72KsjeYw9SWZKCcT9hc5exrugKgy7qRC-fvpb~-~vfARELwY0ru1dKp7jg7G-aiAx7otl7nBw0MwOmiZZRAIQ~2q2HMX-g4UX8DVTFxVl~2einfKxbStajJ8092-FEAngppRgw__";
 
@@ -206,19 +207,8 @@ export default function Home() {
             Works with your stack
           </p>
           <div className="flex flex-wrap items-center justify-center gap-8 md:gap-12 opacity-60 hover:opacity-80 transition-opacity">
-            {[
-              { name: "LangChain", icon: "\u26D3\uFE0F" },
-              { name: "CrewAI", icon: "\uD83E\uDD16" },
-              { name: "OpenAI", icon: "\u2728" },
-              { name: "Anthropic", icon: "\uD83E\uDDE0" },
-              { name: "Llama", icon: "\uD83E\uDD99" },
-              { name: "Hugging Face", icon: "\uD83E\uDD17" },
-              { name: "AutoGen", icon: "\u2699\uFE0F" },
-            ].map((fw) => (
-              <div key={fw.name} className="flex items-center gap-2 text-muted-foreground">
-                <span className="text-lg">{fw.icon}</span>
-                <span className="text-sm font-medium" style={{ fontFamily: "var(--font-mono)" }}>{fw.name}</span>
-              </div>
+            {["LangChain", "CrewAI", "OpenAI", "Anthropic", "Meta / Llama", "Hugging Face", "AutoGen"].map((name) => (
+              <StackLogo key={name} name={name} />
             ))}
           </div>
         </div>
@@ -861,10 +851,7 @@ export default function Home() {
               { name: "DeepMind", desc: "Circuit Discovery" },
               { name: "MIT", desc: "Mechanistic Interpretability" },
             ].map((org) => (
-              <div key={org.name} className="text-center">
-                <p className="text-sm font-semibold text-foreground" style={{ fontFamily: "var(--font-display)" }}>{org.name}</p>
-                <p className="text-xs text-muted-foreground" style={{ fontFamily: "var(--font-mono)" }}>{org.desc}</p>
-              </div>
+              <ResearchLogo key={org.name} name={org.name} desc={org.desc} />
             ))}
           </div>
         </div>
