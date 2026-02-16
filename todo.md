@@ -47,3 +47,11 @@
 - [x] Visual refinement: remove most framer-motion animations (removed from Home)
 - [x] Visual refinement: simplify card styling (vertical bars, no cards in problem section)
 - [x] Visual refinement: add concept visual (AI prism illustration) to replace removed dashboard
+- [x] Restructure blog to support multiple posts (index page + individual article pages)
+- [x] Extract Post 0 content from Blog.tsx into blogPosts.ts data file
+- [x] Create blog index page showing all posts as cards at /blog
+- [x] Create individual article pages at /blog/:slug
+- [x] Add Post 1 ("What Is Mechanistic Interpretability?") to blog data
+- [x] Post navigation (previous/next) between articles
+- [x] Blog CTA section at bottom of index and article pages
+- [x] Vitest tests for blog data module (7 tests)
