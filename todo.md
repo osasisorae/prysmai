@@ -55,3 +55,6 @@
 - [x] Post navigation (previous/next) between articles
 - [x] Blog CTA section at bottom of index and article pages
 - [x] Vitest tests for blog data module (7 tests)
+- [x] Create reusable skill from Prysm AI blog workflow
+- [x] Write Blog Post 2: "I Looked Inside a Language Model's Neural Network. Here's What I Found."
+- [x] Integrate Post 2 into blog-posts.ts and verify rendering

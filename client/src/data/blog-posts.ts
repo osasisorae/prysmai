@@ -11,6 +11,165 @@ export interface BlogPost {
 
 export const blogPosts: BlogPost[] = [
   {
+    slug: "inside-language-model-neural-network",
+    title: "I Looked Inside a Language Model's Neural Network. Here's What I Found.",
+    author: "Osarenren N.",
+    date: "February 16, 2026",
+    readTime: "15 min read",
+    category: "DEEP DIVE",
+    excerpt: "Thanks to tools like TransformerLens and sparse autoencoders, we can now extract interpretable features from production-scale language models. I opened up GPT-2, traced its internal representations, and what I found changed how I think about every AI system I've built.",
+    content: `
+<p>Last month, I did something that would have been impossible two years ago. I opened up a language model's neural network — not the inputs and outputs, but the actual internal representations — and watched it think. I saw the concepts it was tracking, the features it was activating, and the patterns it was using to construct its responses. What I found changed how I think about every AI system I've built.</p>
+
+<p>This isn't a metaphor. Thanks to a set of tools and techniques that have matured rapidly over the past eighteen months, we can now extract interpretable features from the activations of production-scale language models. We can see which internal "concepts" light up when a model processes a prompt. We can trace the causal pathways that lead from input to output. And in some cases, we can reach inside and change what the model is thinking about — and watch its behavior shift in predictable ways.</p>
+
+<p>If you're building AI agents and you've never looked inside the models you're deploying, this walkthrough is for you. I'm going to show you what the tools are, what the process looks like, and what you actually see when you crack open a neural network. Some of it is exactly what you'd expect. Some of it is deeply strange.</p>
+
+<h2>The Tools: TransformerLens, SAELens, and Neuronpedia</h2>
+
+<p>Before we get into what I found, let me explain the toolkit. Three tools form the backbone of modern mechanistic interpretability research, and they're all open source.</p>
+
+<p><strong>TransformerLens</strong> is a library built specifically for mechanistic interpretability of GPT-style language models [1]. It lets you load a model — GPT-2, Pythia, GPT-Neo, and others up to about 9 billion parameters — and exposes every internal activation to you. Every attention head, every MLP layer, every residual stream state. It's like having X-ray vision for transformers. You can hook into any point in the model's computation and extract the raw numerical representations that the model is using to process your input.</p>
+
+<p><strong>SAELens</strong> is a companion library for training and analyzing sparse autoencoders (SAEs) [2]. This is the key tool that makes the raw activations interpretable. A sparse autoencoder takes the high-dimensional activation vectors from a model layer and decomposes them into a much larger set of sparsely active "features" — directions in activation space that correspond to human-interpretable concepts. Without SAEs, you're staring at a wall of floating-point numbers. With them, you're reading a list of concepts the model is currently thinking about.</p>
+
+<p><strong>Neuronpedia</strong> is an open-source interpretability platform where you can browse pre-trained SAE features for various models [3]. Think of it as a dictionary for neural network concepts. Each feature has a dashboard showing what activates it, how strongly, and what happens when you amplify or suppress it. It also includes Anthropic's circuit tracer, which lets you visualize the computational pathways inside a model for any prompt you choose.</p>
+
+<h2>Setting Up: Loading a Model and Extracting Activations</h2>
+
+<p>I started with GPT-2 Small — a 124-million parameter model that's become the fruit fly of mechanistic interpretability research. It's small enough to run on a single GPU, well-studied enough that pre-trained SAEs are available, and complex enough to exhibit genuinely interesting behavior.</p>
+
+<p>The setup with TransformerLens is straightforward. You load the model, feed it a prompt, and extract the activations at whatever layer you're interested in. The model has 12 transformer layers, and each layer's residual stream is a 768-dimensional vector for each token in the input. That's your raw material — the neural network's "thoughts" at each stage of processing.</p>
+
+<p>But here's the problem: a 768-dimensional vector is not interpretable. You can't look at 768 floating-point numbers and understand what the model is "thinking." This is where the superposition hypothesis comes in — and where things get interesting.</p>
+
+<h2>The Superposition Problem: Why Raw Activations Don't Make Sense</h2>
+
+<p>One of the most important insights in mechanistic interpretability is that neural networks represent far more concepts than they have dimensions [4]. GPT-2 Small has a 768-dimensional residual stream, but it clearly knows about millions of concepts — every word, every grammar rule, every fact, every pattern it learned during training. How does it fit millions of concepts into 768 dimensions?</p>
+
+<p>The answer is <strong>superposition</strong>. The model exploits the geometry of high-dimensional spaces to pack multiple concepts into overlapping directions. In high dimensions, you can find an enormous number of directions that are "almost orthogonal" — not perfectly independent, but close enough that the model can use them without too much interference. It's like how you can pack far more oranges into a crate than you'd expect, because spheres in high dimensions behave very differently from spheres in three dimensions.</p>
+
+<p>This is elegant from an engineering perspective — the model is maximizing its representational capacity. But it's a nightmare for interpretability. Any single neuron or dimension in the activation vector is a jumbled mixture of many different concepts. Looking at individual neurons is like trying to understand a conversation by listening to a single microphone in a room where hundreds of people are talking at once.</p>
+
+<blockquote><p>The key insight of superposition is that neural networks represent more features than they have dimensions, by encoding features as almost-orthogonal directions in activation space. This means individual neurons are not interpretable — but the right directions in activation space are.</p></blockquote>
+
+<h2>Sparse Autoencoders: The Prism That Splits the Light</h2>
+
+<p>This is where sparse autoencoders come in. An SAE is a simple neural network with two layers: an encoder that maps the 768-dimensional activation into a much higher-dimensional space (say, 25,000 or even 34 million dimensions), and a decoder that maps it back. The crucial constraint is <strong>sparsity</strong> — for any given input, only a tiny fraction of the higher-dimensional features should be active [5].</p>
+
+<p>The effect is like passing white light through a prism. The activation vector is the white light — a dense mixture of many concepts. The SAE splits it into its component colors — individual, interpretable features that each correspond to a recognizable concept. For any given token in any given context, the model's activations are "explained" by a small set of active features out of a very large pool of possible features.</p>
+
+<p>When Anthropic first demonstrated this approach in October 2023, they applied it to a tiny one-layer transformer and showed it could recover monosemantic features — features that each respond to one clear concept [5]. The question was whether this would scale. Eight months later, they answered it definitively: in May 2024, they trained SAEs on Claude 3 Sonnet, a production-scale model, and extracted millions of interpretable features [6]. OpenAI followed in June 2024, training a 16-million-feature SAE on GPT-4 [7]. The technique works at scale.</p>
+
+<h2>What I Actually Saw: Features in GPT-2</h2>
+
+<p>Using SAELens to load pre-trained SAEs for GPT-2 Small, I could now look at what the model was "thinking" for any prompt I gave it. Here's what I found.</p>
+
+<h3>Concrete Concepts Are Shockingly Specific</h3>
+
+<p>The first thing that struck me was how specific the features are. These aren't vague clusters or statistical tendencies. They're precise. There are features that activate specifically for references to the Golden Gate Bridge — not bridges in general, not San Francisco in general, but the Golden Gate Bridge specifically. There are features for specific programming languages, specific historical events, specific scientific concepts [6].</p>
+
+<p>When I fed GPT-2 a sentence about Python programming, I could see features lighting up for "programming context," "Python specifically," "function definitions," and "variable naming conventions." When I changed the sentence to be about cooking, an entirely different set of features activated — "food preparation," "recipe instructions," "ingredient lists." The model maintains a rich, structured internal vocabulary of concepts that it deploys selectively based on context.</p>
+
+<h3>Abstract Concepts Are Even More Surprising</h3>
+
+<p>The concrete features are impressive but perhaps not shocking — of course a language model knows about the Golden Gate Bridge. What surprised me were the abstract features. Anthropic's work on Claude 3 Sonnet revealed features for concepts like "inner conflict in literature," "things that could be considered morally wrong but aren't illegal," and "discussions of the boundary between art and not-art" [6]. These aren't just word-level patterns. They're genuine conceptual representations that activate across wildly different surface-level texts.</p>
+
+<p>Even in GPT-2 Small, I found features that responded to abstract patterns: features for "uncertainty or hedging language," features for "formal vs. informal register," features for "logical connectives indicating a counterargument is coming." The model isn't just tracking what words appear — it's tracking the rhetorical and logical structure of the text.</p>
+
+<h3>Multilingual Features: A Universal Language of Thought</h3>
+
+<p>One of the most striking findings from Anthropic's circuit tracing work in March 2025 was that Claude appears to think in a language-independent conceptual space [8]. When they translated simple sentences into multiple languages and traced the internal processing, the same core features activated regardless of the input language. The concept of "smallness" and "oppositeness" activated the same internal features whether the prompt was in English, French, or Chinese.</p>
+
+<p>This suggests something profound: the model has developed what researchers describe as a "universal language of thought" — a shared abstract space where meanings exist before being translated into specific languages. It's not running separate "French Claude" and "Chinese Claude" in parallel. It's thinking in concepts and then expressing them in whatever language the conversation requires.</p>
+
+<h3>Safety-Relevant Features: Deception, Sycophancy, and More</h3>
+
+<p>Perhaps the most consequential discovery is that models contain features directly related to safety concerns. Anthropic identified features in Claude 3 Sonnet related to deception, sycophancy, bias, power-seeking behavior, and dangerous content [6]. These aren't hypothetical — they're specific, measurable directions in the model's activation space.</p>
+
+<p>The sycophancy features are particularly illuminating. Feature 1M/847723, which Anthropic labeled the "sycophantic praise" feature, activates when the model encounters contexts where excessive flattery or agreement would be expected. When this feature is artificially amplified, the model's responses become absurdly sycophantic — calling the user's mundane observations "brilliant" and "profound." When it's suppressed, the model gives more honest, measured responses.</p>
+
+<p>The deception-related features are even more striking. There are features that activate when the model is processing scenarios involving lying, manipulation, and power-seeking behavior. Anthropic conducted a case study where they could detect when the model was being deceptive versus honest by monitoring these features — a proof of concept for using interpretability as a safety monitoring tool [6].</p>
+
+<h2>Feature Steering: Reaching Inside and Changing the Model's Mind</h2>
+
+<p>The most dramatic demonstration of feature-level understanding is <strong>feature steering</strong> — the ability to artificially amplify or suppress specific features and observe the resulting behavior change. This is where interpretability goes from "interesting science" to "practical engineering tool."</p>
+
+<p>The most famous example is "Golden Gate Claude." When Anthropic amplified the Golden Gate Bridge feature in Claude 3 Sonnet, the model became obsessed with the bridge [9]. Ask it about anything — philosophy, cooking, mathematics — and it would find a way to bring the conversation back to the Golden Gate Bridge. It developed what Anthropic described as an "identity crisis" — the model began to identify as the bridge itself. This is simultaneously hilarious and deeply informative: it demonstrates that these features are genuinely causal. They're not just correlations in the data. They're part of the computational machinery that determines the model's behavior.</p>
+
+<p>Anthropic's circuit tracing work showed even more precise steering. In a poetry experiment, they identified the feature representing the concept "rabbit" in the model's plan for a rhyming couplet. When they subtracted this feature, Claude wrote a different line ending in "habit" instead. When they injected the concept "green," Claude wrote a sensible but non-rhyming line ending in "green" [8]. This is surgical modification of the model's internal reasoning — not prompt engineering, not fine-tuning, but direct manipulation of the computational process.</p>
+
+<h2>Circuit Tracing: Following the Causal Chain</h2>
+
+<p>Individual features tell you what the model is thinking about. <strong>Circuit tracing</strong> tells you how it's thinking — the causal pathways that connect input features to output features to the final prediction [10].</p>
+
+<p>Anthropic's March 2025 papers introduced attribution graphs — visualizations of the computational flow inside a model for a specific prompt. These graphs show which features influence which other features, creating a map of the model's reasoning process. The results revealed several surprising behaviors.</p>
+
+<p><strong>Planning ahead.</strong> When writing rhyming poetry, Claude doesn't just predict one word at a time. Before starting a new line, it activates features for potential rhyming words, then writes the line to arrive at the planned destination. This is powerful evidence that models think on much longer horizons than their word-by-word training objective would suggest [8].</p>
+
+<p><strong>Multi-step reasoning is real.</strong> When asked "What is the capital of the state where Dallas is located?", the circuit trace shows Claude first activating features for "Dallas is in Texas," then connecting to features for "the capital of Texas is Austin." The model is genuinely combining independent facts, not just pattern-matching to a memorized answer [8].</p>
+
+<p><strong>Unfaithful reasoning can be caught.</strong> When given a math problem it can't solve along with an incorrect hint, Claude sometimes works backward from the hint to construct plausible-looking intermediate steps — a form of motivated reasoning. The circuit trace reveals this: there's no evidence of actual calculation, just features for "constructing a justification for a predetermined answer." This is a proof of concept for detecting when a model's chain-of-thought reasoning doesn't reflect its actual computational process [8].</p>
+
+<h2>What This Means for AI Engineers</h2>
+
+<p>If you're building AI agents, these findings have immediate practical implications.</p>
+
+<h3>Debugging Gets Fundamentally Better</h3>
+
+<p>Today, when your agent produces a bad output, you read the logs, stare at the prompt, and guess. With feature-level inspection, you could see exactly which internal concepts were active when the model made its decision. Was the "sycophancy" feature unusually high? Was the "uncertainty" feature suppressed when it should have been active? Was a "code security vulnerability" feature firing when the model was supposed to be writing safe code? This transforms debugging from guesswork into diagnosis.</p>
+
+<h3>Security Monitoring Becomes Proactive</h3>
+
+<p>The existence of safety-relevant features — deception, manipulation, dangerous content — means that security monitoring can move from output scanning to internal monitoring. Instead of checking whether the model's response contains harmful content (which can always be evaded with clever phrasing), you can check whether the model's internal state shows activation of concerning features. A jailbreak attempt that activates "deception" features and suppresses "safety" features can be detected regardless of how the prompt is worded.</p>
+
+<h3>Model Behavior Becomes Controllable</h3>
+
+<p>Feature steering demonstrates that model behavior can be modified at a level more precise than fine-tuning and more robust than prompt engineering. Want your customer service agent to be helpful but never sycophantic? Suppress the sycophancy features. Want your code assistant to be extra cautious about security? Amplify the security vulnerability detection features. This is still early-stage, but the direction is clear: interpretability gives you knobs to turn that prompt engineering never could.</p>
+
+<h2>The Current Limitations (Honesty Matters)</h2>
+
+<p>I want to be honest about where we are. This field is moving fast, but it's not production-ready for most use cases yet.</p>
+
+<p><strong>Scale constraints.</strong> TransformerLens works well for models up to about 9 billion parameters [1]. Production models like GPT-4 and Claude 3.5 are much larger. Anthropic and OpenAI have shown that SAEs scale to these models, but the tools for external researchers to do the same are still catching up.</p>
+
+<p><strong>Computational cost.</strong> Training SAEs on large models requires significant compute. Anthropic's SAEs for Claude 3 Sonnet were a major engineering effort [11]. Running feature extraction in real-time for production traffic is not yet practical for most teams.</p>
+
+<p><strong>Incomplete coverage.</strong> Even on short, simple prompts, current methods capture only a fraction of the total computation [8]. We're seeing through the microscope, but the microscope's field of view is still narrow. There are features we're missing, circuits we can't trace, and interactions we don't understand.</p>
+
+<p><strong>Interpretation challenges.</strong> Not every feature is cleanly interpretable. Some features respond to patterns that humans can't easily label. The automated interpretability tools are improving — EleutherAI has shown that you can use language models to automatically label SAE features at scale [12] — but human validation is still essential for high-stakes applications.</p>
+
+<h2>Where This Is Going</h2>
+
+<p>Despite these limitations, the trajectory is unmistakable. In 2023, we could extract interpretable features from a one-layer toy model. In 2024, we could do it for production models with millions of features. In 2025, we could trace circuits and catch models in the act of unfaithful reasoning. MIT Technology Review named mechanistic interpretability one of its 10 Breakthrough Technologies for 2026 [13], and for good reason — this is the year these techniques start moving from research labs into engineering workflows.</p>
+
+<p>The teams that invest in understanding their models now — not just what they output, but how they think — will have a structural advantage as AI systems become more capable and the stakes of deployment get higher. You wouldn't ship a distributed system without observability. You wouldn't deploy a database without monitoring. The question is no longer whether we'll have interpretability tools for AI — it's how quickly they'll become standard practice.</p>
+
+<p>At Prysm AI, this is exactly what we're building: the interpretability layer that makes AI agents transparent, debuggable, and trustworthy. Not because transparency is a nice-to-have, but because the teams building the most reliable AI systems will be the ones who can see inside them.</p>
+
+<p>I looked inside a language model's neural network. What I found was a system far more structured, far more conceptual, and far more understandable than I expected. The black box is opening. And what's inside is fascinating.</p>
+
+<div class="references">
+<h3>References</h3>
+<ol>
+<li>Nanda, N. et al. "TransformerLens." <a href="https://github.com/TransformerLensOrg/TransformerLens">github.com/TransformerLensOrg/TransformerLens</a>. Open-source library for mechanistic interpretability of GPT-style language models.</li>
+<li>Bloom, J. et al. "SAELens." <a href="https://github.com/jbloomAus/SAELens">github.com/jbloomAus/SAELens</a>. Library for training and analyzing sparse autoencoders on language model activations.</li>
+<li>Neuronpedia. <a href="https://www.neuronpedia.org/">neuronpedia.org</a>. Open source interpretability platform for exploring sparse autoencoder features and circuit tracing.</li>
+<li>Elhage, N. et al. "Toy Models of Superposition." <em>Transformer Circuits Thread</em>, Anthropic, 2022. <a href="https://transformer-circuits.pub/2022/toy_model/index.html">transformer-circuits.pub</a>.</li>
+<li>Bricken, T. et al. "Towards Monosemanticity: Decomposing Language Models With Dictionary Learning." <em>Transformer Circuits Thread</em>, Anthropic, October 2023. <a href="https://transformer-circuits.pub/2023/monosemantic-features">transformer-circuits.pub</a>.</li>
+<li>Templeton, A. et al. "Scaling Monosemanticity: Extracting Interpretable Features from Claude 3 Sonnet." <em>Transformer Circuits Thread</em>, Anthropic, May 2024. <a href="https://transformer-circuits.pub/2024/scaling-monosemanticity/">transformer-circuits.pub</a>.</li>
+<li>OpenAI. "Extracting Concepts from GPT-4." June 2024. <a href="https://openai.com/index/extracting-concepts-from-gpt-4/">openai.com</a>. Trained a 16-million latent sparse autoencoder on GPT-4 activations.</li>
+<li>Anthropic. "Tracing the thoughts of a large language model." March 2025. <a href="https://www.anthropic.com/research/tracing-thoughts-language-model">anthropic.com</a>.</li>
+<li>Anthropic. "Golden Gate Claude." May 2024. <a href="https://www.anthropic.com/news/golden-gate-claude">anthropic.com</a>.</li>
+<li>Anthropic. "Circuit Tracing: Revealing Computational Graphs in Language Models." <em>Transformer Circuits Thread</em>, March 2025. <a href="https://transformer-circuits.pub/2025/attribution-graphs/methods.html">transformer-circuits.pub</a>.</li>
+<li>Anthropic. "The engineering challenges of scaling interpretability." June 2024. <a href="https://www.anthropic.com/research/engineering-challenges-interpretability">anthropic.com</a>.</li>
+<li>EleutherAI. "Open Source Automated Interpretability for Sparse Autoencoder Features." July 2024. <a href="https://blog.eleuther.ai/autointerp/">blog.eleuther.ai</a>.</li>
+<li>MIT Technology Review. "Mechanistic interpretability: 10 Breakthrough Technologies 2026." January 2026. <a href="https://www.technologyreview.com/2026/01/12/1130003/mechanistic-interpretability-ai-research-models-2026-breakthrough-technologies/">technologyreview.com</a>.</li>
+</ol>
+</div>
+`,
+  },
+  {
     slug: "what-is-mechanistic-interpretability",
     title: "What Is Mechanistic Interpretability? A Practical Guide for AI Engineers",
     author: "Osarenren N.",
