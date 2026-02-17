@@ -64,3 +64,46 @@
 - [x] Integrate Post 4 into blog-posts.ts and verify rendering
 - [x] Write Blog Post 5: "The AI Observability Stack in 2026: What's Changed and What's Still Missing"
 - [x] Integrate Post 5 into blog-posts.ts and verify rendering
+
+## Layer 1 MVP — Real Observability Proxy
+
+### Database Schema
+- [ ] Organizations table (id, name, slug, plan)
+- [ ] Projects table (id, org_id, name, slug, provider_config)
+- [ ] API Keys table (id, project_id, key_hash, key_prefix, permissions)
+- [ ] Traces table (id, project_id, timestamp, model, provider, prompt_messages, completion, tokens, latency, cost, status, metadata)
+- [ ] Metrics table (project_id, bucket, model, request_count, error_count, tokens, cost, latency percentiles)
+- [ ] Usage Records table (org_id, project_id, period, request_count)
+
+### Proxy Gateway
+- [ ] OpenAI-compatible /v1/chat/completions endpoint
+- [ ] Request capture (full prompt, metadata, headers)
+- [ ] Response capture (completion, tokens, finish_reason)
+- [ ] Streaming SSE passthrough with buffered capture
+- [ ] Multi-provider routing (OpenAI, Anthropic, vLLM, Ollama)
+- [ ] Latency measurement (total round-trip + time-to-first-token)
+- [ ] Cost calculation from model pricing table
+- [ ] API key authentication (sk-prysm-... prefix)
+- [ ] Custom headers (X-Prysm-User-Id, X-Prysm-Session-Id, X-Prysm-Metadata)
+
+### API Key Management
+- [ ] Generate API keys with sk-prysm- prefix
+- [ ] Store hashed keys, display prefix only
+- [ ] Revoke keys
+- [ ] Key-to-project resolution on proxy requests
+
+### Dashboard
+- [ ] Sidebar navigation layout (Overview, Request Explorer, Security, Settings)
+- [ ] Overview page — real metrics charts (request volume, latency, error rate, cost)
+- [ ] Overview page — live trace feed
+- [ ] Request Explorer — searchable/filterable trace table
+- [ ] Request Explorer — trace detail panel (full prompt/completion, metadata, latency, cost)
+- [ ] Settings — project configuration (provider, base URL, model, API key)
+- [ ] Settings — API key management UI
+- [ ] Settings — team/org management
+
+### Testing & Verification
+- [ ] Vitest tests for proxy routing logic
+- [ ] Vitest tests for API key generation and validation
+- [ ] Vitest tests for cost calculation
+- [ ] End-to-end test: send real LLM request through proxy, verify trace appears in dashboard
