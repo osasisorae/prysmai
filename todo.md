@@ -127,3 +127,4 @@
 - [x] Write SDK README with installation, quick start, and API reference
 - [x] Test end-to-end against live proxy (integration tests with respx mocks)
 - [x] Push SDK to GitHub repo
+- [x] Publish prysmai v0.1.0 to PyPI (https://pypi.org/project/prysmai/0.1.0/)
