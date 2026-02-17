@@ -10,6 +10,8 @@ import Admin from "./pages/Admin";
 import Onboarding from "./pages/Onboarding";
 import DashboardShell from "./pages/DashboardShell";
 import Docs from "./pages/Docs";
+import Login from "./pages/Login";
+import SetupAccount from "./pages/SetupAccount";
 
 function Router() {
   return (
@@ -18,6 +20,8 @@ function Router() {
       <Route path={"/docs"} component={Docs} />
       <Route path={"/blog"} component={Blog} />
       <Route path={"/blog/:slug"} component={Blog} />
+      <Route path={"/login"} component={Login} />
+      <Route path={"/setup-account"} component={SetupAccount} />
       <Route path={"/admin"} component={Admin} />
       <Route path={"/onboarding"} component={Onboarding} />
       <Route path={"/dashboard"} component={DashboardShell} />

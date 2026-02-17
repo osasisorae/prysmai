@@ -7,6 +7,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
+import { EarlyAccessModal } from "@/components/EarlyAccessModal";
 import {
   Copy,
   Check,
@@ -194,7 +195,7 @@ function Sidebar({ activeSection }: { activeSection: string }) {
 }
 
 /* ─── Navbar ─── */
-function DocsNav() {
+function DocsNav({ onEarlyAccess }: { onEarlyAccess: () => void }) {
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border/40 backdrop-blur-xl bg-background/80">
       <div className="container flex items-center justify-between h-16">
@@ -211,11 +212,13 @@ function DocsNav() {
           <Link href="/docs" className="text-foreground font-medium">Docs</Link>
           <Link href="/blog" className="hover:text-foreground transition-colors">Blog</Link>
         </div>
-        <Link href="/">
-          <Button size="sm" className="bg-primary text-primary-foreground hover:bg-primary/90">
-            Get Early Access
-          </Button>
-        </Link>
+        <Button
+          size="sm"
+          className="bg-primary text-primary-foreground hover:bg-primary/90"
+          onClick={onEarlyAccess}
+        >
+          Get Early Access
+        </Button>
       </div>
     </nav>
   );
@@ -245,6 +248,7 @@ function DocsFooter() {
 /* ─── Main Docs Page ─── */
 export default function Docs() {
   const [activeSection, setActiveSection] = useState("installation");
+  const [earlyAccessOpen, setEarlyAccessOpen] = useState(false);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -267,7 +271,7 @@ export default function Docs() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <DocsNav />
+      <DocsNav onEarlyAccess={() => setEarlyAccessOpen(true)} />
 
       {/* Hero */}
       <section className="pt-28 pb-12 border-b border-border/40">
@@ -693,12 +697,13 @@ except openai.APIError as e:
                 Get your API key and start capturing traces in under 2 minutes.
               </p>
               <div className="flex items-center justify-center gap-3">
-                <Link href="/">
-                  <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
-                    Get Early Access
-                    <ArrowRight className="w-4 h-4 ml-2" />
-                  </Button>
-                </Link>
+                <Button
+                  className="bg-primary text-primary-foreground hover:bg-primary/90"
+                  onClick={() => setEarlyAccessOpen(true)}
+                >
+                  Get Early Access
+                  <ArrowRight className="w-4 h-4 ml-2" />
+                </Button>
                 <a
                   href="https://github.com/osasisorae/prysmai/tree/main/sdk"
                   target="_blank"
@@ -716,6 +721,9 @@ except openai.APIError as e:
       </div>
 
       <DocsFooter />
+
+      {/* Early Access Modal */}
+      <EarlyAccessModal open={earlyAccessOpen} onOpenChange={setEarlyAccessOpen} />
     </div>
   );
 }

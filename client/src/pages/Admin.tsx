@@ -1,14 +1,48 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
-import { Shield, Users, Mail, Calendar, ArrowLeft, Download, LogOut } from "lucide-react";
+import {
+  Shield, Users, Mail, Calendar, ArrowLeft, Download, LogOut,
+  CheckCircle, XCircle, Clock, Loader2,
+} from "lucide-react";
 import type { WaitlistSignup } from "../../../drizzle/schema";
 import { Link } from "wouter";
+import { toast } from "sonner";
+
+function StatusBadge({ status }: { status: string }) {
+  if (status === "approved") {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-green-500/10 border border-green-500/20 text-green-400"
+        style={{ fontFamily: "var(--font-mono)" }}>
+        <CheckCircle className="w-3 h-3" />
+        Approved
+      </span>
+    );
+  }
+  if (status === "rejected") {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-red-500/10 border border-red-500/20 text-red-400"
+        style={{ fontFamily: "var(--font-mono)" }}>
+        <XCircle className="w-3 h-3" />
+        Rejected
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-yellow-500/10 border border-yellow-500/20 text-yellow-400"
+      style={{ fontFamily: "var(--font-mono)" }}>
+      <Clock className="w-3 h-3" />
+      Pending
+    </span>
+  );
+}
 
 export default function Admin() {
   const { user, loading, isAuthenticated, logout } = useAuth({
     redirectOnUnauthenticated: true,
   });
+
+  const utils = trpc.useUtils();
 
   const { data: signups, isLoading: signupsLoading } = trpc.waitlist.list.useQuery(
     undefined,
@@ -16,6 +50,26 @@ export default function Admin() {
   );
 
   const { data: countData } = trpc.waitlist.count.useQuery();
+
+  const approveMutation = trpc.waitlist.approve.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Approved! Invite email sent to ${data.email}`);
+      utils.waitlist.list.invalidate();
+    },
+    onError: (err) => {
+      toast.error(err.message || "Failed to approve.");
+    },
+  });
+
+  const rejectMutation = trpc.waitlist.reject.useMutation({
+    onSuccess: () => {
+      toast.success("Entry rejected.");
+      utils.waitlist.list.invalidate();
+    },
+    onError: (err) => {
+      toast.error(err.message || "Failed to reject.");
+    },
+  });
 
   if (loading) {
     return (
@@ -42,10 +96,11 @@ export default function Admin() {
 
   const handleExportCSV = () => {
     if (!signups || signups.length === 0) return;
-    const headers = ["Email", "Source", "Signed Up"];
+    const headers = ["Email", "Source", "Status", "Signed Up"];
     const rows = signups.map((s: WaitlistSignup) => [
       s.email,
       s.source ?? "landing_page",
+      s.status ?? "pending",
       new Date(s.createdAt).toLocaleString(),
     ]);
     const csv = [headers.join(","), ...rows.map((r: string[]) => r.join(","))].join("\n");
@@ -57,6 +112,9 @@ export default function Admin() {
     a.click();
     URL.revokeObjectURL(url);
   };
+
+  const pendingCount = signups?.filter((s: WaitlistSignup) => (s.status ?? "pending") === "pending").length ?? 0;
+  const approvedCount = signups?.filter((s: WaitlistSignup) => s.status === "approved").length ?? 0;
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -124,12 +182,12 @@ export default function Admin() {
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-8">
             <div className="p-6 rounded-xl border border-border bg-card/50">
               <div className="flex items-center gap-3 mb-2">
                 <Users className="w-5 h-5 text-primary" />
                 <span className="text-sm text-muted-foreground" style={{ fontFamily: "var(--font-mono)" }}>
-                  Total Signups
+                  Total
                 </span>
               </div>
               <p className="text-3xl font-bold" style={{ fontFamily: "var(--font-display)" }}>
@@ -138,33 +196,37 @@ export default function Admin() {
             </div>
             <div className="p-6 rounded-xl border border-border bg-card/50">
               <div className="flex items-center gap-3 mb-2">
-                <Mail className="w-5 h-5 text-primary" />
+                <Clock className="w-5 h-5 text-yellow-400" />
                 <span className="text-sm text-muted-foreground" style={{ fontFamily: "var(--font-mono)" }}>
-                  Goal Progress
+                  Pending
                 </span>
               </div>
-              <p className="text-3xl font-bold" style={{ fontFamily: "var(--font-display)" }}>
-                {countData?.count ?? 0}
-                <span className="text-lg text-muted-foreground font-normal"> / 100</span>
+              <p className="text-3xl font-bold text-yellow-400" style={{ fontFamily: "var(--font-display)" }}>
+                {pendingCount}
               </p>
-              <div className="mt-2 h-2 rounded-full bg-border overflow-hidden">
-                <div
-                  className="h-full rounded-full bg-primary transition-all duration-500"
-                  style={{ width: `${Math.min(((countData?.count ?? 0) / 100) * 100, 100)}%` }}
-                />
+            </div>
+            <div className="p-6 rounded-xl border border-border bg-card/50">
+              <div className="flex items-center gap-3 mb-2">
+                <CheckCircle className="w-5 h-5 text-green-400" />
+                <span className="text-sm text-muted-foreground" style={{ fontFamily: "var(--font-mono)" }}>
+                  Approved
+                </span>
               </div>
+              <p className="text-3xl font-bold text-green-400" style={{ fontFamily: "var(--font-display)" }}>
+                {approvedCount}
+              </p>
             </div>
             <div className="p-6 rounded-xl border border-border bg-card/50">
               <div className="flex items-center gap-3 mb-2">
                 <Calendar className="w-5 h-5 text-primary" />
                 <span className="text-sm text-muted-foreground" style={{ fontFamily: "var(--font-mono)" }}>
-                  Latest Signup
+                  Latest
                 </span>
               </div>
               <p className="text-lg font-medium" style={{ fontFamily: "var(--font-display)" }}>
                 {signups && signups.length > 0
                   ? new Date(signups[0].createdAt).toLocaleDateString()
-                  : "No signups yet"}
+                  : "None yet"}
               </p>
             </div>
           </div>
@@ -199,25 +261,82 @@ export default function Admin() {
                       Source
                     </th>
                     <th className="text-left px-6 py-3 font-medium text-muted-foreground border-b border-border" style={{ fontFamily: "var(--font-mono)" }}>
+                      Status
+                    </th>
+                    <th className="text-left px-6 py-3 font-medium text-muted-foreground border-b border-border" style={{ fontFamily: "var(--font-mono)" }}>
                       Signed Up
+                    </th>
+                    <th className="text-right px-6 py-3 font-medium text-muted-foreground border-b border-border" style={{ fontFamily: "var(--font-mono)" }}>
+                      Actions
                     </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {signups.map((signup: WaitlistSignup, i: number) => (
-                    <tr key={signup.id} className="border-b border-border/50 last:border-0 hover:bg-card/30 transition-colors">
-                      <td className="px-6 py-3 text-muted-foreground">{i + 1}</td>
-                      <td className="px-6 py-3 text-foreground font-medium">{signup.email}</td>
-                      <td className="px-6 py-3">
-                        <span className="px-2 py-0.5 rounded text-xs border border-border text-muted-foreground" style={{ fontFamily: "var(--font-mono)" }}>
-                          {signup.source ?? "landing_page"}
-                        </span>
-                      </td>
-                      <td className="px-6 py-3 text-muted-foreground">
-                        {new Date(signup.createdAt).toLocaleString()}
-                      </td>
-                    </tr>
-                  ))}
+                  {signups.map((signup: WaitlistSignup, i: number) => {
+                    const status = signup.status ?? "pending";
+                    const isPending = status === "pending";
+
+                    return (
+                      <tr key={signup.id} className="border-b border-border/50 last:border-0 hover:bg-card/30 transition-colors">
+                        <td className="px-6 py-3 text-muted-foreground">{i + 1}</td>
+                        <td className="px-6 py-3 text-foreground font-medium">{signup.email}</td>
+                        <td className="px-6 py-3">
+                          <span className="px-2 py-0.5 rounded text-xs border border-border text-muted-foreground" style={{ fontFamily: "var(--font-mono)" }}>
+                            {signup.source ?? "landing_page"}
+                          </span>
+                        </td>
+                        <td className="px-6 py-3">
+                          <StatusBadge status={status} />
+                        </td>
+                        <td className="px-6 py-3 text-muted-foreground">
+                          {new Date(signup.createdAt).toLocaleString()}
+                        </td>
+                        <td className="px-6 py-3 text-right">
+                          {isPending ? (
+                            <div className="flex items-center justify-end gap-2">
+                              <Button
+                                size="sm"
+                                className="h-7 px-3 bg-green-600 hover:bg-green-700 text-white text-xs"
+                                onClick={() => approveMutation.mutate({ id: signup.id })}
+                                disabled={approveMutation.isPending}
+                              >
+                                {approveMutation.isPending ? (
+                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                ) : (
+                                  <>
+                                    <CheckCircle className="w-3 h-3 mr-1" />
+                                    Approve
+                                  </>
+                                )}
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-7 px-3 border-red-500/30 text-red-400 hover:bg-red-500/10 text-xs"
+                                onClick={() => rejectMutation.mutate({ id: signup.id })}
+                                disabled={rejectMutation.isPending}
+                              >
+                                {rejectMutation.isPending ? (
+                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                ) : (
+                                  <>
+                                    <XCircle className="w-3 h-3 mr-1" />
+                                    Reject
+                                  </>
+                                )}
+                              </Button>
+                            </div>
+                          ) : status === "approved" && signup.inviteSentAt ? (
+                            <span className="text-xs text-muted-foreground" style={{ fontFamily: "var(--font-mono)" }}>
+                              Invited {new Date(signup.inviteSentAt).toLocaleDateString()}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             )}

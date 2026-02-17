@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { StackLogo, ResearchLogo } from "@/components/BrandLogos";
+import { EarlyAccessModal } from "@/components/EarlyAccessModal";
 
 const LOGO_URL = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663306080277/pKkWElgCpRmlNvjQ.png";
 
@@ -36,6 +37,7 @@ export default function Home() {
 
   const [email, setEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [earlyAccessOpen, setEarlyAccessOpen] = useState(false);
 
   const joinWaitlist = trpc.waitlist.join.useMutation({
     onSuccess: (data) => {
@@ -86,7 +88,7 @@ export default function Home() {
           <Button
             size="sm"
             className="bg-primary text-primary-foreground hover:bg-primary/90"
-            onClick={() => scrollTo("waitlist")}
+            onClick={() => setEarlyAccessOpen(true)}
           >
             Get Early Access
           </Button>
@@ -115,7 +117,7 @@ export default function Home() {
             <div className="flex flex-col sm:flex-row gap-3">
               <Button
                 className="h-12 px-8 bg-primary text-primary-foreground hover:bg-primary/90 font-medium"
-                onClick={() => scrollTo("waitlist")}
+                onClick={() => setEarlyAccessOpen(true)}
               >
                 Get Early Access
                 <ArrowRight className="w-4 h-4 ml-2" />
@@ -379,7 +381,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ========== FINAL CTA / WAITLIST ========== */}
+      {/* ========== FINAL CTA ========== */}
       <section id="waitlist" className="py-28 lg:py-40">
         <div className="container">
           <div className="max-w-2xl mx-auto text-center">
@@ -392,25 +394,13 @@ export default function Home() {
               Stop guessing. Start understanding. Join the builders who go deeper.
             </p>
 
-            <form
-              onSubmit={handleWaitlist}
-              className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto"
+            <Button
+              className="h-12 px-10 bg-primary text-primary-foreground hover:bg-primary/90 font-medium"
+              onClick={() => setEarlyAccessOpen(true)}
             >
-              <Input
-                type="email"
-                placeholder="your@email.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="h-12 bg-card border-border text-foreground placeholder:text-muted-foreground focus:border-primary"
-              />
-              <Button
-                type="submit"
-                disabled={isSubmitting}
-                className="h-12 px-8 bg-primary text-primary-foreground hover:bg-primary/90 font-medium whitespace-nowrap"
-              >
-                {isSubmitting ? "Joining..." : "Get Early Access"}
-              </Button>
-            </form>
+              Get Early Access
+              <ArrowRight className="w-4 h-4 ml-2" />
+            </Button>
 
             <p className="text-xs text-muted-foreground mt-6">
               No credit card required. Be the first to know when we launch.
@@ -457,6 +447,9 @@ export default function Home() {
           </div>
         </div>
       </footer>
+
+      {/* Early Access Modal */}
+      <EarlyAccessModal open={earlyAccessOpen} onOpenChange={setEarlyAccessOpen} />
     </div>
   );
 }

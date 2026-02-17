@@ -13,6 +13,8 @@ import {
 import { z } from "zod";
 import { notifyOwner } from "./_core/notification";
 import { sendWaitlistConfirmation } from "./email";
+import { sendInviteEmail } from "./inviteEmail";
+import { generateInviteToken, approveWaitlistEntry, rejectWaitlistEntry } from "./customAuth";
 import { TRPCError } from "@trpc/server";
 
 // Helper: ensure user has an org, get it or throw
@@ -68,6 +70,35 @@ export const appRouter = router({
     list: adminProcedure.query(async () => {
       return await getWaitlistSignups();
     }),
+    approve: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        const signups = await getWaitlistSignups();
+        const signup = signups.find(s => s.id === input.id);
+        if (!signup) throw new TRPCError({ code: "NOT_FOUND", message: "Waitlist entry not found." });
+        if (signup.status === "approved") throw new TRPCError({ code: "BAD_REQUEST", message: "Already approved." });
+
+        const token = generateInviteToken();
+        await approveWaitlistEntry(input.id, token);
+
+        // Determine base URL from request
+        const protocol = ctx.req.headers["x-forwarded-proto"] || ctx.req.protocol || "https";
+        const host = ctx.req.headers["x-forwarded-host"] || ctx.req.headers.host || "prysmai.com";
+        const baseUrl = `${protocol}://${host}`;
+
+        // Send invite email in background
+        sendInviteEmail(signup.email, token, baseUrl).catch((err) =>
+          console.error("[Email] Background invite send failed:", err)
+        );
+
+        return { success: true, email: signup.email };
+      }),
+    reject: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await rejectWaitlistEntry(input.id);
+        return { success: true };
+      }),
   }),
 
   // ─── Organization ───

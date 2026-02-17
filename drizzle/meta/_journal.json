@@ -8,6 +8,13 @@
       "when": 1771364812015,
       "tag": "0000_white_omega_sentinel",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1771371959501,
+      "tag": "0001_wandering_magma",
+      "breakpoints": true
     }
   ]
 }

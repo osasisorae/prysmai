@@ -3,15 +3,17 @@
  * Design: Matches the refined V5 landing page (Inter, 2-color, generous whitespace)
  */
 
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Calendar, Clock, User, ArrowRight } from "lucide-react";
 import { Link, useRoute } from "wouter";
 import { getAllPosts, getPostBySlug, type BlogPost } from "@/data/blog-posts";
+import { EarlyAccessModal } from "@/components/EarlyAccessModal";
 
 const LOGO_URL = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663306080277/pKkWElgCpRmlNvjQ.png";
 
 /* ─── Shared Navbar ─── */
-function BlogNav() {
+function BlogNav({ onEarlyAccess }: { onEarlyAccess: () => void }) {
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border/40 backdrop-blur-xl bg-background/80">
       <div className="container flex items-center justify-between h-16">
@@ -28,11 +30,13 @@ function BlogNav() {
           <Link href="/docs" className="hover:text-foreground transition-colors">Docs</Link>
           <Link href="/blog" className="text-foreground font-medium">Blog</Link>
         </div>
-        <Link href="/">
-          <Button size="sm" className="bg-primary text-primary-foreground hover:bg-primary/90">
-            Get Early Access
-          </Button>
-        </Link>
+        <Button
+          size="sm"
+          className="bg-primary text-primary-foreground hover:bg-primary/90"
+          onClick={onEarlyAccess}
+        >
+          Get Early Access
+        </Button>
       </div>
     </nav>
   );
@@ -65,10 +69,11 @@ function BlogFooter() {
 /* ─── Blog Index (list of all posts) ─── */
 function BlogIndex() {
   const posts = getAllPosts();
+  const [earlyAccessOpen, setEarlyAccessOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <BlogNav />
+      <BlogNav onEarlyAccess={() => setEarlyAccessOpen(true)} />
 
       <section className="pt-32 pb-24 lg:pt-40 lg:pb-32">
         <div className="container max-w-3xl">
@@ -128,16 +133,19 @@ function BlogIndex() {
           <p className="text-muted-foreground mb-8">
             Join the builders who go deeper. Get early access to Prysm AI.
           </p>
-          <Link href="/">
-            <Button className="h-12 px-8 bg-primary text-primary-foreground hover:bg-primary/90 font-medium">
-              Get Early Access
-              <ArrowRight className="w-4 h-4 ml-2" />
-            </Button>
-          </Link>
+          <Button
+            className="h-12 px-8 bg-primary text-primary-foreground hover:bg-primary/90 font-medium"
+            onClick={() => setEarlyAccessOpen(true)}
+          >
+            Get Early Access
+            <ArrowRight className="w-4 h-4 ml-2" />
+          </Button>
         </div>
       </section>
 
       <BlogFooter />
+
+      <EarlyAccessModal open={earlyAccessOpen} onOpenChange={setEarlyAccessOpen} />
     </div>
   );
 }
@@ -148,10 +156,11 @@ function BlogArticle({ post }: { post: BlogPost }) {
   const currentIndex = posts.findIndex((p) => p.slug === post.slug);
   const nextPost = currentIndex < posts.length - 1 ? posts[currentIndex + 1] : null;
   const prevPost = currentIndex > 0 ? posts[currentIndex - 1] : null;
+  const [earlyAccessOpen, setEarlyAccessOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <BlogNav />
+      <BlogNav onEarlyAccess={() => setEarlyAccessOpen(true)} />
 
       <article className="pt-32 pb-24 lg:pt-40 lg:pb-32">
         <div className="container max-w-3xl">
@@ -234,16 +243,19 @@ function BlogArticle({ post }: { post: BlogPost }) {
           <p className="text-muted-foreground mb-8">
             Join the builders who go deeper. Get early access to Prysm AI.
           </p>
-          <Link href="/">
-            <Button className="h-12 px-8 bg-primary text-primary-foreground hover:bg-primary/90 font-medium">
-              Get Early Access
-              <ArrowRight className="w-4 h-4 ml-2" />
-            </Button>
-          </Link>
+          <Button
+            className="h-12 px-8 bg-primary text-primary-foreground hover:bg-primary/90 font-medium"
+            onClick={() => setEarlyAccessOpen(true)}
+          >
+            Get Early Access
+            <ArrowRight className="w-4 h-4 ml-2" />
+          </Button>
         </div>
       </section>
 
       <BlogFooter />
+
+      <EarlyAccessModal open={earlyAccessOpen} onOpenChange={setEarlyAccessOpen} />
     </div>
   );
 }

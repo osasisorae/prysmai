@@ -20,9 +20,11 @@ export const users = mysqlTable("users", {
   openId: varchar("openId", { length: 64 }).notNull().unique(),
   name: text("name"),
   email: varchar("email", { length: 320 }),
+  passwordHash: varchar("passwordHash", { length: 255 }),
   loginMethod: varchar("loginMethod", { length: 64 }),
   role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
   orgId: int("orgId"),
+  onboarded: boolean("onboarded").default(false),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
@@ -37,6 +39,9 @@ export const waitlistSignups = mysqlTable("waitlist_signups", {
   id: int("id").autoincrement().primaryKey(),
   email: varchar("email", { length: 320 }).notNull().unique(),
   source: varchar("source", { length: 64 }).default("landing_page"),
+  status: mysqlEnum("status", ["pending", "approved", "rejected"]).default("pending").notNull(),
+  inviteToken: varchar("inviteToken", { length: 128 }),
+  inviteSentAt: timestamp("inviteSentAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 

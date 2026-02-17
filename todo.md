@@ -139,3 +139,29 @@
 - [x] Rename Python package directory from prysm/ to prysmai/
 - [x] Republish to PyPI as v0.1.1 (https://pypi.org/project/prysmai/0.1.1/)
 - [x] Update /docs page: replace all 'from prysm' with 'from prysmai' to match PyPI package
+
+## SDK Repo Separation
+- [x] Create public prysmai-python repo on GitHub
+- [x] Move SDK code to new repo (github.com/osasisorae/prysmai-python)
+- [x] Remove SDK from web app repo
+
+## Early Access Flow
+- [x] Build "Get Early Access" modal (triggers from any CTA button)
+- [x] Wire modal to existing waitlist.join mutation
+
+## Custom Email/Password Auth
+- [x] Add password_hash, invite_token, invite_expires, status columns to user/waitlist schema
+- [x] Build password hashing with bcrypt
+- [x] Build email/password login endpoint
+- [x] Build JWT session management independent of Manus OAuth
+- [x] Build login page (email + password)
+- [x] Write vitest tests for auth system (7 tests passing)
+
+## Admin Dashboard
+- [x] Build /admin route with waitlist table (approve/reject/status badges)
+- [x] Add approve/reject actions to waitlist entries
+- [x] Send invite email on approval (via Resend)
+
+## Account Setup & Onboarding
+- [x] Build /setup-account page (invite token validation + password creation + strength meter)
+- [x] Onboarding screen already exists (3-step: org → project → provider config)
