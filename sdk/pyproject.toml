@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "prysm"
+name = "prysmai"
 version = "0.1.0"
 description = "Prysm AI — Observability SDK for LLM applications. One-line integration for OpenAI, Anthropic, and any OpenAI-compatible provider."
 readme = "README.md"

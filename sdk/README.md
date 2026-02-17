@@ -13,7 +13,7 @@ Prysm wraps your existing OpenAI client and routes every request through the Pry
 ## Installation
 
 ```bash
-pip install prysm
+pip install prysmai
 ```
 
 ## Quick Start
