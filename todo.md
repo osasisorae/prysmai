@@ -108,3 +108,11 @@
 - [x] Vitest tests for model pricing lookup (7 tests)
 - [x] Vitest tests for proxy contract (2 tests)
 - [x] End-to-end verified: real OpenAI requests through proxy, traces logged with real metrics in dashboard
+
+## GitHub Repository & Documentation
+- [x] Write comprehensive README.md (overview, features, installation, usage, API reference)
+- [x] Write CONTRIBUTING.md with development setup guide
+- [x] Write architecture documentation (docs/ARCHITECTURE.md)
+- [x] Create .env.example (documented in README instead — .env files blocked by platform)
+- [ ] Create private GitHub repository
+- [ ] Push codebase with clean commit history
