@@ -20,7 +20,7 @@ from typing import Any, Optional
 import httpx
 import openai
 
-from prysm.context import _prysm_ctx
+from prysmai.context import _prysm_ctx
 
 
 # ─── Custom transport that injects Prysm headers ───
@@ -165,7 +165,7 @@ def monitor(
 
     Example:
         import openai
-        from prysm import monitor
+        from prysmai import monitor
 
         client = openai.OpenAI(api_key="sk-...")
         monitored = monitor(client, prysm_key="sk-prysm-...")

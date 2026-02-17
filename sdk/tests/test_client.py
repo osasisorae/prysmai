@@ -8,9 +8,9 @@ import pytest
 import httpx
 import openai
 
-from prysm import monitor, PrysmClient, __version__
-from prysm.client import _PrysmTransport, _PrysmAsyncTransport
-from prysm.context import prysm_context, PrysmContext, _prysm_ctx
+from prysmai import monitor, PrysmClient, __version__
+from prysmai.client import _PrysmTransport, _PrysmAsyncTransport
+from prysmai.context import prysm_context, PrysmContext, _prysm_ctx
 
 
 # ─── Fixtures ───
@@ -262,7 +262,7 @@ class TestTransport:
 
 class TestVersion:
     def test_version_string(self):
-        assert __version__ == "0.1.0"
+        assert __version__ == "0.1.1"
 
     def test_version_semver_format(self):
         parts = __version__.split(".")

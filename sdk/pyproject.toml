@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "prysmai"
-version = "0.1.0"
+version = "0.1.1"
 description = "Prysm AI — Observability SDK for LLM applications. One-line integration for OpenAI, Anthropic, and any OpenAI-compatible provider."
 readme = "README.md"
 license = { text = "MIT" }
@@ -45,7 +45,7 @@ Repository = "https://github.com/osasisorae/prysmai"
 Issues = "https://github.com/osasisorae/prysmai/issues"
 
 [tool.hatch.build.targets.wheel]
-packages = ["prysm"]
+packages = ["prysmai"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

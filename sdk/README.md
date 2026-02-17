@@ -4,7 +4,7 @@
 
 Prysm wraps your existing OpenAI client and routes every request through the Prysm proxy, capturing latency, token usage, cost, errors, and full request/response payloads — with zero changes to your application logic.
 
-[![PyPI version](https://img.shields.io/pypi/v/prysm.svg)](https://pypi.org/project/prysm/)
+[![PyPI version](https://img.shields.io/pypi/v/prysmai.svg)](https://pypi.org/project/prysmai/)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://python.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
@@ -20,7 +20,7 @@ pip install prysmai
 
 ```python
 import openai
-from prysm import monitor
+from prysmai import monitor
 
 # Your existing OpenAI client
 client = openai.OpenAI(api_key="sk-...")
@@ -90,7 +90,7 @@ monitored = monitor(openai.AsyncOpenAI(api_key="sk-..."), prysm_key="sk-prysm-..
 Lower-level client for more control.
 
 ```python
-from prysm import PrysmClient
+from prysmai import PrysmClient
 
 prysm = PrysmClient(prysm_key="sk-prysm-...")
 
@@ -106,7 +106,7 @@ async_client = prysm.async_openai()
 Attach metadata (user ID, session ID, custom tags) to every request for filtering and grouping in your dashboard.
 
 ```python
-from prysm import prysm_context
+from prysmai import prysm_context
 
 # Set globally
 prysm_context.set(user_id="user_123", session_id="sess_abc")
@@ -142,7 +142,7 @@ export PRYSM_API_KEY="sk-prysm-your-key-here"
 ```
 
 ```python
-from prysm import monitor
+from prysmai import monitor
 import openai
 
 # No need to pass prysm_key — reads from env
@@ -178,7 +178,7 @@ Full async support with the same API:
 ```python
 import asyncio
 import openai
-from prysm import monitor
+from prysmai import monitor
 
 async def main():
     client = openai.AsyncOpenAI(api_key="sk-...")

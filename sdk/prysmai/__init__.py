@@ -3,7 +3,7 @@ Prysm AI — Observability SDK for LLM applications.
 
 Usage:
     import openai
-    from prysm import monitor
+    from prysmai import monitor
 
     client = openai.OpenAI(api_key="sk-...")
     monitored = monitor(client, prysm_key="sk-prysm-...")
@@ -15,8 +15,8 @@ Usage:
     )
 """
 
-from prysm.client import monitor, PrysmClient
-from prysm.context import prysm_context, PrysmContext
+from prysmai.client import monitor, PrysmClient
+from prysmai.context import prysm_context, PrysmContext
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 __all__ = ["monitor", "PrysmClient", "prysm_context", "PrysmContext", "__version__"]

@@ -12,8 +12,8 @@ import httpx
 import respx
 import openai
 
-from prysm import monitor, PrysmClient
-from prysm.context import prysm_context
+from prysmai import monitor, PrysmClient
+from prysmai.context import prysm_context
 
 
 VALID_KEY = "sk-prysm-integration-test-key"

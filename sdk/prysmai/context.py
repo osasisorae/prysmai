@@ -2,7 +2,7 @@
 Prysm context management for request-level metadata tagging.
 
 Usage:
-    from prysm import prysm_context
+    from prysmai import prysm_context
 
     # Set metadata for all subsequent requests in this context
     with prysm_context(user_id="user_123", session_id="sess_abc"):
