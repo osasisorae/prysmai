@@ -135,3 +135,6 @@
 - [x] Add API reference (monitor, PrysmClient, prysm_context)
 - [x] Add streaming, async, self-hosted proxy sections
 - [x] Add docs link to navbar (Home, Blog, and Docs navbars)
+- [x] Fix PyPI README: replace all 'from prysm' / 'pip install prysm' with 'prysmai'
+- [x] Rename Python package directory from prysm/ to prysmai/
+- [x] Republish to PyPI as v0.1.1 (https://pypi.org/project/prysmai/0.1.1/)
