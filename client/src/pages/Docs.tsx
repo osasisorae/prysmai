@@ -296,7 +296,7 @@ export default function Docs() {
               rel="noopener noreferrer"
             >
               <span className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
-                v0.1.0 on PyPI <ExternalLink className="w-3 h-3" />
+                v0.1.1 on PyPI <ExternalLink className="w-3 h-3" />
               </span>
             </a>
           </div>
@@ -335,7 +335,7 @@ export default function Docs() {
             <CodeBlock
               filename="app.py"
               code={`import openai
-from prysm import monitor
+from prysmai import monitor
 
 # Your existing OpenAI client
 client = openai.OpenAI(api_key="sk-...")
@@ -474,7 +474,7 @@ monitored = monitor(openai.AsyncOpenAI(api_key="sk-..."), prysm_key="sk-prysm-..
               ]}
             />
             <CodeBlock
-              code={`from prysm import PrysmClient
+              code={`from prysmai import PrysmClient
 
 prysm = PrysmClient(prysm_key="sk-prysm-...")
 
@@ -504,7 +504,7 @@ response = client.chat.completions.create(
               Set metadata that applies to all subsequent requests:
             </p>
             <CodeBlock
-              code={`from prysm import prysm_context
+              code={`from prysmai import prysm_context
 
 # Set globally — all requests will include these
 prysm_context.set(
@@ -520,7 +520,7 @@ prysm_context.set(
               automatically:
             </p>
             <CodeBlock
-              code={`from prysm import prysm_context
+              code={`from prysmai import prysm_context
 
 prysm_context.set(user_id="default_user")
 
@@ -592,7 +592,7 @@ for chunk in stream:
               filename="async_example.py"
               code={`import asyncio
 import openai
-from prysm import monitor
+from prysmai import monitor
 
 async def main():
     client = openai.AsyncOpenAI(api_key="sk-...")

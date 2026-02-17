@@ -138,3 +138,4 @@
 - [x] Fix PyPI README: replace all 'from prysm' / 'pip install prysm' with 'prysmai'
 - [x] Rename Python package directory from prysm/ to prysmai/
 - [x] Republish to PyPI as v0.1.1 (https://pypi.org/project/prysmai/0.1.1/)
+- [x] Update /docs page: replace all 'from prysm' with 'from prysmai' to match PyPI package
