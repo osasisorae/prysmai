@@ -6,7 +6,7 @@ describe("blog-posts data module", () => {
     it("returns an array of blog posts", () => {
       const posts = getAllPosts();
       expect(Array.isArray(posts)).toBe(true);
-      expect(posts.length).toBeGreaterThanOrEqual(4);
+      expect(posts.length).toBeGreaterThanOrEqual(5);
     });
 
     it("each post has required fields", () => {
@@ -31,11 +31,12 @@ describe("blog-posts data module", () => {
 
     it("posts are ordered newest first", () => {
       const posts = getAllPosts();
-      // Post 3 (prompt injection) should be first, then Post 2, Post 1, Post 0
-      expect(posts[0].slug).toBe("why-prompt-injection-still-works-2026");
-      expect(posts[1].slug).toBe("inside-language-model-neural-network");
-      expect(posts[2].slug).toBe("what-is-mechanistic-interpretability");
-      expect(posts[3].slug).toBe("stop-flying-blind");
+      // Post 4 (interpretability+security) should be first, then Post 3, Post 2, Post 1, Post 0
+      expect(posts[0].slug).toBe("how-interpretability-makes-ai-security-work");
+      expect(posts[1].slug).toBe("why-prompt-injection-still-works-2026");
+      expect(posts[2].slug).toBe("inside-language-model-neural-network");
+      expect(posts[3].slug).toBe("what-is-mechanistic-interpretability");
+      expect(posts[4].slug).toBe("stop-flying-blind");
     });
   });
 
@@ -78,9 +79,49 @@ describe("blog-posts data module", () => {
       expect(post!.readTime).toBe("14 min read");
     });
 
+    it("returns Post 4 (how-interpretability-makes-ai-security-work) by slug", () => {
+      const post = getPostBySlug("how-interpretability-makes-ai-security-work");
+      expect(post).toBeDefined();
+      expect(post!.title).toBe(
+        "The Missing Link: How Interpretability Makes AI Security Actually Work"
+      );
+      expect(post!.category).toBe("INTERPRETABILITY + SECURITY");
+      expect(post!.readTime).toBe("16 min read");
+    });
+
     it("returns undefined for unknown slug", () => {
       const post = getPostBySlug("nonexistent-post");
       expect(post).toBeUndefined();
+    });
+
+    it("Post 4 content contains expected sections", () => {
+      const post = getPostBySlug("how-interpretability-makes-ai-security-work");
+      expect(post!.content).toContain("<h2>");
+      expect(post!.content).toContain("<p>");
+      expect(post!.content).toContain("Arms Race Is Unwinnable");
+      expect(post!.content).toContain("Constitutional Classifiers");
+      expect(post!.content).toContain("CC-Delta");
+      expect(post!.content).toContain("Sparse Autoencoders");
+      expect(post!.content).toContain("linear probes");
+      expect(post!.content).toContain("Subspace Rerouting");
+    });
+
+    it("Post 4 content has references section with 11 citations", () => {
+      const post = getPostBySlug("how-interpretability-makes-ai-security-work");
+      expect(post!.content).toContain('class="references"');
+      expect(post!.content).toContain("Anthropic");
+      expect(post!.content).toContain("arxiv.org");
+      expect(post!.content).toContain("alignment.anthropic.com");
+      expect(post!.content).toContain("EU Artificial Intelligence Act");
+    });
+
+    it("Post 4 content has tables for detection methods and production architecture", () => {
+      const post = getPostBySlug("how-interpretability-makes-ai-security-work");
+      expect(post!.content).toContain("<table>");
+      expect(post!.content).toContain("Detection Method");
+      expect(post!.content).toContain("EMA linear probe");
+      expect(post!.content).toContain("SAE feature monitoring");
+      expect(post!.content).toContain("Activation steering");
     });
 
     it("Post 3 content contains expected sections", () => {

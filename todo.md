@@ -60,3 +60,5 @@
 - [x] Integrate Post 2 into blog-posts.ts and verify rendering
 - [x] Write Blog Post 3: "Why Prompt Injection Still Works in 2026 (And What Actually Stops It)"
 - [x] Integrate Post 3 into blog-posts.ts and verify rendering
+- [x] Write Blog Post 4: "The Missing Link: How Interpretability Makes AI Security Actually Work"
+- [x] Integrate Post 4 into blog-posts.ts and verify rendering
