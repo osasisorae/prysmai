@@ -114,5 +114,16 @@
 - [x] Write CONTRIBUTING.md with development setup guide
 - [x] Write architecture documentation (docs/ARCHITECTURE.md)
 - [x] Create .env.example (documented in README instead — .env files blocked by platform)
-- [ ] Create private GitHub repository
-- [ ] Push codebase with clean commit history
+- [x] Create private GitHub repository
+- [x] Push codebase with clean commit history
+
+## Python SDK (prysm)
+- [x] Design SDK API surface (monitor wrapper, metadata tagging, streaming)
+- [x] Build core SDK package with pyproject.toml
+- [x] Implement OpenAI client wrapper with proxy routing
+- [x] Implement streaming support (SSE passthrough)
+- [x] Implement metadata tagging (user_id, session_id, custom metadata)
+- [x] Write comprehensive pytest tests (41 tests passing)
+- [x] Write SDK README with installation, quick start, and API reference
+- [x] Test end-to-end against live proxy (integration tests with respx mocks)
+- [x] Push SDK to GitHub repo
