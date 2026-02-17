@@ -80,6 +80,7 @@ export default function Home() {
           <div className="hidden md:flex items-center gap-8 text-sm text-muted-foreground">
             <a href="#problem" className="hover:text-foreground transition-colors">Why Prysm</a>
             <a href="#solution" className="hover:text-foreground transition-colors">Product</a>
+            <a href="/docs" className="hover:text-foreground transition-colors">Docs</a>
             <a href="/blog" className="hover:text-foreground transition-colors">Blog</a>
           </div>
           <Button

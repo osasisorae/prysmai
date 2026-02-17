@@ -25,6 +25,7 @@ function BlogNav() {
         </Link>
         <div className="hidden md:flex items-center gap-8 text-sm text-muted-foreground">
           <Link href="/" className="hover:text-foreground transition-colors">Home</Link>
+          <Link href="/docs" className="hover:text-foreground transition-colors">Docs</Link>
           <Link href="/blog" className="text-foreground font-medium">Blog</Link>
         </div>
         <Link href="/">

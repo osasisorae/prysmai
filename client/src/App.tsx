@@ -9,11 +9,13 @@ import Blog from "./pages/Blog";
 import Admin from "./pages/Admin";
 import Onboarding from "./pages/Onboarding";
 import DashboardShell from "./pages/DashboardShell";
+import Docs from "./pages/Docs";
 
 function Router() {
   return (
     <Switch>
       <Route path={"/"} component={Home} />
+      <Route path={"/docs"} component={Docs} />
       <Route path={"/blog"} component={Blog} />
       <Route path={"/blog/:slug"} component={Blog} />
       <Route path={"/admin"} component={Admin} />

@@ -128,3 +128,10 @@
 - [x] Test end-to-end against live proxy (integration tests with respx mocks)
 - [x] Push SDK to GitHub repo
 - [x] Publish prysmai v0.1.0 to PyPI (https://pypi.org/project/prysmai/0.1.0/)
+
+## Documentation Page
+- [x] Create /docs page with SDK installation guide
+- [x] Add quick start code examples
+- [x] Add API reference (monitor, PrysmClient, prysm_context)
+- [x] Add streaming, async, self-hosted proxy sections
+- [x] Add docs link to navbar (Home, Blog, and Docs navbars)
