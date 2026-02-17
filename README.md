@@ -51,7 +51,7 @@ The system consists of three components:
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/prysmai.git
+git clone git@github.com:osasisorae/prysmai.git
 cd prysmai
 ```
 

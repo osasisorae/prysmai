@@ -9,7 +9,7 @@ Thank you for your interest in contributing to Prysm AI. This document outlines 
 1. Clone the repository and install dependencies:
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/prysmai.git
+git clone git@github.com:osasisorae/prysmai.git
 cd prysmai
 pnpm install
 ```
