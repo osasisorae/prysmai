@@ -62,3 +62,5 @@
 - [x] Integrate Post 3 into blog-posts.ts and verify rendering
 - [x] Write Blog Post 4: "The Missing Link: How Interpretability Makes AI Security Actually Work"
 - [x] Integrate Post 4 into blog-posts.ts and verify rendering
+- [x] Write Blog Post 5: "The AI Observability Stack in 2026: What's Changed and What's Still Missing"
+- [x] Integrate Post 5 into blog-posts.ts and verify rendering

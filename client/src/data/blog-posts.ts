@@ -11,6 +11,214 @@ export interface BlogPost {
 
 export const blogPosts: BlogPost[] = [
   {
+    slug: "ai-observability-stack-2026",
+    title: "The AI Observability Stack in 2026: What\'s Changed and What\'s Still Missing",
+    author: "Osarenren N.",
+    date: "February 17, 2026",
+    readTime: "14 min read",
+    category: "OBSERVABILITY",
+    excerpt: "The AI observability market has exploded — dozens of tools, hundreds of millions in funding. But every tool treats the model as a black box. Here\'s what the stack does well, and the critical layer that\'s still missing.",
+    content: `<p>If you're building AI agents in production, you've probably evaluated at least three observability tools in the last six months. Maybe you're running Langfuse for tracing, Helicone for cost tracking, or Arize for evaluation. Maybe you've stitched together a custom stack with OpenTelemetry and Datadog. The tooling has gotten remarkably good — and remarkably crowded.</p>
+
+<p>But here's what I keep running into, both in my own work and in conversations with other AI engineers: <strong>even with all these tools, we still can't answer the most important question about our models.</strong> We can tell you what went in. We can tell you what came out. We can tell you how long it took and how much it cost. But when someone asks "why did the model do that?" — we're still guessing.</p>
+
+<p>This post maps the AI observability landscape as it stands in early 2026. I'll cover what's changed, what the current tools do well, and — more importantly — what's still missing. Because the gap isn't in logging or cost tracking anymore. It's somewhere deeper.</p>
+
+<h2>The Market Has Exploded</h2>
+
+<p>Let's start with the numbers. The AI observability market was valued at roughly <strong>$2.1 billion in 2025</strong> and is projected to reach $10.7 billion by 2033, growing at a 22.5% CAGR [1]. That's not a niche — it's a category.</p>
+
+<p>The biggest signal of maturity came in January 2026, when <strong>ClickHouse acquired Langfuse</strong> as part of a $400 million Series D round [2]. Langfuse had grown to over 20,000 GitHub stars and 26 million SDK installs per month by the end of 2025. The acquisition validated what many of us already knew: LLM observability isn't a feature — it's infrastructure.</p>
+
+<p>Meanwhile, the incumbents have moved in. <strong>Datadog added native LLM observability</strong> with OpenTelemetry GenAI semantic convention support in December 2025 [3]. Elastic published their GenAI observability roadmap in February 2026 [4]. New Relic, Dynatrace, and Splunk have all shipped AI monitoring capabilities. When the enterprise monitoring giants start building, you know the category is real.</p>
+
+<p>But market size and acquisition activity don't tell you whether the tools actually solve the problems you face in production. Let me walk through what they do — and where they stop.</p>
+
+<h2>The Current Landscape: A Practitioner's Map</h2>
+
+<p>I've spent time with most of the major platforms over the past year. Here's how I'd categorize them, based on what they actually do well rather than what their marketing pages claim.</p>
+
+<table>
+<thead>
+<tr><th>Tool</th><th>Primary Strength</th><th>Open Source</th><th>Best For</th><th>Starting Price</th></tr>
+</thead>
+<tbody>
+<tr><td>Langfuse</td><td>Tracing + prompt management</td><td>Yes</td><td>Teams wanting data ownership</td><td>Free (self-hosted)</td></tr>
+<tr><td>Arize Phoenix</td><td>ML + LLM evaluation</td><td>Yes</td><td>Data science-led teams</td><td>Free (open source)</td></tr>
+<tr><td>LangSmith</td><td>LangChain debugging</td><td>No</td><td>LangChain-native workflows</td><td>Free tier available</td></tr>
+<tr><td>Braintrust</td><td>Eval + experimentation</td><td>No</td><td>CI/CD-integrated quality gates</td><td>Free (1M spans)</td></tr>
+<tr><td>Helicone</td><td>Proxy-based cost tracking</td><td>Partial</td><td>Quick setup, cost visibility</td><td>Free (10K req/mo)</td></tr>
+<tr><td>Datadog LLM</td><td>Unified infra + LLM monitoring</td><td>No</td><td>Existing Datadog customers</td><td>$15/host/mo + usage</td></tr>
+<tr><td>Weights &amp; Biases</td><td>Experiment tracking</td><td>No</td><td>ML training workflows</td><td>Free tier available</td></tr>
+<tr><td>TrueFoundry</td><td>AI Gateway + FinOps</td><td>No</td><td>Enterprise cost control</td><td>Usage-based</td></tr>
+</tbody>
+</table>
+
+<p>This isn't exhaustive — there are also Fiddler AI (explainability), Arthur AI (governance), WhyLabs (data health), DeepEval (testing), Maxim AI (quality scoring), and more. The point is: <strong>there's no shortage of tools.</strong> The question is whether they're solving the right problems.</p>
+
+<h2>What the Current Stack Does Well</h2>
+
+<p>Credit where it's due. The AI observability ecosystem has made enormous progress in three areas that were genuinely painful just 18 months ago.</p>
+
+<h3>1. Trace Logging and Visualization</h3>
+
+<p>Every serious platform now captures structured traces across multi-step LLM workflows. You can see the full execution path of an agent — which tools it called, what it retrieved from your vector database, how it composed its final response. Langfuse and LangSmith are particularly strong here, with nested trace visualization that makes debugging agent chains significantly easier than reading raw logs.</p>
+
+<p>The emergence of <strong>OpenTelemetry GenAI semantic conventions</strong> has been a major standardization win [5]. OpenLLMetry, the open-source library extending OTel for AI workloads, means you can instrument once and send telemetry to whatever backend you prefer — Datadog, Elastic, Jaeger, or your own stack [6]. This is the kind of boring infrastructure work that makes an ecosystem mature.</p>
+
+<h3>2. Cost Attribution</h3>
+
+<p>Token-level cost tracking has gone from "nice to have" to table stakes. Helicone pioneered the proxy-based approach — route your API calls through their proxy, get cost breakdowns by user, feature, and model with zero code changes. TrueFoundry takes it further with FinOps guardrails that can enforce budget caps in real time. Braintrust tags spending by team and feature for trend analysis.</p>
+
+<p>This matters because LLM costs are genuinely unpredictable. An agent that enters a recursive reasoning loop can burn through your monthly budget in hours. A prompt change that increases output length by 20% compounds across millions of requests. Without per-request cost visibility, you're flying blind on the most volatile line item in your infrastructure budget.</p>
+
+<h3>3. Automated Evaluation</h3>
+
+<p>The shift from manual spot-checking to automated quality evaluation has been transformative. Arize Phoenix and Braintrust both run evaluation pipelines that score every production response against quality criteria — relevance, faithfulness, hallucination rate, toxicity. Braintrust integrates these evaluations directly into CI/CD pipelines, failing builds when quality scores drop below thresholds.</p>
+
+<p>This is genuinely useful. Before automated evaluation, the feedback loop was: user complains → engineer investigates → maybe finds the issue → deploys a fix → waits for more complaints. Now the loop is: automated scorer detects regression → alert fires → engineer investigates with full trace context. That's a real improvement in mean time to detection.</p>
+
+<h2>The Five-Layer Framework</h2>
+
+<p>Dotan Horovits, writing about the new observability paradigm for AI workloads, proposed a useful framework for thinking about where observability needs to happen [7]. I've adapted it slightly based on my own experience:</p>
+
+<table>
+<thead>
+<tr><th>Layer</th><th>What It Monitors</th><th>Current Tool Coverage</th></tr>
+</thead>
+<tbody>
+<tr><td>Application</td><td>User feedback, session analytics, feature usage</td><td>Strong — most tools cover this</td></tr>
+<tr><td>Orchestration</td><td>Chain performance, guardrails, prompt caching, routing</td><td>Good — LangSmith, Langfuse excel here</td></tr>
+<tr><td>Agentic</td><td>Agent communication, tool usage, decision trees</td><td>Improving — newer tools adding agent-specific views</td></tr>
+<tr><td>Model</td><td>Token usage, inference latency, errors, cost</td><td>Strong — this is where most tools started</td></tr>
+<tr><td>Data/RAG</td><td>Retrieval quality, embedding drift, chunk relevance</td><td>Moderate — Arize and specialized tools cover this</td></tr>
+</tbody>
+</table>
+
+<p>Horovits made an important observation: <strong>AI workloads flip traditional observability tradeoffs.</strong> Traditional microservices handle millions of requests per second with millisecond latencies and kilobyte payloads. LLM workloads handle hundreds to thousands of requests per minute with multi-second latencies and payloads that can reach megabytes for multimodal inputs. This means instrumentation overhead is negligible (you're adding microseconds to a 10-second call), but payload storage and analysis become the bottleneck.</p>
+
+<p>The framework is useful. But it's also incomplete. Because there's a layer missing from every framework I've seen — and it's the one that matters most.</p>
+
+<h2>The Missing Layer: What's Happening Inside the Model</h2>
+
+<p>Here's the uncomfortable truth about every tool in the landscape table above: <strong>they all treat the model as a black box.</strong></p>
+
+<p>Think about what that means in practice. Your agent hallucinates a response that costs you a customer. You open your observability dashboard. You can see the full trace — the user's input, the retrieval results, the prompt template, the model's output. You can see that the model was called with temperature 0.7 and max_tokens 2048. You can see that the response took 3.2 seconds and cost $0.004.</p>
+
+<p>What you <em>cannot</em> see is what happened between the input and the output. You cannot see which internal representations activated. You cannot see whether the model's "safety" features were suppressed. You cannot see whether the hallucination was caused by a retrieval failure that the model tried to compensate for, or by a genuine confusion in the model's learned representations. You have the inputs and outputs of a function, but zero visibility into the function's execution.</p>
+
+<blockquote><p>Current AI observability is like debugging a program by only looking at function arguments and return values — never stepping into the function body.</p></blockquote>
+
+<p>This isn't a minor gap. It's the difference between <strong>monitoring</strong> and <strong>understanding.</strong> And it has concrete consequences for three critical workflows.</p>
+
+<h3>Debugging Without Root Causes</h3>
+
+<p>When a traditional software system fails, you trace the error to a specific line of code, understand why it failed, and fix it. When an LLM fails, you see the bad output and... try a different prompt. Maybe you adjust the temperature. Maybe you add more context to the system message. You're not debugging — you're doing trial and error.</p>
+
+<p>Research in mechanistic interpretability has shown that model failures often have specific internal causes. Anthropic's circuit tracing work demonstrated that you can trace a model's output back through specific computational pathways — <strong>circuits</strong> — that causally produce the behavior [8]. When a model hallucinates, specific features activate (or fail to activate) in predictable ways. But no observability tool gives you access to this information.</p>
+
+<h3>Security Without Visibility</h3>
+
+<p>Every observability platform offers some form of output scanning — toxicity filters, PII detection, content safety checks. These are useful but fundamentally reactive. They catch bad outputs after the model has already generated them.</p>
+
+<p>What they can't do is detect an attack <em>while it's happening inside the model.</em> Research has shown that jailbroken models have distinct internal activation patterns — specific features that activate during adversarial inputs that don't activate during normal operation [9]. Anthropic's Constitutional Classifiers++ architecture uses representation-level probes to detect jailbreak attempts with significantly higher accuracy than output-based classifiers [10]. But this requires access to model internals during inference — something no current observability tool provides.</p>
+
+<h3>Compliance Without Explanations</h3>
+
+<p>The EU AI Act requires that high-risk AI systems provide meaningful explanations of their decision-making processes [11]. Current observability tools can show you <em>what</em> the model decided, but not <em>why.</em> They can produce an audit trail of inputs and outputs, but not a causal explanation of how the model arrived at its conclusion.</p>
+
+<p>Mechanistic interpretability offers a path to genuine explanations — tracing from an output back through the specific features and circuits that produced it. But this capability doesn't exist in any production observability tool today.</p>
+
+<h2>Why the Gap Exists</h2>
+
+<p>If model-level understanding is so important, why hasn't anyone built it? The answer is that it requires a fundamentally different technical approach than traditional observability.</p>
+
+<p>Current tools work by <strong>intercepting API calls.</strong> They sit between your application and the model provider, logging the request and response. This is elegant and non-invasive — you can add Helicone to your stack by changing a single URL. But it means you only see what crosses the API boundary. The model's internal state never leaves the provider's infrastructure.</p>
+
+<p>Model-level observability requires <strong>activation extraction</strong> — capturing the internal representations at specific layers during inference and analyzing them in real time. This involves:</p>
+
+<ul>
+<li><strong>Hook-based instrumentation</strong> — registering forward hooks on specific model layers to capture activations as tensors</li>
+<li><strong>Sparse autoencoder analysis</strong> — decomposing high-dimensional activation vectors into interpretable features using pre-trained SAEs</li>
+<li><strong>Real-time feature monitoring</strong> — tracking which features activate for each request and detecting anomalous patterns</li>
+<li><strong>Circuit tracing</strong> — mapping the causal pathways from input tokens through intermediate features to output tokens</li>
+</ul>
+
+<p>This is computationally expensive, technically complex, and requires access to model weights — which means it works differently for open-weight models (where you control inference) versus API-based models (where you don't). It's a genuinely hard engineering problem, which is why the market has focused on the easier wins first.</p>
+
+<h2>What the Complete Stack Looks Like</h2>
+
+<p>If I were designing the ideal AI observability stack for a production agent system in 2026, it would have six layers, not five:</p>
+
+<table>
+<thead>
+<tr><th>Layer</th><th>What It Provides</th><th>Current State</th></tr>
+</thead>
+<tbody>
+<tr><td>Application</td><td>User feedback, session analytics, business metrics</td><td>Solved — multiple good options</td></tr>
+<tr><td>Orchestration</td><td>Chain tracing, guardrail monitoring, prompt management</td><td>Solved — Langfuse, LangSmith lead</td></tr>
+<tr><td>Agentic</td><td>Multi-agent coordination, tool usage, decision paths</td><td>Improving rapidly</td></tr>
+<tr><td>Model (External)</td><td>Token usage, latency, cost, error rates</td><td>Solved — commoditized</td></tr>
+<tr><td>Data/RAG</td><td>Retrieval quality, embedding drift, chunk relevance</td><td>Moderate — specialized tools exist</td></tr>
+<tr><td><strong>Model (Internal)</strong></td><td><strong>Feature activations, circuit behavior, representation health</strong></td><td><strong>Missing — the frontier</strong></td></tr>
+</tbody>
+</table>
+
+<p>That sixth layer — model internals — is where the most valuable signals live. It's where you'd detect a hallucination before it reaches the user, catch a jailbreak attempt by its activation signature rather than its output, and trace a model failure to its root cause in specific learned features rather than guessing at prompt fixes.</p>
+
+<h2>What to Use Today</h2>
+
+<p>The missing layer doesn't mean the existing tools aren't valuable. Here's my honest recommendation for what to deploy right now, based on team size and needs:</p>
+
+<p><strong>Solo developer or small team:</strong> Start with <strong>Langfuse</strong> (self-hosted, free) for tracing and <strong>Helicone</strong> (free tier) for cost tracking. You get 80% of the value with zero cost. Add OpenTelemetry instrumentation from day one so you can switch backends later.</p>
+
+<p><strong>Growth-stage team (5-20 engineers):</strong> Use <strong>Braintrust</strong> or <strong>LangSmith</strong> for integrated tracing + evaluation. The CI/CD integration for quality gates is worth the cost. Add <strong>Arize Phoenix</strong> if you need drift detection or have ML-heavy workflows.</p>
+
+<p><strong>Enterprise:</strong> If you're already on Datadog, their LLM observability add-on gives you unified monitoring without another vendor. If you need on-prem deployment or strict data residency, evaluate <strong>TrueFoundry</strong> or self-hosted <strong>Langfuse</strong>. For governance and compliance, add <strong>Arthur AI</strong> or <strong>Fiddler AI</strong>.</p>
+
+<p><strong>Everyone:</strong> Instrument with <strong>OpenTelemetry GenAI semantic conventions</strong> regardless of which platform you choose. The standard is maturing rapidly, and vendor-neutral instrumentation protects you from lock-in [5].</p>
+
+<h2>What to Watch For</h2>
+
+<p>The observability landscape will look different in 12 months. Here's what I'm tracking:</p>
+
+<p><strong>OpenTelemetry GenAI going stable.</strong> The semantic conventions are currently in development, with a 2026 roadmap that includes full specification support [12]. When they stabilize, expect rapid adoption across all major platforms and a wave of consolidation among smaller tools that can't keep up.</p>
+
+<p><strong>Interpretability-native observability.</strong> The research is there — sparse autoencoders can extract interpretable features from model activations, circuit tracing can map causal pathways, representation probes can detect adversarial inputs. The engineering challenge is making this work at production latency and scale. The teams that solve this will own the most valuable layer of the stack.</p>
+
+<p><strong>Agent-specific observability.</strong> As AI agents become more autonomous — making multi-step decisions, calling external tools, coordinating with other agents — the observability requirements change. You need to monitor not just individual LLM calls but entire decision trajectories. LangSmith's agent graphs are an early example, but the tooling needs to evolve significantly as agent architectures grow more complex.</p>
+
+<p><strong>Regulatory pressure.</strong> The EU AI Act's transparency requirements will force observability from a "nice to have" to a compliance requirement for any team deploying AI in regulated industries. Tools that can provide genuine explanations — not just audit trails — will have a structural advantage.</p>
+
+<h2>The Bottom Line</h2>
+
+<p>The AI observability stack in 2026 is genuinely impressive for what it covers. Trace logging, cost tracking, latency monitoring, and automated evaluation are solved problems with multiple good solutions. The market has matured from "do we need this?" to "which tool is best for our use case?"</p>
+
+<p>But the most important question — <em>why did the model do that?</em> — remains unanswered. Every tool in the ecosystem treats the model as a black box, logging inputs and outputs without visibility into the computational process that connects them. This isn't a criticism of the tools; it's a reflection of where the technology is. Model-level understanding requires fundamentally different techniques — activation extraction, feature analysis, circuit tracing — that are still transitioning from research to production.</p>
+
+<p>That transition is happening. The research foundations are solid, the engineering challenges are tractable, and the market demand is clear. The teams that add this missing layer to their observability stack won't just have better monitoring — they'll have a fundamentally different relationship with their AI systems. One based on understanding, not inference.</p>
+
+<p>At <a href="/">Prysm AI</a>, we're building that missing layer. If you're interested in seeing inside your models — not just around them — <a href="/#waitlist">join our waitlist</a>.</p>
+
+<div class="references">
+<h3>References</h3>
+<ol>
+<li>Market.us, "AI in Observability Market Size," 2025. Projected $10.7B by 2033 at 22.5% CAGR. <a href="https://market.us/report/ai-in-observability-market/" target="_blank">market.us</a></li>
+<li>SiliconANGLE, "Database maker ClickHouse raises $400M, acquires AI observability startup Langfuse," January 16, 2026. <a href="https://siliconangle.com/2026/01/16/database-maker-clickhouse-raises-400m-acquires-ai-observability-startup-langfuse/" target="_blank">siliconangle.com</a></li>
+<li>Datadog, "LLM Observability natively supports OpenTelemetry GenAI Semantic Conventions," December 2025. <a href="https://www.datadoghq.com/blog/llm-otel-semantic-convention/" target="_blank">datadoghq.com</a></li>
+<li>Elastic, "Observability trends for 2026 (Part 2): GenAI and OpenTelemetry," February 2026. <a href="https://www.elastic.co/blog/2026-observability-trends-generative-ai-opentelemetry" target="_blank">elastic.co</a></li>
+<li>OpenTelemetry, "Semantic conventions for generative AI systems," 2025-2026. <a href="https://opentelemetry.io/docs/specs/semconv/gen-ai/" target="_blank">opentelemetry.io</a></li>
+<li>OpenTelemetry Blog, "AI Agent Observability — Evolving Standards and Best Practices," March 2025. <a href="https://opentelemetry.io/blog/2025/ai-agent-observability/" target="_blank">opentelemetry.io</a></li>
+<li>Dotan Horovits, "Observability for AI Workloads: A New Paradigm for a New Era," Medium, January 2026. <a href="https://horovits.medium.com/observability-for-ai-workloads-a-new-paradigm-for-a-new-era-b8972ba1b6ba" target="_blank">medium.com</a></li>
+<li>Anthropic, "On the Biology of a Large Language Model," March 2025. Circuit tracing methodology for understanding model internals. <a href="https://www.anthropic.com/research/tracing-thoughts-language-model" target="_blank">anthropic.com</a></li>
+<li>Anthropic, "Scaling Monosemanticity: Extracting Interpretable Features from Claude 3 Sonnet," 2024. Demonstrated distinct activation patterns for safety-relevant features. <a href="https://transformer-circuits.pub/2024/scaling-monosemanticity/" target="_blank">transformer-circuits.pub</a></li>
+<li>Anthropic, "Next-generation safety classifiers using representation re-use," 2025. Constitutional Classifiers++ using internal representations for jailbreak detection. <a href="https://www.anthropic.com/research/next-generation-constitutional-classifiers" target="_blank">anthropic.com</a></li>
+<li>European Commission, "EU AI Act," 2024. Transparency and explainability requirements for high-risk AI systems. <a href="https://artificialintelligenceact.eu/" target="_blank">artificialintelligenceact.eu</a></li>
+<li>GitHub, "OpenTelemetry Semantic Conventions 2026 Roadmap," Issue #3330, January 2026. <a href="https://github.com/open-telemetry/semantic-conventions/issues/3330" target="_blank">github.com</a></li>
+</ol>
+</div>`,
+  },
+  {
     slug: "how-interpretability-makes-ai-security-work",
     title: "The Missing Link: How Interpretability Makes AI Security Actually Work",
     author: "Osarenren N.",

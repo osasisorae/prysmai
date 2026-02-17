@@ -6,7 +6,7 @@ describe("blog-posts data module", () => {
     it("returns an array of blog posts", () => {
       const posts = getAllPosts();
       expect(Array.isArray(posts)).toBe(true);
-      expect(posts.length).toBeGreaterThanOrEqual(5);
+      expect(posts.length).toBeGreaterThanOrEqual(6);
     });
 
     it("each post has required fields", () => {
@@ -31,12 +31,13 @@ describe("blog-posts data module", () => {
 
     it("posts are ordered newest first", () => {
       const posts = getAllPosts();
-      // Post 4 (interpretability+security) should be first, then Post 3, Post 2, Post 1, Post 0
-      expect(posts[0].slug).toBe("how-interpretability-makes-ai-security-work");
-      expect(posts[1].slug).toBe("why-prompt-injection-still-works-2026");
-      expect(posts[2].slug).toBe("inside-language-model-neural-network");
-      expect(posts[3].slug).toBe("what-is-mechanistic-interpretability");
-      expect(posts[4].slug).toBe("stop-flying-blind");
+      // Post 5 (observability) should be first, then Post 4, Post 3, Post 2, Post 1, Post 0
+      expect(posts[0].slug).toBe("ai-observability-stack-2026");
+      expect(posts[1].slug).toBe("how-interpretability-makes-ai-security-work");
+      expect(posts[2].slug).toBe("why-prompt-injection-still-works-2026");
+      expect(posts[3].slug).toBe("inside-language-model-neural-network");
+      expect(posts[4].slug).toBe("what-is-mechanistic-interpretability");
+      expect(posts[5].slug).toBe("stop-flying-blind");
     });
   });
 
@@ -89,9 +90,51 @@ describe("blog-posts data module", () => {
       expect(post!.readTime).toBe("16 min read");
     });
 
+    it("returns Post 5 (ai-observability-stack-2026) by slug", () => {
+      const post = getPostBySlug("ai-observability-stack-2026");
+      expect(post).toBeDefined();
+      expect(post!.title).toBe(
+        "The AI Observability Stack in 2026: What's Changed and What's Still Missing"
+      );
+      expect(post!.category).toBe("OBSERVABILITY");
+      expect(post!.readTime).toBe("14 min read");
+    });
+
     it("returns undefined for unknown slug", () => {
       const post = getPostBySlug("nonexistent-post");
       expect(post).toBeUndefined();
+    });
+
+    it("Post 5 content contains expected sections", () => {
+      const post = getPostBySlug("ai-observability-stack-2026");
+      expect(post!.content).toContain("<h2>");
+      expect(post!.content).toContain("<p>");
+      expect(post!.content).toContain("Market Has Exploded");
+      expect(post!.content).toContain("Current Landscape");
+      expect(post!.content).toContain("Missing Layer");
+      expect(post!.content).toContain("OpenTelemetry");
+      expect(post!.content).toContain("ClickHouse acquired Langfuse");
+      expect(post!.content).toContain("Five-Layer Framework");
+    });
+
+    it("Post 5 content has references section with 12 citations", () => {
+      const post = getPostBySlug("ai-observability-stack-2026");
+      expect(post!.content).toContain('class="references"');
+      expect(post!.content).toContain("market.us");
+      expect(post!.content).toContain("siliconangle.com");
+      expect(post!.content).toContain("datadoghq.com");
+      expect(post!.content).toContain("opentelemetry.io");
+      expect(post!.content).toContain("anthropic.com");
+    });
+
+    it("Post 5 content has comparison tables for tools and layers", () => {
+      const post = getPostBySlug("ai-observability-stack-2026");
+      expect(post!.content).toContain("<table>");
+      expect(post!.content).toContain("Langfuse");
+      expect(post!.content).toContain("Arize Phoenix");
+      expect(post!.content).toContain("Helicone");
+      expect(post!.content).toContain("Braintrust");
+      expect(post!.content).toContain("Model (Internal)");
     });
 
     it("Post 4 content contains expected sections", () => {
