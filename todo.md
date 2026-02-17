@@ -58,3 +58,5 @@
 - [x] Create reusable skill from Prysm AI blog workflow
 - [x] Write Blog Post 2: "I Looked Inside a Language Model's Neural Network. Here's What I Found."
 - [x] Integrate Post 2 into blog-posts.ts and verify rendering
+- [x] Write Blog Post 3: "Why Prompt Injection Still Works in 2026 (And What Actually Stops It)"
+- [x] Integrate Post 3 into blog-posts.ts and verify rendering

@@ -6,7 +6,7 @@ describe("blog-posts data module", () => {
     it("returns an array of blog posts", () => {
       const posts = getAllPosts();
       expect(Array.isArray(posts)).toBe(true);
-      expect(posts.length).toBeGreaterThanOrEqual(3);
+      expect(posts.length).toBeGreaterThanOrEqual(4);
     });
 
     it("each post has required fields", () => {
@@ -31,10 +31,11 @@ describe("blog-posts data module", () => {
 
     it("posts are ordered newest first", () => {
       const posts = getAllPosts();
-      // Post 2 (inside-language-model) should be first, then Post 1, then Post 0
-      expect(posts[0].slug).toBe("inside-language-model-neural-network");
-      expect(posts[1].slug).toBe("what-is-mechanistic-interpretability");
-      expect(posts[2].slug).toBe("stop-flying-blind");
+      // Post 3 (prompt injection) should be first, then Post 2, Post 1, Post 0
+      expect(posts[0].slug).toBe("why-prompt-injection-still-works-2026");
+      expect(posts[1].slug).toBe("inside-language-model-neural-network");
+      expect(posts[2].slug).toBe("what-is-mechanistic-interpretability");
+      expect(posts[3].slug).toBe("stop-flying-blind");
     });
   });
 
@@ -67,9 +68,47 @@ describe("blog-posts data module", () => {
       expect(post!.readTime).toBe("15 min read");
     });
 
+    it("returns Post 3 (why-prompt-injection-still-works-2026) by slug", () => {
+      const post = getPostBySlug("why-prompt-injection-still-works-2026");
+      expect(post).toBeDefined();
+      expect(post!.title).toBe(
+        "Why Prompt Injection Still Works in 2026 (And What Actually Stops It)"
+      );
+      expect(post!.category).toBe("AI SECURITY");
+      expect(post!.readTime).toBe("14 min read");
+    });
+
     it("returns undefined for unknown slug", () => {
       const post = getPostBySlug("nonexistent-post");
       expect(post).toBeUndefined();
+    });
+
+    it("Post 3 content contains expected sections", () => {
+      const post = getPostBySlug("why-prompt-injection-still-works-2026");
+      expect(post!.content).toContain("<h2>");
+      expect(post!.content).toContain("<p>");
+      expect(post!.content).toContain("prompt injection");
+      expect(post!.content).toContain("CaMeL");
+      expect(post!.content).toContain("Constitutional Classifiers");
+      expect(post!.content).toContain("defense in depth");
+      expect(post!.content).toContain("Bruce Schneier");
+    });
+
+    it("Post 3 content has references section with 15 citations", () => {
+      const post = getPostBySlug("why-prompt-injection-still-works-2026");
+      expect(post!.content).toContain('class="references"');
+      expect(post!.content).toContain("IEEE Spectrum");
+      expect(post!.content).toContain("OWASP");
+      expect(post!.content).toContain("Anthropic");
+      expect(post!.content).toContain("arxiv.org");
+    });
+
+    it("Post 3 content has tables for defense comparison", () => {
+      const post = getPostBySlug("why-prompt-injection-still-works-2026");
+      expect(post!.content).toContain("<table>");
+      expect(post!.content).toContain("Defense Layer");
+      expect(post!.content).toContain("System prompt hardening");
+      expect(post!.content).toContain("Internal Activation Monitoring");
     });
 
     it("Post 2 content contains expected sections", () => {
