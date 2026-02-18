@@ -45,7 +45,8 @@ async function startServer() {
   // Chat API with streaming and tool calling
   registerChatRoutes(app);
   // Prysm AI Proxy Gateway — OpenAI-compatible reverse proxy
-  app.use("/v1", proxyRouter);
+  // Must be under /api/* for deployment platform routing
+  app.use("/api/v1", proxyRouter);
   // tRPC API
   app.use(
     "/api/trpc",

@@ -192,3 +192,12 @@
 - [x] Wire login → onboarding → dashboard flow for new users
 - [x] Wire login → dashboard for returning users
 - [x] Ensure dashboard shows real project data after onboarding (onboarding calls complete-onboarding endpoint)
+
+## Proxy API Route Fix
+- [x] Fix /v1/chat/completions returning HTML — moved proxy from /v1 to /api/v1
+- [x] Proxy route validates Prysm API keys and forwards to OpenAI
+- [x] Streaming SSE passthrough works
+- [x] Tested locally with provided API key (works, needs publish for production)
+- [x] Updated /docs page to reference /api/v1
+- [x] Updated Python SDK default base URL and published v0.1.3 to PyPI
+- [x] Pushed SDK changes to GitHub

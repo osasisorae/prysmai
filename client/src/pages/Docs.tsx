@@ -429,7 +429,7 @@ monitored = monitor(client)  # reads from env`}
                 {
                   name: "base_url",
                   type: "str",
-                  default: "proxy.prysmai.io/v1",
+                  default: "prysmai.io/api/v1",
                   desc: "Prysm proxy URL",
                 },
                 {
@@ -466,7 +466,7 @@ monitored = monitor(openai.AsyncOpenAI(api_key="sk-..."), prysm_key="sk-prysm-..
                 {
                   name: "base_url",
                   type: "str",
-                  default: "proxy.prysmai.io/v1",
+                  default: "prysmai.io/api/v1",
                   desc: "Prysm proxy URL",
                 },
                 {
@@ -621,7 +621,7 @@ asyncio.run(main())`}
               code={`monitored = monitor(
     client,
     prysm_key="sk-prysm-...",
-    base_url="http://localhost:3000/v1",  # Your self-hosted proxy
+    base_url="http://localhost:3000/api/v1",  # Your self-hosted proxy
 )`}
             />
 
