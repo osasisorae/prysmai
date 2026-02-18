@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Shield, Eye, EyeOff, Loader2, CheckCircle, AlertCircle } from "lucide-react";
+import { Eye, EyeOff, Loader2, CheckCircle, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useLocation, useSearch } from "wouter";
 
@@ -119,8 +119,12 @@ export default function SetupAccount() {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center max-w-md px-6">
+          <div className="flex items-center justify-center gap-2.5 mb-6">
+            <img src="https://files.manuscdn.com/user_upload_by_module/session_file/310519663306080277/pKkWElgCpRmlNvjQ.png" alt="Prysm AI" className="w-8 h-8" />
+            <span className="text-lg font-semibold tracking-tight">Prysm<span className="text-primary">AI</span></span>
+          </div>
           <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-4" />
-          <h1 className="text-xl font-semibold text-foreground mb-2" style={{ fontFamily: "var(--font-display)" }}>
+          <h1 className="text-xl font-semibold text-foreground mb-2">
             Invalid Invite Link
           </h1>
           <p className="text-muted-foreground mb-6">
@@ -139,8 +143,12 @@ export default function SetupAccount() {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center max-w-md px-6">
+          <div className="flex items-center justify-center gap-2.5 mb-6">
+            <img src="https://files.manuscdn.com/user_upload_by_module/session_file/310519663306080277/pKkWElgCpRmlNvjQ.png" alt="Prysm AI" className="w-8 h-8" />
+            <span className="text-lg font-semibold tracking-tight">Prysm<span className="text-primary">AI</span></span>
+          </div>
           <CheckCircle className="w-12 h-12 text-primary mx-auto mb-4" />
-          <h1 className="text-xl font-semibold text-foreground mb-2" style={{ fontFamily: "var(--font-display)" }}>
+          <h1 className="text-xl font-semibold text-foreground mb-2">
             Account Already Exists
           </h1>
           <p className="text-muted-foreground mb-6">
@@ -160,10 +168,13 @@ export default function SetupAccount() {
       <div className="w-full max-w-md px-6">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="w-12 h-12 rounded-xl bg-primary/20 border border-primary/30 flex items-center justify-center mx-auto mb-4">
-            <Shield className="w-6 h-6 text-primary" />
+          <div className="flex items-center justify-center gap-2.5 mb-4">
+            <img src="https://files.manuscdn.com/user_upload_by_module/session_file/310519663306080277/pKkWElgCpRmlNvjQ.png" alt="Prysm AI" className="w-10 h-10" />
+            <span className="text-xl font-semibold tracking-tight">
+              Prysm<span className="text-primary">AI</span>
+            </span>
           </div>
-          <h1 className="text-2xl font-bold tracking-tight" style={{ fontFamily: "var(--font-display)" }}>
+          <h1 className="text-2xl font-bold tracking-tight">
             Set Up Your Account
           </h1>
           <p className="text-muted-foreground mt-2">

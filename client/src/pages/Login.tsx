@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Shield, Eye, EyeOff, Loader2 } from "lucide-react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 
@@ -59,10 +59,13 @@ export default function Login() {
       <div className="w-full max-w-md px-6">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="w-12 h-12 rounded-xl bg-primary/20 border border-primary/30 flex items-center justify-center mx-auto mb-4">
-            <Shield className="w-6 h-6 text-primary" />
+          <div className="flex items-center justify-center gap-2.5 mb-4">
+            <img src="https://files.manuscdn.com/user_upload_by_module/session_file/310519663306080277/pKkWElgCpRmlNvjQ.png" alt="Prysm AI" className="w-10 h-10" />
+            <span className="text-xl font-semibold tracking-tight">
+              Prysm<span className="text-primary">AI</span>
+            </span>
           </div>
-          <h1 className="text-2xl font-bold tracking-tight" style={{ fontFamily: "var(--font-display)" }}>
+          <h1 className="text-2xl font-bold tracking-tight">
             Welcome Back
           </h1>
           <p className="text-muted-foreground mt-2">

@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Shield, ArrowRight, Loader2, Eye, EyeOff } from "lucide-react";
+import { ArrowRight, Loader2, Eye, EyeOff } from "lucide-react";
 import { useLocation } from "wouter";
 
 const PROVIDERS = [
@@ -80,11 +80,9 @@ export default function Onboarding() {
     <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
       <div className="w-full max-w-lg px-6">
         {/* Logo */}
-        <div className="flex items-center gap-2 mb-12">
-          <div className="w-8 h-8 rounded-md bg-primary/20 border border-primary/30 flex items-center justify-center">
-            <Shield className="w-4 h-4 text-primary" />
-          </div>
-          <span className="text-lg font-semibold tracking-tight" style={{ fontFamily: "var(--font-display, 'Space Grotesk')" }}>
+        <div className="flex items-center gap-2.5 mb-12">
+          <img src="https://files.manuscdn.com/user_upload_by_module/session_file/310519663306080277/pKkWElgCpRmlNvjQ.png" alt="Prysm AI" className="w-8 h-8" />
+          <span className="text-lg font-semibold tracking-tight">
             Prysm<span className="text-primary">AI</span>
           </span>
         </div>

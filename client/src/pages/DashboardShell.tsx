@@ -1,7 +1,7 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { useLocation, useRoute } from "wouter";
-import { getLoginUrl } from "@/const";
+// Custom auth: using /login route
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -9,7 +9,6 @@ import {
   Search,
   Key,
   Settings as SettingsIcon,
-  Shield,
   LogOut,
   ChevronDown,
   Loader2,
@@ -54,9 +53,11 @@ export default function DashboardShell() {
     return (
       <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
         <div className="text-center space-y-4">
-          <Shield className="w-10 h-10 text-primary mx-auto" />
+          <div className="flex items-center justify-center gap-2.5 mb-2">
+            <img src="https://files.manuscdn.com/user_upload_by_module/session_file/310519663306080277/pKkWElgCpRmlNvjQ.png" alt="Prysm AI" className="w-10 h-10" />
+          </div>
           <h1 className="text-xl font-semibold">Sign in to access your dashboard</h1>
-          <Button onClick={() => (window.location.href = getLoginUrl())}>Sign In</Button>
+          <Button onClick={() => (window.location.href = "/login")}>Sign In</Button>
         </div>
       </div>
     );
@@ -94,13 +95,8 @@ export default function DashboardShell() {
         {/* Logo */}
         <div className="h-14 flex items-center px-4 border-b border-border">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-md bg-primary/20 border border-primary/30 flex items-center justify-center">
-              <Shield className="w-3.5 h-3.5 text-primary" />
-            </div>
-            <span
-              className="text-sm font-semibold tracking-tight"
-              style={{ fontFamily: "var(--font-display, 'Space Grotesk')" }}
-            >
+            <img src="https://files.manuscdn.com/user_upload_by_module/session_file/310519663306080277/pKkWElgCpRmlNvjQ.png" alt="Prysm AI" className="w-7 h-7" />
+            <span className="text-sm font-semibold tracking-tight">
               Prysm<span className="text-primary">AI</span>
             </span>
           </div>

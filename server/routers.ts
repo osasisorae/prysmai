@@ -81,10 +81,16 @@ export const appRouter = router({
         const token = generateInviteToken();
         await approveWaitlistEntry(input.id, token);
 
-        // Determine base URL from request
-        const protocol = ctx.req.headers["x-forwarded-proto"] || ctx.req.protocol || "https";
-        const host = ctx.req.headers["x-forwarded-host"] || ctx.req.headers.host || "prysmai.com";
-        const baseUrl = `${protocol}://${host}`;
+        // Determine base URL — prefer SITE_URL env var, fallback to request headers
+        const siteUrl = process.env.SITE_URL;
+        let baseUrl: string;
+        if (siteUrl) {
+          baseUrl = siteUrl.replace(/\/$/, ""); // strip trailing slash
+        } else {
+          const protocol = ctx.req.headers["x-forwarded-proto"] || ctx.req.protocol || "https";
+          const host = ctx.req.headers["x-forwarded-host"] || ctx.req.headers.host || "prysmai.com";
+          baseUrl = `${protocol}://${host}`;
+        }
 
         // Send invite email in background
         sendInviteEmail(signup.email, token, baseUrl).catch((err) =>

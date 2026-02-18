@@ -166,3 +166,11 @@
 - [x] Build /setup-account page (invite token validation + password creation + strength meter)
 - [x] Onboarding screen already exists (3-step: org → project → provider config)
 - [x] Fix /docs page: update GitHub links from old prysmai repo to public prysmai-python repo
+
+## Bug Fixes — Early Access Flow
+- [x] Simplify invite email to plain text (remove HTML design, faster loading)
+- [x] Fix logo on setup-account, onboarding, login, and dashboard pages (use our Prysm AI logo)
+- [x] Fix PrysmAI font on all pages to match homepage navbar (removed Space Grotesk references)
+- [x] Fix invite link URL to use SITE_URL env var instead of sandbox/dev URL
+- [x] Remove Manus OAuth from user-facing auth (custom auth primary, Manus OAuth fallback for admin)
+- [x] Fix post-onboarding flow — all redirects now go to /login instead of Manus OAuth
