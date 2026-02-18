@@ -18,6 +18,25 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+/**
+ * Format cost with enough precision to show meaningful values.
+ * - >= $1:       "$1.23"
+ * - >= $0.01:    "$0.0123"
+ * - >= $0.0001:  "$0.000123"
+ * - < $0.0001:   "< $0.0001" or show in scientific notation
+ */
+function formatCost(usd: number): string {
+  if (usd === 0) return "$0.00";
+  if (usd >= 1) return `$${usd.toFixed(2)}`;
+  if (usd >= 0.01) return `$${usd.toFixed(4)}`;
+  if (usd >= 0.0001) return `$${usd.toFixed(6)}`;
+  // For very tiny amounts, show enough digits to be non-zero
+  const str = usd.toFixed(8);
+  // Trim trailing zeros but keep at least one significant digit visible
+  const trimmed = str.replace(/0+$/, "");
+  return `$${trimmed.endsWith(".") ? trimmed + "0" : trimmed}`;
+}
+
 function MetricCard({
   title,
   value,
@@ -121,7 +140,7 @@ export default function DashboardOverview({ projectId }: { projectId: number }) 
 
   const summary = metrics.data?.summary;
   const totalRequests = Number(summary?.totalRequests ?? 0);
-  const totalCost = parseFloat(summary?.totalCost ?? "0");
+  const totalCostRaw = parseFloat(summary?.totalCost ?? "0");
   const avgLatency = Math.round(Number(summary?.avgLatency ?? 0));
   const errorCount = Number(summary?.errorCount ?? 0);
   const errorRate = totalRequests > 0 ? ((errorCount / totalRequests) * 100).toFixed(1) : "0";
@@ -161,7 +180,7 @@ export default function DashboardOverview({ projectId }: { projectId: number }) 
         />
         <MetricCard
           title="Total Cost"
-          value={`$${totalCost.toFixed(4)}`}
+          value={formatCost(totalCostRaw)}
           icon={DollarSign}
           loading={metrics.isLoading}
         />
@@ -254,7 +273,7 @@ export default function DashboardOverview({ projectId }: { projectId: number }) 
                       <div className="flex justify-between text-sm">
                         <span className="font-mono text-xs">{m.model}</span>
                         <span className="text-muted-foreground text-xs">
-                          {m.count} req · ${parseFloat(m.totalCost).toFixed(4)}
+                          {m.count} req · {formatCost(parseFloat(m.totalCost))}
                         </span>
                       </div>
                       <div className="h-1.5 bg-border rounded-full overflow-hidden">

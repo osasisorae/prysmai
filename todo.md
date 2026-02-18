@@ -213,3 +213,10 @@
 - [x] Fix /docs API Reference: update monitor() signature to not require OpenAI client
 - [x] Fix /docs PrysmClient examples: remove OpenAI API key references
 - [x] Fix any other pages with SDK code examples (verified Onboarding.tsx is correct - that's the setup form)
+
+## Cost Tracking Fix
+- [x] Audit proxy code to find where cost_usd is calculated (or not)
+- [x] Check model_pricing table for existing entries (empty - using hardcoded defaults)
+- [x] Cost calculation already works via hardcoded DEFAULT_PRICING in db.ts
+- [x] Fixed dashboard display: formatCost() shows enough decimal places for micro-costs
+- [x] Verified: 5 traces now in DB, all with costUsd=0.000007, dashboard will show $0.000035 total
