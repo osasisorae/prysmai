@@ -114,6 +114,13 @@ export default function Login() {
             </div>
           </div>
 
+          {/* Forgot password */}
+          <div className="text-right">
+            <a href="/forgot-password" className="text-sm text-primary hover:underline">
+              Forgot password?
+            </a>
+          </div>
+
           {/* Submit */}
           <Button
             type="submit"

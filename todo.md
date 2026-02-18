@@ -174,3 +174,21 @@
 - [x] Fix invite link URL to use SITE_URL env var instead of sandbox/dev URL
 - [x] Remove Manus OAuth from user-facing auth (custom auth primary, Manus OAuth fallback for admin)
 - [x] Fix post-onboarding flow — all redirects now go to /login instead of Manus OAuth
+
+## Forgot Password Flow
+- [x] Add reset_token and reset_token_expires columns to users table
+- [x] Build /api/auth/forgot-password endpoint (generates token, sends email)
+- [x] Build /api/auth/reset-password endpoint (validates token, updates password)
+- [x] Build password reset email (plain text)
+- [x] Build /forgot-password page (enter email)
+- [x] Build /reset-password page (enter new password with token)
+- [x] Add "Forgot password?" link to login page
+- [x] Write vitest tests for forgot password (6 tests passing)
+
+## Database Reset
+- [x] Clear all tables for fresh end-to-end testing
+
+## User Dashboard Post-Login
+- [x] Wire login → onboarding → dashboard flow for new users
+- [x] Wire login → dashboard for returning users
+- [x] Ensure dashboard shows real project data after onboarding (onboarding calls complete-onboarding endpoint)

@@ -315,6 +315,130 @@ export function registerCustomAuthRoutes(router: Router) {
     }
   });
 
+  // POST /api/auth/forgot-password — Request a password reset
+  router.post("/api/auth/forgot-password", async (req: Request, res: Response) => {
+    try {
+      const { email } = req.body;
+
+      if (!email) {
+        return res.status(400).json({ error: "Email is required." });
+      }
+
+      // Always return success to prevent email enumeration
+      const user = await getUserByEmail(email);
+      if (!user || !user.passwordHash) {
+        // Don't reveal whether the account exists
+        return res.json({ success: true, message: "If an account exists with that email, a reset link has been sent." });
+      }
+
+      // Generate reset token
+      const resetToken = crypto.randomBytes(48).toString("hex");
+      const resetExpires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+      // Store token in database
+      const db = await getDb();
+      if (db) {
+        await db.update(users).set({
+          resetToken,
+          resetTokenExpires: resetExpires,
+        }).where(eq(users.id, user.id));
+      }
+
+      // Send reset email
+      const { sendResetEmail } = await import("./resetEmail");
+      const siteUrl = process.env.SITE_URL;
+      let baseUrl: string;
+      if (siteUrl) {
+        baseUrl = siteUrl.replace(/\/$/, "");
+      } else {
+        const protocol = req.headers["x-forwarded-proto"] || req.protocol || "https";
+        const host = req.headers["x-forwarded-host"] || req.headers.host || "prysmai.com";
+        baseUrl = `${protocol}://${host}`;
+      }
+
+      sendResetEmail(email, resetToken, baseUrl).catch((err) =>
+        console.error("[Email] Background reset email send failed:", err)
+      );
+
+      return res.json({ success: true, message: "If an account exists with that email, a reset link has been sent." });
+    } catch (err: any) {
+      console.error("[CustomAuth] Forgot password error:", err);
+      return res.status(500).json({ error: "Internal server error." });
+    }
+  });
+
+  // POST /api/auth/reset-password — Reset password with token
+  router.post("/api/auth/reset-password", async (req: Request, res: Response) => {
+    try {
+      const { token, password } = req.body;
+
+      if (!token || !password) {
+        return res.status(400).json({ error: "Token and password are required." });
+      }
+
+      if (password.length < 8) {
+        return res.status(400).json({ error: "Password must be at least 8 characters." });
+      }
+
+      // Find user with this reset token
+      const db = await getDb();
+      if (!db) {
+        return res.status(500).json({ error: "Database not available." });
+      }
+
+      const result = await db.select().from(users).where(eq(users.resetToken, token)).limit(1);
+      const user = result[0];
+
+      if (!user) {
+        return res.status(400).json({ error: "Invalid or expired reset link." });
+      }
+
+      // Check expiry
+      if (!user.resetTokenExpires || new Date(user.resetTokenExpires) < new Date()) {
+        return res.status(400).json({ error: "Reset link has expired. Please request a new one." });
+      }
+
+      // Update password and clear reset token
+      const hash = await hashPassword(password);
+      await db.update(users).set({
+        passwordHash: hash,
+        resetToken: null,
+        resetTokenExpires: null,
+      }).where(eq(users.id, user.id));
+
+      return res.json({ success: true, message: "Password has been reset. You can now log in." });
+    } catch (err: any) {
+      console.error("[CustomAuth] Reset password error:", err);
+      return res.status(500).json({ error: "Internal server error." });
+    }
+  });
+
+  // GET /api/auth/validate-reset — Check if a reset token is valid
+  router.get("/api/auth/validate-reset", async (req: Request, res: Response) => {
+    try {
+      const token = req.query.token as string;
+      if (!token) {
+        return res.status(400).json({ valid: false, error: "Token is required." });
+      }
+
+      const db = await getDb();
+      if (!db) {
+        return res.status(500).json({ valid: false, error: "Database not available." });
+      }
+
+      const result = await db.select().from(users).where(eq(users.resetToken, token)).limit(1);
+      const user = result[0];
+
+      if (!user || !user.resetTokenExpires || new Date(user.resetTokenExpires) < new Date()) {
+        return res.json({ valid: false, error: "Invalid or expired reset link." });
+      }
+
+      return res.json({ valid: true, email: user.email });
+    } catch {
+      return res.status(500).json({ valid: false, error: "Internal server error." });
+    }
+  });
+
   // POST /api/auth/complete-onboarding — Mark user as onboarded
   router.post("/api/auth/complete-onboarding", async (req: Request, res: Response) => {
     try {

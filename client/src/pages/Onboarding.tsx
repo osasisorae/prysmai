@@ -67,6 +67,12 @@ export default function Onboarding() {
         },
       });
 
+      // Mark user as onboarded
+      await fetch("/api/auth/complete-onboarding", {
+        method: "POST",
+        credentials: "include",
+      });
+
       toast.success("Setup complete! Redirecting to your dashboard...");
       setTimeout(() => setLocation("/dashboard"), 800);
     } catch (err: any) {
