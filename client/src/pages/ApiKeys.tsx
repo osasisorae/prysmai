@@ -12,7 +12,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Key, Plus, Trash2, Copy, Check, AlertTriangle } from "lucide-react";
+import { Key, Plus, Trash2, Copy, Check, AlertTriangle, Terminal } from "lucide-react";
 import { toast } from "sonner";
 
 export default function ApiKeys({ projectId }: { projectId: number }) {
@@ -21,6 +21,7 @@ export default function ApiKeys({ projectId }: { projectId: number }) {
   const [newKeyValue, setNewKeyValue] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [revokeId, setRevokeId] = useState<number | null>(null);
+  const [codeCopied, setCodeCopied] = useState(false);
 
   const utils = trpc.useUtils();
   const keys = trpc.apiKey.list.useQuery({ projectId });
@@ -69,21 +70,56 @@ export default function ApiKeys({ projectId }: { projectId: number }) {
         </Button>
       </div>
 
-      {/* Integration guide */}
+      {/* Integration guide — Python SDK */}
       <Card className="bg-card border-border">
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium text-muted-foreground">Quick Start</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <Terminal className="w-4 h-4" /> Quick Start — Python SDK
+            </CardTitle>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-xs"
+              onClick={() => {
+                const code = `pip install prysmai\n\nfrom openai import OpenAI\nfrom prysmai import monitor\n\nclient = monitor(\n    OpenAI(),\n    prysm_api_key="sk-prysm-...",  # your Prysm API key\n    base_url="${typeof window !== 'undefined' ? window.location.origin : 'https://prysmai.io'}/api/v1"\n)\n\n# Use OpenAI as normal — Prysm captures everything\nresponse = client.chat.completions.create(\n    model="gpt-4o-mini",\n    messages=[{"role": "user", "content": "Hello!"}]\n)\nprint(response.choices[0].message.content)`;
+                navigator.clipboard.writeText(code);
+                setCodeCopied(true);
+                setTimeout(() => setCodeCopied(false), 1500);
+              }}
+            >
+              {codeCopied ? <Check className="w-3 h-3 mr-1" /> : <Copy className="w-3 h-3 mr-1" />}
+              {codeCopied ? "Copied" : "Copy"}
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
-          <div className="bg-background rounded-lg border border-border p-4 font-mono text-sm">
-            <p className="text-muted-foreground"># Replace your OpenAI base URL with Prysm</p>
-            <p className="mt-1">
-              <span className="text-primary">curl</span> {typeof window !== 'undefined' ? window.location.origin : 'https://your-prysm-instance.com'}/api/v1/chat/completions \
-            </p>
-            <p className="ml-4">-H <span className="text-green-400">"Authorization: Bearer sk-prysm-..."</span> \</p>
-            <p className="ml-4">-H <span className="text-green-400">"Content-Type: application/json"</span> \</p>
-            <p className="ml-4">-d <span className="text-green-400">'{`{"model":"gpt-4o-mini","messages":[{"role":"user","content":"Hello"}]}`}'</span></p>
+          <div className="bg-background rounded-lg border border-border p-4 font-mono text-sm leading-relaxed overflow-x-auto">
+            <p className="text-muted-foreground"># 1. Install the SDK</p>
+            <p><span className="text-primary">pip install</span> prysmai</p>
+            <p className="mt-3 text-muted-foreground"># 2. Wrap your OpenAI client (one line)</p>
+            <p><span className="text-blue-400">from</span> openai <span className="text-blue-400">import</span> OpenAI</p>
+            <p><span className="text-blue-400">from</span> prysmai <span className="text-blue-400">import</span> monitor</p>
+            <p className="mt-2">client = <span className="text-primary">monitor</span>(</p>
+            <p className="ml-4">OpenAI(),</p>
+            <p className="ml-4">prysm_api_key=<span className="text-green-400">"sk-prysm-..."</span>,  <span className="text-muted-foreground"># your Prysm API key</span></p>
+            <p className="ml-4">base_url=<span className="text-green-400">"{typeof window !== 'undefined' ? window.location.origin : 'https://prysmai.io'}/api/v1"</span></p>
+            <p>)</p>
+            <p className="mt-3 text-muted-foreground"># 3. Use OpenAI as normal — Prysm captures everything</p>
+            <p>response = client.chat.completions.<span className="text-primary">create</span>(</p>
+            <p className="ml-4">model=<span className="text-green-400">"gpt-4o-mini"</span>,</p>
+            <p className="ml-4">messages=[{'{'}"role": "user", "content": "Hello!"{'}'}]</p>
+            <p>)</p>
+            <p><span className="text-primary">print</span>(response.choices[0].message.content)</p>
           </div>
+          <p className="text-xs text-muted-foreground mt-3">
+            Full documentation at{" "}
+            <a href="/docs" className="text-primary hover:underline">prysmai.io/docs</a>
+            {" · "}
+            <a href="https://pypi.org/project/prysmai/" target="_blank" rel="noopener" className="text-primary hover:underline">PyPI</a>
+            {" · "}
+            <a href="https://github.com/osasisorae/prysmai-python" target="_blank" rel="noopener" className="text-primary hover:underline">GitHub</a>
+          </p>
         </CardContent>
       </Card>
 

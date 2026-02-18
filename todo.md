@@ -201,3 +201,7 @@
 - [x] Updated /docs page to reference /api/v1
 - [x] Updated Python SDK default base URL and published v0.1.3 to PyPI
 - [x] Pushed SDK changes to GitHub
+
+## Dashboard Fixes
+- [x] Fix Request Volume chart showing "No data yet" when traces exist
+- [x] Replace curl quick start on API Keys page with Python SDK code (pip install prysmai)

@@ -1,6 +1,5 @@
 import { useState, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
-import { useAuth } from "@/_core/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -83,10 +82,16 @@ function LiveTraceRow({ trace }: { trace: any }) {
 }
 
 export default function DashboardOverview({ projectId }: { projectId: number }) {
-  const [timeRange, setTimeRange] = useState("24h");
+  const [timeRange, setTimeRange] = useState("7d");
 
   const { from, to } = useMemo(() => {
     const now = new Date();
+    if (timeRange === "all") {
+      return {
+        from: new Date(now.getTime() - 730 * 24 * 60 * 60 * 1000),
+        to: now,
+      };
+    }
     const ranges: Record<string, number> = {
       "1h": 60 * 60 * 1000,
       "24h": 24 * 60 * 60 * 1000,
@@ -94,7 +99,7 @@ export default function DashboardOverview({ projectId }: { projectId: number }) 
       "30d": 30 * 24 * 60 * 60 * 1000,
     };
     return {
-      from: new Date(now.getTime() - (ranges[timeRange] ?? ranges["24h"])),
+      from: new Date(now.getTime() - (ranges[timeRange] ?? ranges["7d"])),
       to: now,
     };
   }, [timeRange]);
@@ -121,6 +126,9 @@ export default function DashboardOverview({ projectId }: { projectId: number }) 
   const errorCount = Number(summary?.errorCount ?? 0);
   const errorRate = totalRequests > 0 ? ((errorCount / totalRequests) * 100).toFixed(1) : "0";
 
+  // Check if there are any traces at all (from the live feed, which has no time filter)
+  const hasAnyTraces = (recentTraces.data?.traces?.length ?? 0) > 0;
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -138,6 +146,7 @@ export default function DashboardOverview({ projectId }: { projectId: number }) 
             <SelectItem value="24h">Last 24h</SelectItem>
             <SelectItem value="7d">Last 7 days</SelectItem>
             <SelectItem value="30d">Last 30 days</SelectItem>
+            <SelectItem value="all">All time</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -184,22 +193,35 @@ export default function DashboardOverview({ projectId }: { projectId: number }) 
             {timeline.isLoading ? (
               <Skeleton className="h-40 w-full" />
             ) : timeline.data && timeline.data.length > 0 ? (
-              <div className="h-40 flex items-end gap-1">
-                {timeline.data.map((bucket: any, i: number) => {
-                  const maxCount = Math.max(...timeline.data!.map((b: any) => Number(b.count)));
-                  const height = maxCount > 0 ? (Number(bucket.count) / maxCount) * 100 : 0;
-                  return (
-                    <div
-                      key={i}
-                      className="flex-1 bg-primary/70 rounded-t hover:bg-primary transition-colors relative group"
-                      style={{ height: `${Math.max(height, 2)}%` }}
-                    >
-                      <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-popover text-popover-foreground text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-                        {bucket.count} req
+              <div className="space-y-2">
+                <div className="h-36 flex items-end gap-1">
+                  {timeline.data.map((bucket: any, i: number) => {
+                    const maxCount = Math.max(...timeline.data!.map((b: any) => Number(b.count)));
+                    const height = maxCount > 0 ? (Number(bucket.count) / maxCount) * 100 : 0;
+                    return (
+                      <div
+                        key={i}
+                        className="flex-1 bg-primary/70 rounded-t hover:bg-primary transition-colors relative group"
+                        style={{ height: `${Math.max(height, 4)}%` }}
+                      >
+                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-popover text-popover-foreground text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
+                          {bucket.count} req
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
+                <div className="flex justify-between text-[10px] text-muted-foreground">
+                  <span>{new Date(timeline.data[0].bucket).toLocaleDateString([], { month: "short", day: "numeric" })}</span>
+                  <span>{new Date(timeline.data[timeline.data.length - 1].bucket).toLocaleDateString([], { month: "short", day: "numeric" })}</span>
+                </div>
+              </div>
+            ) : hasAnyTraces ? (
+              <div className="h-40 flex items-center justify-center text-sm text-muted-foreground">
+                <div className="text-center">
+                  <p>No requests in this time range.</p>
+                  <p className="text-xs mt-1">Try selecting a wider range above.</p>
+                </div>
               </div>
             ) : (
               <div className="h-40 flex items-center justify-center text-sm text-muted-foreground">
@@ -244,6 +266,13 @@ export default function DashboardOverview({ projectId }: { projectId: number }) 
                     </div>
                   );
                 })}
+              </div>
+            ) : hasAnyTraces ? (
+              <div className="h-40 flex items-center justify-center text-sm text-muted-foreground">
+                <div className="text-center">
+                  <p>No model data in this time range.</p>
+                  <p className="text-xs mt-1">Try selecting a wider range above.</p>
+                </div>
               </div>
             ) : (
               <div className="h-40 flex items-center justify-center text-sm text-muted-foreground">
