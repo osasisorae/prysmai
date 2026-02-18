@@ -205,3 +205,11 @@
 ## Dashboard Fixes
 - [x] Fix Request Volume chart showing "No data yet" when traces exist
 - [x] Replace curl quick start on API Keys page with Python SDK code (pip install prysmai)
+
+## Quick Start Code Fixes
+- [x] Audit all pages for OpenAI API key references in Quick Start code
+- [x] Fix /dashboard/keys Quick Start: remove OpenAI API key, only show Prysm key
+- [x] Fix /docs Quick Start: remove OpenAI API key from all code examples
+- [x] Fix /docs API Reference: update monitor() signature to not require OpenAI client
+- [x] Fix /docs PrysmClient examples: remove OpenAI API key references
+- [x] Fix any other pages with SDK code examples (verified Onboarding.tsx is correct - that's the setup form)

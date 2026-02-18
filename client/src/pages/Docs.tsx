@@ -285,8 +285,8 @@ export default function Docs() {
             Prysm AI SDK
           </h1>
           <p className="text-lg text-muted-foreground max-w-2xl">
-            One line of code to see inside your AI. Install the Python SDK, wrap your
-            OpenAI client, and get full observability — latency, tokens, cost, and
+            One line of code to see inside your AI. Install the Python SDK, connect with
+            your Prysm key, and get full observability — latency, tokens, cost, and
             complete request/response capture.
           </p>
           <div className="flex items-center gap-3 mt-6">
@@ -331,24 +331,22 @@ export default function Docs() {
             {/* ─── Quick Start ─── */}
             <SectionHeading id="quick-start">Quick Start</SectionHeading>
             <p className="text-muted-foreground leading-relaxed mb-4">
-              Wrap your existing OpenAI client with <IC>monitor()</IC> — that's the
-              entire integration. Your code stays exactly the same. The only difference
-              is that every API call now flows through the Prysm proxy, which captures
-              metrics and logs the full request/response.
+              Create a client with your Prysm API key — that's the entire integration.
+              Your OpenAI credentials are already linked from your project setup during
+              onboarding, so you don't need to provide them again. Every API call flows
+              through the Prysm proxy, which captures metrics and logs the full
+              request/response.
             </p>
             <CodeBlock
               filename="app.py"
-              code={`import openai
-from prysmai import monitor
+              code={`from prysmai import PrysmClient
 
-# Your existing OpenAI client
-client = openai.OpenAI(api_key="sk-...")
+# Your Prysm key handles everything — OpenAI credentials
+# are already linked from your project setup.
+client = PrysmClient(prysm_key="sk-prysm-...").openai()
 
-# Wrap it with Prysm — one line
-monitored = monitor(client, prysm_key="sk-prysm-...")
-
-# Every call is now tracked
-response = monitored.chat.completions.create(
+# Use like any OpenAI client — every call is tracked
+response = client.chat.completions.create(
     model="gpt-4o-mini",
     messages=[{"role": "user", "content": "Explain quantum computing"}],
 )
@@ -371,7 +369,7 @@ print(response.choices[0].message.content)`}
                 code={`export PRYSM_API_KEY="sk-prysm-your-key-here"
 
 # Now just:
-monitored = monitor(client)  # reads from env`}
+client = PrysmClient().openai()  # reads from env`}
                 language="bash"
               />
             </div>
@@ -379,9 +377,10 @@ monitored = monitor(client)  # reads from env`}
             {/* ─── How It Works ─── */}
             <SectionHeading id="how-it-works">How It Works</SectionHeading>
             <p className="text-muted-foreground leading-relaxed mb-4">
-              The SDK creates a new OpenAI client that points at the Prysm proxy
-              instead of the OpenAI API directly. Your application code stays exactly
-              the same — the only difference is the client instance.
+              The SDK creates an OpenAI client that points at the Prysm proxy
+              instead of the OpenAI API directly. The proxy uses the provider
+              credentials you configured during project setup, so you never need
+              to pass your OpenAI key in code.
             </p>
             <div className="my-6 p-6 rounded-lg bg-secondary/30 border border-border font-mono text-sm leading-loose text-center">
               <span className="text-foreground">Your App</span>
@@ -404,56 +403,13 @@ monitored = monitor(client)  # reads from env`}
             {/* ─── API Reference ─── */}
             <SectionHeading id="api-reference">API Reference</SectionHeading>
 
-            <SubHeading id="monitor-fn">
-              <IC>monitor(client, prysm_key, base_url, timeout)</IC>
-            </SubHeading>
-            <p className="text-muted-foreground leading-relaxed mb-2">
-              The primary entry point. Takes an existing OpenAI client and returns a
-              new one routed through Prysm. Preserves the client type — sync in, sync
-              out; async in, async out.
-            </p>
-            <ParamTable
-              params={[
-                {
-                  name: "client",
-                  type: "OpenAI | AsyncOpenAI",
-                  default: "required",
-                  desc: "Your existing OpenAI client instance",
-                },
-                {
-                  name: "prysm_key",
-                  type: "str",
-                  default: "PRYSM_API_KEY env",
-                  desc: "Your Prysm API key (sk-prysm-...)",
-                },
-                {
-                  name: "base_url",
-                  type: "str",
-                  default: "prysmai.io/api/v1",
-                  desc: "Prysm proxy URL",
-                },
-                {
-                  name: "timeout",
-                  type: "float",
-                  default: "120.0",
-                  desc: "Request timeout in seconds",
-                },
-              ]}
-            />
-            <CodeBlock
-              code={`# Sync
-monitored = monitor(openai.OpenAI(api_key="sk-..."), prysm_key="sk-prysm-...")
-
-# Async
-monitored = monitor(openai.AsyncOpenAI(api_key="sk-..."), prysm_key="sk-prysm-...")`}
-            />
-
-            <SubHeading id="prysm-client">
+            <SubHeading id="prysm-client-ref">
               <IC>PrysmClient(prysm_key, base_url, timeout)</IC>
             </SubHeading>
             <p className="text-muted-foreground leading-relaxed mb-2">
-              Lower-level client for more control. Create sync or async OpenAI clients
-              directly.
+              The primary entry point. Creates sync or async OpenAI clients routed
+              through the Prysm proxy. No OpenAI API key needed — the proxy uses
+              the credentials from your project setup.
             </p>
             <ParamTable
               params={[
@@ -482,14 +438,64 @@ monitored = monitor(openai.AsyncOpenAI(api_key="sk-..."), prysm_key="sk-prysm-..
 
 prysm = PrysmClient(prysm_key="sk-prysm-...")
 
-# Create sync client
+# Sync client
 client = prysm.openai()
 
-# Create async client
+# Async client
 async_client = prysm.async_openai()
 
 # Use like any OpenAI client
 response = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[{"role": "user", "content": "Hello!"}],
+)`}
+            />
+
+            <SubHeading id="monitor-fn">
+              <IC>monitor(client, prysm_key, base_url, timeout)</IC>
+            </SubHeading>
+            <p className="text-muted-foreground leading-relaxed mb-2">
+              Alternative entry point for wrapping an existing OpenAI client. Useful
+              if you already have a configured client and want to add Prysm
+              observability on top. No OpenAI API key is needed in the client —
+              the proxy handles authentication.
+            </p>
+            <ParamTable
+              params={[
+                {
+                  name: "client",
+                  type: "OpenAI | AsyncOpenAI",
+                  default: "required",
+                  desc: "An OpenAI client instance (key not required)",
+                },
+                {
+                  name: "prysm_key",
+                  type: "str",
+                  default: "PRYSM_API_KEY env",
+                  desc: "Your Prysm API key (sk-prysm-...)",
+                },
+                {
+                  name: "base_url",
+                  type: "str",
+                  default: "prysmai.io/api/v1",
+                  desc: "Prysm proxy URL",
+                },
+                {
+                  name: "timeout",
+                  type: "float",
+                  default: "120.0",
+                  desc: "Request timeout in seconds",
+                },
+              ]}
+            />
+            <CodeBlock
+              code={`from openai import OpenAI
+from prysmai import monitor
+
+# No api_key needed — the proxy uses your project's stored credentials
+monitored = monitor(OpenAI(), prysm_key="sk-prysm-...")
+
+response = monitored.chat.completions.create(
     model="gpt-4o-mini",
     messages=[{"role": "user", "content": "Hello!"}],
 )`}
@@ -589,20 +595,18 @@ for chunk in stream:
             {/* ─── Async ─── */}
             <SectionHeading id="async">Async Support</SectionHeading>
             <p className="text-muted-foreground leading-relaxed mb-4">
-              Full async support with the same API. Pass an <IC>AsyncOpenAI</IC> client
-              to <IC>monitor()</IC> and you get an async client back.
+              Full async support with the same API. Use <IC>async_openai()</IC> from
+              PrysmClient and you get an async client back.
             </p>
             <CodeBlock
               filename="async_example.py"
               code={`import asyncio
-import openai
-from prysmai import monitor
+from prysmai import PrysmClient
 
 async def main():
-    client = openai.AsyncOpenAI(api_key="sk-...")
-    monitored = monitor(client, prysm_key="sk-prysm-...")
+    client = PrysmClient(prysm_key="sk-prysm-...").async_openai()
 
-    response = await monitored.chat.completions.create(
+    response = await client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[{"role": "user", "content": "Hello async!"}],
     )
@@ -618,11 +622,10 @@ asyncio.run(main())`}
               your instance:
             </p>
             <CodeBlock
-              code={`monitored = monitor(
-    client,
+              code={`client = PrysmClient(
     prysm_key="sk-prysm-...",
     base_url="http://localhost:3000/api/v1",  # Your self-hosted proxy
-)`}
+).openai()`}
             />
 
             {/* ─── What Gets Captured ─── */}
