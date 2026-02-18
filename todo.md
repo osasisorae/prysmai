@@ -165,3 +165,4 @@
 ## Account Setup & Onboarding
 - [x] Build /setup-account page (invite token validation + password creation + strength meter)
 - [x] Onboarding screen already exists (3-step: org → project → provider config)
+- [x] Fix /docs page: update GitHub links from old prysmai repo to public prysmai-python repo

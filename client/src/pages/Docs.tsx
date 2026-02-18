@@ -180,7 +180,7 @@ function Sidebar({ activeSection }: { activeSection: string }) {
             PyPI Package
           </a>
           <a
-            href="https://github.com/osasisorae/prysmai/tree/main/sdk"
+            href="https://github.com/osasisorae/prysmai-python"
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors mt-2"
@@ -705,7 +705,7 @@ except openai.APIError as e:
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
                 <a
-                  href="https://github.com/osasisorae/prysmai/tree/main/sdk"
+                  href="https://github.com/osasisorae/prysmai-python"
                   target="_blank"
                   rel="noopener noreferrer"
                 >
