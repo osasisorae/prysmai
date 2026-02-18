@@ -7,7 +7,7 @@
  * 3. Captures full request/response + metrics
  * 4. Logs everything to the traces table
  *
- * Endpoint: POST /v1/chat/completions
+ * Endpoint: POST /api/v1/chat/completions
  */
 
 import { Router, Request, Response } from "express";

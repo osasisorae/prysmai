@@ -78,7 +78,7 @@ export default function ApiKeys({ projectId }: { projectId: number }) {
           <div className="bg-background rounded-lg border border-border p-4 font-mono text-sm">
             <p className="text-muted-foreground"># Replace your OpenAI base URL with Prysm</p>
             <p className="mt-1">
-              <span className="text-primary">curl</span> {typeof window !== 'undefined' ? window.location.origin : 'https://your-prysm-instance.com'}/v1/chat/completions \
+              <span className="text-primary">curl</span> {typeof window !== 'undefined' ? window.location.origin : 'https://your-prysm-instance.com'}/api/v1/chat/completions \
             </p>
             <p className="ml-4">-H <span className="text-green-400">"Authorization: Bearer sk-prysm-..."</span> \</p>
             <p className="ml-4">-H <span className="text-green-400">"Content-Type: application/json"</span> \</p>
