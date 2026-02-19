@@ -8,7 +8,7 @@ import {
   createProject, getProjectsByOrgId, getProjectById, updateProject,
   createApiKey, getApiKeysByProjectId, revokeApiKey,
   getTraces, getTraceById,
-  getProjectMetrics, getRequestTimeline, getDistinctModels,
+  getProjectMetrics, getRequestTimeline, getDistinctModels, getLatencyDistribution,
 } from "./db";
 import { z } from "zod";
 import { notifyOwner } from "./_core/notification";
@@ -274,6 +274,18 @@ export const appRouter = router({
         const org = await requireOrg(ctx.user.id);
         await requireProject(input.projectId, org.id);
         return await getRequestTimeline(input.projectId, input.from, input.to);
+      }),
+
+    latencyDistribution: protectedProcedure
+      .input(z.object({
+        projectId: z.number(),
+        from: z.date(),
+        to: z.date(),
+      }))
+      .query(async ({ ctx, input }) => {
+        const org = await requireOrg(ctx.user.id);
+        await requireProject(input.projectId, org.id);
+        return await getLatencyDistribution(input.projectId, input.from, input.to);
       }),
   }),
 });

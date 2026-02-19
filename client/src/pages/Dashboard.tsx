@@ -9,6 +9,8 @@ import {
   AlertTriangle,
   Zap,
   TrendingUp,
+  BarChart3,
+  ShieldAlert,
 } from "lucide-react";
 import {
   Select,
@@ -20,19 +22,13 @@ import {
 
 /**
  * Format cost with enough precision to show meaningful values.
- * - >= $1:       "$1.23"
- * - >= $0.01:    "$0.0123"
- * - >= $0.0001:  "$0.000123"
- * - < $0.0001:   "< $0.0001" or show in scientific notation
  */
 function formatCost(usd: number): string {
   if (usd === 0) return "$0.00";
   if (usd >= 1) return `$${usd.toFixed(2)}`;
   if (usd >= 0.01) return `$${usd.toFixed(4)}`;
   if (usd >= 0.0001) return `$${usd.toFixed(6)}`;
-  // For very tiny amounts, show enough digits to be non-zero
   const str = usd.toFixed(8);
-  // Trim trailing zeros but keep at least one significant digit visible
   const trimmed = str.replace(/0+$/, "");
   return `$${trimmed.endsWith(".") ? trimmed + "0" : trimmed}`;
 }
@@ -100,6 +96,66 @@ function LiveTraceRow({ trace }: { trace: any }) {
   );
 }
 
+/** Simple bar chart component for reuse */
+function BarChartSimple({
+  data,
+  getHeight,
+  getLabel,
+  getTooltip,
+  barColor = "bg-primary/70",
+  barHoverColor = "bg-primary",
+}: {
+  data: any[];
+  getHeight: (item: any, max: number) => number;
+  getLabel?: (item: any, i: number) => string;
+  getTooltip: (item: any) => string;
+  barColor?: string;
+  barHoverColor?: string;
+}) {
+  const maxVal = Math.max(...data.map((d, i) => getHeight(d, 1)));
+  return (
+    <div className="space-y-2">
+      <div className="h-36 flex items-end gap-1">
+        {data.map((item: any, i: number) => {
+          const height = maxVal > 0 ? (getHeight(item, 1) / maxVal) * 100 : 0;
+          return (
+            <div
+              key={i}
+              className={`flex-1 ${barColor} rounded-t hover:${barHoverColor} transition-colors relative group`}
+              style={{ height: `${Math.max(height, 4)}%` }}
+            >
+              <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-popover text-popover-foreground text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
+                {getTooltip(item)}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      {getLabel && data.length > 0 && (
+        <div className="flex justify-between text-[10px] text-muted-foreground">
+          <span>{getLabel(data[0], 0)}</span>
+          <span>{getLabel(data[data.length - 1], data.length - 1)}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function EmptyChart({ hasAnyTraces, message }: { hasAnyTraces: boolean; message?: string }) {
+  return (
+    <div className="h-40 flex items-center justify-center text-sm text-muted-foreground">
+      {hasAnyTraces ? (
+        <div className="text-center">
+          <p>{message ?? "No data in this time range."}</p>
+          <p className="text-xs mt-1">Try selecting a wider range above.</p>
+        </div>
+      ) : (
+        "No data yet. Send requests through the proxy to see metrics."
+      )}
+    </div>
+  );
+}
+
 export default function DashboardOverview({ projectId }: { projectId: number }) {
   const [timeRange, setTimeRange] = useState("7d");
 
@@ -133,6 +189,11 @@ export default function DashboardOverview({ projectId }: { projectId: number }) 
     { refetchInterval: 15000 }
   );
 
+  const latencyDist = trpc.metrics.latencyDistribution.useQuery(
+    { projectId, from, to },
+    { refetchInterval: 30000 }
+  );
+
   const recentTraces = trpc.trace.list.useQuery(
     { projectId, limit: 15 },
     { refetchInterval: 5000 }
@@ -145,8 +206,17 @@ export default function DashboardOverview({ projectId }: { projectId: number }) 
   const errorCount = Number(summary?.errorCount ?? 0);
   const errorRate = totalRequests > 0 ? ((errorCount / totalRequests) * 100).toFixed(1) : "0";
 
-  // Check if there are any traces at all (from the live feed, which has no time filter)
   const hasAnyTraces = (recentTraces.data?.traces?.length ?? 0) > 0;
+
+  // Compute cumulative cost from timeline data
+  const costAccumulation = useMemo(() => {
+    if (!timeline.data || timeline.data.length === 0) return [];
+    let running = 0;
+    return timeline.data.map((b: any) => {
+      running += parseFloat(b.totalCost || "0");
+      return { bucket: b.bucket, cumulativeCost: running };
+    });
+  }, [timeline.data]);
 
   return (
     <div className="space-y-6">
@@ -199,7 +269,7 @@ export default function DashboardOverview({ projectId }: { projectId: number }) 
         />
       </div>
 
-      {/* Charts row */}
+      {/* Charts row 1: Request Volume + Error Rate */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Request Timeline */}
         <Card className="bg-card border-border">
@@ -212,44 +282,168 @@ export default function DashboardOverview({ projectId }: { projectId: number }) 
             {timeline.isLoading ? (
               <Skeleton className="h-40 w-full" />
             ) : timeline.data && timeline.data.length > 0 ? (
-              <div className="space-y-2">
-                <div className="h-36 flex items-end gap-1">
-                  {timeline.data.map((bucket: any, i: number) => {
-                    const maxCount = Math.max(...timeline.data!.map((b: any) => Number(b.count)));
-                    const height = maxCount > 0 ? (Number(bucket.count) / maxCount) * 100 : 0;
-                    return (
-                      <div
-                        key={i}
-                        className="flex-1 bg-primary/70 rounded-t hover:bg-primary transition-colors relative group"
-                        style={{ height: `${Math.max(height, 4)}%` }}
-                      >
-                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-popover text-popover-foreground text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
-                          {bucket.count} req
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-                <div className="flex justify-between text-[10px] text-muted-foreground">
-                  <span>{new Date(timeline.data[0].bucket).toLocaleDateString([], { month: "short", day: "numeric" })}</span>
-                  <span>{new Date(timeline.data[timeline.data.length - 1].bucket).toLocaleDateString([], { month: "short", day: "numeric" })}</span>
-                </div>
-              </div>
-            ) : hasAnyTraces ? (
-              <div className="h-40 flex items-center justify-center text-sm text-muted-foreground">
-                <div className="text-center">
-                  <p>No requests in this time range.</p>
-                  <p className="text-xs mt-1">Try selecting a wider range above.</p>
-                </div>
-              </div>
+              <BarChartSimple
+                data={timeline.data}
+                getHeight={(item) => Number(item.count)}
+                getLabel={(item) => new Date(item.bucket).toLocaleDateString([], { month: "short", day: "numeric" })}
+                getTooltip={(item) => `${item.count} req`}
+              />
             ) : (
-              <div className="h-40 flex items-center justify-center text-sm text-muted-foreground">
-                No data yet. Send requests through the proxy to see metrics.
-              </div>
+              <EmptyChart hasAnyTraces={hasAnyTraces} message="No requests in this time range." />
             )}
           </CardContent>
         </Card>
 
+        {/* Error Rate Over Time */}
+        <Card className="bg-card border-border">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <ShieldAlert className="w-4 h-4" /> Error Rate Over Time
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {timeline.isLoading ? (
+              <Skeleton className="h-40 w-full" />
+            ) : timeline.data && timeline.data.length > 0 ? (
+              (() => {
+                const errorData = timeline.data.map((b: any) => ({
+                  bucket: b.bucket,
+                  errorRate: Number(b.count) > 0 ? (Number(b.errorCount) / Number(b.count)) * 100 : 0,
+                  errorCount: Number(b.errorCount),
+                  total: Number(b.count),
+                }));
+                const hasErrors = errorData.some((d: any) => d.errorCount > 0);
+                return hasErrors ? (
+                  <BarChartSimple
+                    data={errorData}
+                    getHeight={(item) => item.errorRate}
+                    getLabel={(item) => new Date(item.bucket).toLocaleDateString([], { month: "short", day: "numeric" })}
+                    getTooltip={(item) => `${item.errorRate.toFixed(1)}% (${item.errorCount}/${item.total})`}
+                    barColor="bg-red-500/70"
+                    barHoverColor="bg-red-500"
+                  />
+                ) : (
+                  <div className="h-40 flex items-center justify-center text-sm text-muted-foreground">
+                    <div className="text-center">
+                      <ShieldAlert className="w-8 h-8 mx-auto mb-3 opacity-20" />
+                      <p className="text-green-400 font-medium">0% error rate</p>
+                      <p className="text-xs mt-1">All requests succeeded in this period</p>
+                    </div>
+                  </div>
+                );
+              })()
+            ) : (
+              <EmptyChart hasAnyTraces={hasAnyTraces} message="No error data in this time range." />
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Charts row 2: Latency Histogram + Cost Accumulation */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Latency Distribution */}
+        <Card className="bg-card border-border">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <BarChart3 className="w-4 h-4" /> Latency Distribution
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {latencyDist.isLoading ? (
+              <Skeleton className="h-40 w-full" />
+            ) : latencyDist.data && latencyDist.data.length > 0 ? (
+              <div className="space-y-2">
+                <div className="h-36 flex items-end gap-2">
+                  {latencyDist.data.map((bucket: any, i: number) => {
+                    const maxCount = Math.max(...latencyDist.data!.map((b: any) => Number(b.count)));
+                    const height = maxCount > 0 ? (Number(bucket.count) / maxCount) * 100 : 0;
+                    return (
+                      <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                        <div className="w-full flex items-end justify-center" style={{ height: "128px" }}>
+                          <div
+                            className="w-full bg-cyan-500/70 rounded-t hover:bg-cyan-500 transition-colors relative group"
+                            style={{ height: `${Math.max(height, 4)}%` }}
+                          >
+                            <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-popover text-popover-foreground text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
+                              {bucket.count} req
+                            </div>
+                          </div>
+                        </div>
+                        <span className="text-[9px] text-muted-foreground whitespace-nowrap">{bucket.bucket}ms</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              <EmptyChart hasAnyTraces={hasAnyTraces} message="No latency data in this time range." />
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Cost Accumulation */}
+        <Card className="bg-card border-border">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <DollarSign className="w-4 h-4" /> Cumulative Spend
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {timeline.isLoading ? (
+              <Skeleton className="h-40 w-full" />
+            ) : costAccumulation.length > 0 ? (
+              <div className="space-y-2">
+                {/* SVG line chart for cumulative cost */}
+                <div className="h-36 relative">
+                  <svg viewBox="0 0 400 140" className="w-full h-full" preserveAspectRatio="none">
+                    {(() => {
+                      const maxCost = Math.max(...costAccumulation.map((d: any) => d.cumulativeCost));
+                      if (maxCost === 0) return null;
+                      const points = costAccumulation.map((d: any, i: number) => {
+                        const x = costAccumulation.length > 1 ? (i / (costAccumulation.length - 1)) * 400 : 200;
+                        const y = 135 - (d.cumulativeCost / maxCost) * 130;
+                        return `${x},${y}`;
+                      });
+                      const areaPoints = `0,135 ${points.join(" ")} 400,135`;
+                      return (
+                        <>
+                          <polygon points={areaPoints} fill="oklch(0.78 0.17 195 / 0.15)" />
+                          <polyline
+                            points={points.join(" ")}
+                            fill="none"
+                            stroke="oklch(0.78 0.17 195)"
+                            strokeWidth="2"
+                          />
+                          {/* End point dot */}
+                          {costAccumulation.length > 0 && (() => {
+                            const last = costAccumulation[costAccumulation.length - 1];
+                            const x = 400;
+                            const y = 135 - (last.cumulativeCost / maxCost) * 130;
+                            return <circle cx={x} cy={y} r="3" fill="oklch(0.78 0.17 195)" />;
+                          })()}
+                        </>
+                      );
+                    })()}
+                  </svg>
+                  {/* Total label */}
+                  <div className="absolute top-2 right-2 text-xs font-mono text-primary">
+                    {formatCost(costAccumulation[costAccumulation.length - 1]?.cumulativeCost ?? 0)}
+                  </div>
+                </div>
+                <div className="flex justify-between text-[10px] text-muted-foreground">
+                  <span>{new Date(costAccumulation[0].bucket).toLocaleDateString([], { month: "short", day: "numeric" })}</span>
+                  <span>{new Date(costAccumulation[costAccumulation.length - 1].bucket).toLocaleDateString([], { month: "short", day: "numeric" })}</span>
+                </div>
+              </div>
+            ) : (
+              <EmptyChart hasAnyTraces={hasAnyTraces} message="No cost data in this time range." />
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Charts row 3: Model Usage */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Model breakdown */}
         <Card className="bg-card border-border">
           <CardHeader className="pb-2">
@@ -286,17 +480,8 @@ export default function DashboardOverview({ projectId }: { projectId: number }) 
                   );
                 })}
               </div>
-            ) : hasAnyTraces ? (
-              <div className="h-40 flex items-center justify-center text-sm text-muted-foreground">
-                <div className="text-center">
-                  <p>No model data in this time range.</p>
-                  <p className="text-xs mt-1">Try selecting a wider range above.</p>
-                </div>
-              </div>
             ) : (
-              <div className="h-40 flex items-center justify-center text-sm text-muted-foreground">
-                No model data yet.
-              </div>
+              <EmptyChart hasAnyTraces={hasAnyTraces} message="No model data in this time range." />
             )}
           </CardContent>
         </Card>

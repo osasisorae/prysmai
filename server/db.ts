@@ -437,3 +437,53 @@ export async function getDistinctModels(projectId: number) {
     .where(eq(traces.projectId, projectId));
   return result.map(r => r.model);
 }
+
+// ─── Latency distribution for histogram ───
+
+export async function getLatencyDistribution(projectId: number, from: Date, to: Date) {
+  const db = await getDb();
+  if (!db) return [];
+
+  const fromStr = from.toISOString().slice(0, 19).replace('T', ' ');
+  const toStr = to.toISOString().slice(0, 19).replace('T', ' ');
+
+  // Bucket latencies into ranges: 0-100, 100-200, ..., 900-1000, 1000-2000, 2000-5000, 5000+
+  const result = await db.execute(
+    sql`SELECT
+      CASE
+        WHEN latencyMs < 100 THEN '0-100'
+        WHEN latencyMs < 200 THEN '100-200'
+        WHEN latencyMs < 300 THEN '200-300'
+        WHEN latencyMs < 500 THEN '300-500'
+        WHEN latencyMs < 1000 THEN '500-1000'
+        WHEN latencyMs < 2000 THEN '1000-2000'
+        WHEN latencyMs < 5000 THEN '2000-5000'
+        ELSE '5000+'
+      END AS bucket,
+      COUNT(*) AS \`count\`,
+      MIN(latencyMs) AS minMs,
+      MAX(latencyMs) AS maxMs
+    FROM traces
+    WHERE projectId = ${projectId}
+      AND \`timestamp\` >= ${fromStr}
+      AND \`timestamp\` <= ${toStr}
+      AND latencyMs IS NOT NULL
+    GROUP BY CASE
+        WHEN latencyMs < 100 THEN '0-100'
+        WHEN latencyMs < 200 THEN '100-200'
+        WHEN latencyMs < 300 THEN '200-300'
+        WHEN latencyMs < 500 THEN '300-500'
+        WHEN latencyMs < 1000 THEN '500-1000'
+        WHEN latencyMs < 2000 THEN '1000-2000'
+        WHEN latencyMs < 5000 THEN '2000-5000'
+        ELSE '5000+'
+      END
+    ORDER BY MIN(latencyMs)`
+  );
+
+  const rows = (Array.isArray(result) && Array.isArray(result[0])) ? result[0] : result;
+  return (rows as any[]).map((r: any) => ({
+    bucket: String(r.bucket),
+    count: Number(r.count),
+  }));
+}

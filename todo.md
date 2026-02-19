@@ -226,3 +226,15 @@
 - [x] Fix DashboardShell setState-during-render (navigation called during render phase)
 - [x] Fix redirect logic for admin user with orgId=null and onboarded=false
 - [x] Fix SQL query failure on metrics.timeline (GROUP BY alias → explicit expression)
+
+## Blueprint Gap Closure — Layer 1 High-Impact
+- [x] Add logprobs column to traces schema (JSON, nullable)
+- [x] Add tool_calls column to traces schema (JSON, nullable)
+- [x] Capture logprobs from OpenAI response in proxy
+- [x] Capture tool_calls from OpenAI response in proxy
+- [x] Run db:push migration for new columns
+- [x] Add error rate over time chart to dashboard
+- [x] Add latency histogram/distribution chart to dashboard
+- [x] Add cost accumulation (cumulative spend) chart to dashboard
+- [x] Vitest tests pass (69/69) — pre-existing tests cover trace schema
+- [x] Display logprobs and tool_calls in trace detail panel (RequestExplorer)

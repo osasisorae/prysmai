@@ -146,6 +146,9 @@ export const traces = mysqlTable(
     maxTokens: int("maxTokens"),
     topP: decimal("topP", { precision: 4, scale: 3 }),
     isStreaming: boolean("isStreaming").default(false),
+    // Tool calls and logprobs
+    toolCalls: json("toolCalls").$type<Array<{ id: string; type: string; function: { name: string; arguments: string } }>>(),
+    logprobs: json("logprobs").$type<Record<string, unknown>>(),
     // User-provided metadata
     endUserId: varchar("endUserId", { length: 255 }),
     sessionId: varchar("sessionId", { length: 255 }),

@@ -95,6 +95,8 @@ async function handleNonStreaming(
     const totalTokens = usage.total_tokens ?? promptTokens + completionTokens;
     const completion = responseData.choices?.[0]?.message?.content ?? "";
     const finishReason = responseData.choices?.[0]?.finish_reason ?? "";
+    const toolCalls = responseData.choices?.[0]?.message?.tool_calls ?? undefined;
+    const logprobs = responseData.choices?.[0]?.logprobs ?? undefined;
 
     // Calculate cost
     const pricing = getDefaultPricing(model);
@@ -111,6 +113,8 @@ async function handleNonStreaming(
       promptMessages: body.messages,
       completion,
       finishReason,
+      toolCalls: toolCalls?.length ? toolCalls : undefined,
+      logprobs: logprobs ?? undefined,
       status: upstreamResponse.ok ? "success" : "error",
       statusCode: upstreamResponse.status,
       errorMessage: upstreamResponse.ok ? undefined : JSON.stringify(responseData),
@@ -185,6 +189,8 @@ async function handleStreaming(
   let promptTokens = 0;
   let completionTokens = 0;
   let totalTokens = 0;
+  let toolCallsAccum: Record<number, { id: string; type: string; function: { name: string; arguments: string } }> = {};
+  let logprobsAccum: any[] = [];
 
   try {
     const upstreamUrl = `${auth.baseUrl}/chat/completions`;
@@ -265,6 +271,26 @@ async function handleStreaming(
             completionChunks.push(deltaContent);
           }
 
+          // Collect tool calls (streamed incrementally)
+          const deltaToolCalls = parsed.choices?.[0]?.delta?.tool_calls;
+          if (deltaToolCalls) {
+            for (const tc of deltaToolCalls) {
+              const idx = tc.index ?? 0;
+              if (!toolCallsAccum[idx]) {
+                toolCallsAccum[idx] = { id: tc.id ?? "", type: tc.type ?? "function", function: { name: "", arguments: "" } };
+              }
+              if (tc.id) toolCallsAccum[idx].id = tc.id;
+              if (tc.function?.name) toolCallsAccum[idx].function.name += tc.function.name;
+              if (tc.function?.arguments) toolCallsAccum[idx].function.arguments += tc.function.arguments;
+            }
+          }
+
+          // Collect logprobs
+          const chunkLogprobs = parsed.choices?.[0]?.logprobs;
+          if (chunkLogprobs?.content) {
+            logprobsAccum.push(...chunkLogprobs.content);
+          }
+
           // Finish reason
           if (parsed.choices?.[0]?.finish_reason) {
             finishReason = parsed.choices[0].finish_reason;
@@ -293,6 +319,14 @@ async function handleStreaming(
       ? calculateCost(promptTokens, completionTokens, pricing.input, pricing.output)
       : 0;
 
+    // Assemble tool calls and logprobs
+    const toolCallsFinal = Object.keys(toolCallsAccum).length > 0
+      ? Object.values(toolCallsAccum)
+      : undefined;
+    const logprobsFinal = logprobsAccum.length > 0
+      ? { content: logprobsAccum }
+      : undefined;
+
     // Log trace
     const trace: InsertTrace = {
       projectId: auth.projectId,
@@ -302,6 +336,8 @@ async function handleStreaming(
       promptMessages: body.messages,
       completion,
       finishReason,
+      toolCalls: toolCallsFinal,
+      logprobs: logprobsFinal,
       status: "success",
       statusCode: 200,
       latencyMs,

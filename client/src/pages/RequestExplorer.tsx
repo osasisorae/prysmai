@@ -135,6 +135,75 @@ function TraceDetail({ traceId, projectId, onClose }: { traceId: string; project
           <p className="text-sm text-foreground whitespace-pre-wrap">{completionContent}</p>
         </div>
       </div>
+
+      {/* Tool Calls */}
+      {trace.toolCalls && trace.toolCalls.length > 0 && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium">Tool Calls</p>
+            <button
+              onClick={() => copyText(JSON.stringify(trace.toolCalls, null, 2), "toolCalls")}
+              className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
+            >
+              {copied === "toolCalls" ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />} Copy
+            </button>
+          </div>
+          <div className="bg-background rounded-lg border border-border p-3 max-h-60 overflow-y-auto">
+            <div className="space-y-3">
+              {trace.toolCalls.map((tc: any, i: number) => (
+                <div key={i} className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-medium text-primary">{tc.function?.name ?? 'unknown'}</span>
+                    <span className="text-[10px] text-muted-foreground font-mono">{tc.id}</span>
+                  </div>
+                  <pre className="text-xs text-foreground bg-card p-2 rounded overflow-x-auto">{(() => {
+                    try { return JSON.stringify(JSON.parse(tc.function?.arguments ?? '{}'), null, 2); }
+                    catch { return tc.function?.arguments ?? ''; }
+                  })()}</pre>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Logprobs */}
+      {trace.logprobs && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium">Log Probabilities</p>
+            <button
+              onClick={() => copyText(JSON.stringify(trace.logprobs, null, 2), "logprobs")}
+              className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
+            >
+              {copied === "logprobs" ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />} Copy
+            </button>
+          </div>
+          <div className="bg-background rounded-lg border border-border p-3 max-h-60 overflow-y-auto">
+            {trace.logprobs.content && Array.isArray(trace.logprobs.content) ? (
+              <div className="flex flex-wrap gap-1">
+                {(trace.logprobs.content as any[]).slice(0, 50).map((lp: any, i: number) => (
+                  <span
+                    key={i}
+                    className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs font-mono"
+                    style={{
+                      backgroundColor: `oklch(0.78 0.17 195 / ${Math.min(Math.max(Math.exp(lp.logprob) * 0.8, 0.1), 0.8)})`,
+                    }}
+                    title={`logprob: ${lp.logprob?.toFixed(4)}, prob: ${(Math.exp(lp.logprob) * 100).toFixed(1)}%`}
+                  >
+                    {lp.token}
+                  </span>
+                ))}
+                {(trace.logprobs.content as any[]).length > 50 && (
+                  <span className="text-xs text-muted-foreground">...and {(trace.logprobs.content as any[]).length - 50} more tokens</span>
+                )}
+              </div>
+            ) : (
+              <pre className="text-xs text-foreground overflow-x-auto">{JSON.stringify(trace.logprobs, null, 2)}</pre>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
