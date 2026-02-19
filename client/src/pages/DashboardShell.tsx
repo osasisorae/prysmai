@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { useLocation, useRoute } from "wouter";
@@ -39,6 +40,17 @@ export default function DashboardShell() {
   const org = trpc.org.get.useQuery(undefined, { enabled: !!user });
   const projects = trpc.project.list.useQuery(undefined, { enabled: !!user && !!org.data });
 
+  // Determine if we need to redirect to onboarding
+  const needsOnboarding = org.isSuccess && !org.data;
+  const noProjects = !needsOnboarding && !org.isLoading && !projects.isLoading && projects.isSuccess && (!projects.data || projects.data.length === 0);
+
+  // Bug fix: wrap redirects in useEffect to avoid setState-during-render
+  useEffect(() => {
+    if (needsOnboarding || noProjects) {
+      setLocation("/onboarding");
+    }
+  }, [needsOnboarding, noProjects, setLocation]);
+
   // Loading state
   if (loading) {
     return (
@@ -63,10 +75,13 @@ export default function DashboardShell() {
     );
   }
 
-  // No org yet — redirect to onboarding
-  if (org.isSuccess && !org.data) {
-    setLocation("/onboarding");
-    return null;
+  // Waiting for redirect to onboarding (render loading spinner while useEffect fires)
+  if (needsOnboarding || noProjects) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-6 h-6 animate-spin text-primary" />
+      </div>
+    );
   }
 
   // Loading org/projects
@@ -80,8 +95,12 @@ export default function DashboardShell() {
 
   const activeProject = projects.data?.[0];
   if (!activeProject) {
-    setLocation("/onboarding");
-    return null;
+    // Fallback — shouldn't reach here due to noProjects check above
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-6 h-6 animate-spin text-primary" />
+      </div>
+    );
   }
 
   // Determine active page

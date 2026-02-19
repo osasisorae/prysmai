@@ -220,3 +220,9 @@
 - [x] Cost calculation already works via hardcoded DEFAULT_PRICING in db.ts
 - [x] Fixed dashboard display: formatCost() shows enough decimal places for micro-costs
 - [x] Verified: 5 traces now in DB, all with costUsd=0.000007, dashboard will show $0.000035 total
+
+## Onboarding Page Errors Fix
+- [x] Fix org.get tRPC procedure returning undefined (must return null or valid data)
+- [x] Fix DashboardShell setState-during-render (navigation called during render phase)
+- [x] Fix redirect logic for admin user with orgId=null and onboarded=false
+- [x] Fix SQL query failure on metrics.timeline (GROUP BY alias → explicit expression)

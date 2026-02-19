@@ -122,16 +122,16 @@ export async function createOrganization(data: { name: string; slug: string; own
 
 export async function getOrganizationById(id: number) {
   const db = await getDb();
-  if (!db) return undefined;
+  if (!db) return null;
   const result = await db.select().from(organizations).where(eq(organizations.id, id)).limit(1);
-  return result[0] ?? undefined;
+  return result[0] ?? null;
 }
 
 export async function getOrganizationByOwnerId(ownerId: number) {
   const db = await getDb();
-  if (!db) return undefined;
+  if (!db) return null;
   const result = await db.select().from(organizations).where(eq(organizations.ownerId, ownerId)).limit(1);
-  return result[0] ?? undefined;
+  return result[0] ?? null;
 }
 
 // ─── Project helpers ───
@@ -354,22 +354,34 @@ export async function getRequestTimeline(projectId: number, from: Date, to: Date
   const db = await getDb();
   if (!db) return [];
 
-  const result = await db.select({
-    bucket: sql<string>`DATE_FORMAT(${traces.timestamp}, '%Y-%m-%d %H:00:00')`,
-    count: sql<number>`count(*)`,
-    avgLatency: sql<number>`COALESCE(avg(${traces.latencyMs}), 0)`,
-    errorCount: sql<number>`sum(case when ${traces.status} = 'error' then 1 else 0 end)`,
-    totalCost: sql<string>`COALESCE(sum(${traces.costUsd}), 0)`,
-  }).from(traces)
-    .where(and(
-      eq(traces.projectId, projectId),
-      gte(traces.timestamp, from),
-      lte(traces.timestamp, to),
-    ))
-    .groupBy(sql`DATE_FORMAT(${traces.timestamp}, '%Y-%m-%d %H:00:00')`)
-    .orderBy(sql`DATE_FORMAT(${traces.timestamp}, '%Y-%m-%d %H:00:00')`);
+  // Use raw SQL with explicit GROUP BY expression (not alias) to satisfy only_full_group_by
+  const fromStr = from.toISOString().slice(0, 19).replace('T', ' ');
+  const toStr = to.toISOString().slice(0, 19).replace('T', ' ');
 
-  return result;
+  const result = await db.execute(
+    sql`SELECT
+      DATE_FORMAT(\`timestamp\`, '%Y-%m-%d %H:00:00') AS bucket,
+      COUNT(*) AS \`count\`,
+      COALESCE(AVG(latencyMs), 0) AS avgLatency,
+      SUM(CASE WHEN status = 'error' THEN 1 ELSE 0 END) AS errorCount,
+      COALESCE(SUM(costUsd), 0) AS totalCost
+    FROM traces
+    WHERE projectId = ${projectId}
+      AND \`timestamp\` >= ${fromStr}
+      AND \`timestamp\` <= ${toStr}
+    GROUP BY DATE_FORMAT(\`timestamp\`, '%Y-%m-%d %H:00:00')
+    ORDER BY DATE_FORMAT(\`timestamp\`, '%Y-%m-%d %H:00:00')`
+  );
+
+  // drizzle execute returns [rows, fields] for mysql2
+  const rows = (Array.isArray(result) && Array.isArray(result[0])) ? result[0] : result;
+  return (rows as any[]).map((r: any) => ({
+    bucket: r.bucket,
+    count: Number(r.count),
+    avgLatency: Number(r.avgLatency),
+    errorCount: Number(r.errorCount),
+    totalCost: String(r.totalCost),
+  }));
 }
 
 // ─── Model pricing helpers ───
