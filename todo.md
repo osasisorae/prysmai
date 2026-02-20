@@ -299,3 +299,10 @@
 
 ## Bug Fixes
 - [x] Fix Vite HMR WebSocket connection failure (switched to noServer mode + manual upgrade handler for /ws/live-feed only)
+
+## Layer 1 Full Test Suite
+- [x] Write Anthropic translator tests (32 tests: request translation, response translation, streaming, headers)
+- [x] Write alert condition evaluation unit tests (25 tests: all operators gt/gte/lt/lte/eq + edge cases)
+- [x] Write metrics scheduler tests (start/stop exports)
+- [x] Write proxy & DB helper tests (24 tests: hashApiKey edge cases, calculateCost edge cases, pricing lookup, module exports)
+- [x] Create comprehensive manual QA testing document for external tester (109 tests across 18 categories)
