@@ -427,6 +427,33 @@ export function getDefaultPricing(model: string): { input: number; output: numbe
   return undefined;
 }
 
+/**
+ * DB-driven pricing lookup with hardcoded fallback.
+ * Checks model_pricing table first (exact match, then prefix), falls back to DEFAULT_PRICING.
+ */
+export async function getPricingForModel(provider: string, model: string): Promise<{ input: number; output: number } | undefined> {
+  const db = await getDb();
+  if (db) {
+    // Exact match
+    const exact = await db.select().from(modelPricing)
+      .where(and(eq(modelPricing.provider, provider), eq(modelPricing.model, model)))
+      .limit(1);
+    if (exact[0]) {
+      return { input: Number(exact[0].inputCostPer1k), output: Number(exact[0].outputCostPer1k) };
+    }
+    // Prefix match: find rows where the model starts with the DB model name
+    const allForProvider = await db.select().from(modelPricing)
+      .where(eq(modelPricing.provider, provider));
+    for (const row of allForProvider) {
+      if (model.startsWith(row.model)) {
+        return { input: Number(row.inputCostPer1k), output: Number(row.outputCostPer1k) };
+      }
+    }
+  }
+  // Fallback to hardcoded defaults
+  return getDefaultPricing(model);
+}
+
 // ─── Distinct models for a project ───
 
 export async function getDistinctModels(projectId: number) {

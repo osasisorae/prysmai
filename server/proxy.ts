@@ -7,7 +7,11 @@
  * 3. Captures full request/response + metrics
  * 4. Logs everything to the traces table
  *
- * Endpoint: POST /api/v1/chat/completions
+ * Endpoints:
+ *   POST /api/v1/chat/completions
+ *   POST /api/v1/completions
+ *   POST /api/v1/embeddings
+ *   GET  /api/v1/health
  */
 
 import { Router, Request, Response } from "express";
@@ -17,7 +21,7 @@ import {
   lookupApiKey,
   getProjectById,
   insertTrace,
-  getDefaultPricing,
+  getPricingForModel,
   calculateCost,
 } from "./db";
 import type { InsertTrace } from "../drizzle/schema";
@@ -62,9 +66,22 @@ async function authenticateProxyRequest(req: Request): Promise<{
   };
 }
 
-// ─── Non-streaming proxy ───
+// ─── Helper: resolve cost from DB pricing (async) with hardcoded fallback ───
 
-async function handleNonStreaming(
+async function resolveCost(
+  provider: string,
+  model: string,
+  promptTokens: number,
+  completionTokens: number,
+): Promise<number> {
+  const pricing = await getPricingForModel(provider, model);
+  if (!pricing) return 0;
+  return calculateCost(promptTokens, completionTokens, pricing.input, pricing.output);
+}
+
+// ─── Chat Completions: Non-streaming ───
+
+async function handleChatNonStreaming(
   req: Request,
   res: Response,
   auth: { projectId: number; provider: string; baseUrl: string; upstreamApiKey: string },
@@ -98,11 +115,8 @@ async function handleNonStreaming(
     const toolCalls = responseData.choices?.[0]?.message?.tool_calls ?? undefined;
     const logprobs = responseData.choices?.[0]?.logprobs ?? undefined;
 
-    // Calculate cost
-    const pricing = getDefaultPricing(model);
-    const costUsd = pricing
-      ? calculateCost(promptTokens, completionTokens, pricing.input, pricing.output)
-      : 0;
+    // Calculate cost (DB-driven)
+    const costUsd = await resolveCost(auth.provider, model, promptTokens, completionTokens);
 
     // Log trace
     const trace: InsertTrace = {
@@ -172,9 +186,9 @@ async function handleNonStreaming(
   }
 }
 
-// ─── Streaming proxy ───
+// ─── Chat Completions: Streaming ───
 
-async function handleStreaming(
+async function handleChatStreaming(
   req: Request,
   res: Response,
   auth: { projectId: number; provider: string; baseUrl: string; upstreamApiKey: string },
@@ -313,11 +327,8 @@ async function handleStreaming(
     const latencyMs = Date.now() - startTime;
     const completion = completionChunks.join("");
 
-    // Calculate cost
-    const pricing = getDefaultPricing(model);
-    const costUsd = pricing
-      ? calculateCost(promptTokens, completionTokens, pricing.input, pricing.output)
-      : 0;
+    // Calculate cost (DB-driven)
+    const costUsd = await resolveCost(auth.provider, model, promptTokens, completionTokens);
 
     // Assemble tool calls and logprobs
     const toolCallsFinal = Object.keys(toolCallsAccum).length > 0
@@ -391,8 +402,209 @@ async function handleStreaming(
   }
 }
 
-// ─── Main route ───
+// ─── Legacy Completions (non-chat) ───
 
+async function handleCompletions(
+  req: Request,
+  res: Response,
+  auth: { projectId: number; provider: string; baseUrl: string; upstreamApiKey: string },
+) {
+  const traceId = uuidv4();
+  const startTime = Date.now();
+  const body = req.body;
+  const model = body.model ?? "unknown";
+
+  try {
+    const upstreamUrl = `${auth.baseUrl}/completions`;
+    const upstreamResponse = await fetch(upstreamUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${auth.upstreamApiKey}`,
+      },
+      body: JSON.stringify(body),
+    });
+
+    const latencyMs = Date.now() - startTime;
+    const responseData = await upstreamResponse.json() as any;
+
+    // Extract metrics
+    const usage = responseData.usage ?? {};
+    const promptTokens = usage.prompt_tokens ?? 0;
+    const completionTokens = usage.completion_tokens ?? 0;
+    const totalTokens = usage.total_tokens ?? promptTokens + completionTokens;
+    const completion = responseData.choices?.[0]?.text ?? "";
+    const finishReason = responseData.choices?.[0]?.finish_reason ?? "";
+    const logprobs = responseData.choices?.[0]?.logprobs ?? undefined;
+
+    // Calculate cost (DB-driven)
+    const costUsd = await resolveCost(auth.provider, model, promptTokens, completionTokens);
+
+    // Log trace — store prompt as messages-like format for consistency
+    const trace: InsertTrace = {
+      projectId: auth.projectId,
+      traceId,
+      model,
+      provider: auth.provider,
+      promptMessages: [{ role: "user", content: body.prompt ?? "" }],
+      completion,
+      finishReason,
+      logprobs: logprobs ?? undefined,
+      status: upstreamResponse.ok ? "success" : "error",
+      statusCode: upstreamResponse.status,
+      errorMessage: upstreamResponse.ok ? undefined : JSON.stringify(responseData),
+      latencyMs,
+      promptTokens,
+      completionTokens,
+      totalTokens,
+      costUsd: costUsd.toFixed(6),
+      temperature: body.temperature?.toString(),
+      maxTokens: body.max_tokens,
+      topP: body.top_p?.toString(),
+      isStreaming: false,
+      endUserId: (req.headers["x-prysm-user-id"] as string) ?? undefined,
+      sessionId: (req.headers["x-prysm-session-id"] as string) ?? undefined,
+      metadata: req.headers["x-prysm-metadata"]
+        ? JSON.parse(req.headers["x-prysm-metadata"] as string)
+        : undefined,
+    };
+
+    insertTrace(trace).catch((err) =>
+      console.error("[Proxy] Failed to insert trace:", err)
+    );
+
+    res.set("X-Prysm-Trace-Id", traceId);
+    res.set("X-Prysm-Latency-Ms", latencyMs.toString());
+    res.status(upstreamResponse.status).json(responseData);
+  } catch (error: any) {
+    const latencyMs = Date.now() - startTime;
+    const trace: InsertTrace = {
+      projectId: auth.projectId,
+      traceId,
+      model,
+      provider: auth.provider,
+      promptMessages: [{ role: "user", content: req.body.prompt ?? "" }],
+      status: "error",
+      statusCode: 502,
+      errorMessage: error.message ?? "Upstream connection failed",
+      latencyMs,
+      isStreaming: false,
+    };
+    insertTrace(trace).catch(console.error);
+
+    res.set("X-Prysm-Trace-Id", traceId);
+    res.status(502).json({
+      error: {
+        message: "Upstream provider error",
+        type: "proxy_error",
+        prysm_trace_id: traceId,
+      },
+    });
+  }
+}
+
+// ─── Embeddings ───
+
+async function handleEmbeddings(
+  req: Request,
+  res: Response,
+  auth: { projectId: number; provider: string; baseUrl: string; upstreamApiKey: string },
+) {
+  const traceId = uuidv4();
+  const startTime = Date.now();
+  const body = req.body;
+  const model = body.model ?? "text-embedding-3-small";
+
+  try {
+    const upstreamUrl = `${auth.baseUrl}/embeddings`;
+    const upstreamResponse = await fetch(upstreamUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${auth.upstreamApiKey}`,
+      },
+      body: JSON.stringify(body),
+    });
+
+    const latencyMs = Date.now() - startTime;
+    const responseData = await upstreamResponse.json() as any;
+
+    // Extract metrics — embeddings only have prompt tokens
+    const usage = responseData.usage ?? {};
+    const promptTokens = usage.prompt_tokens ?? usage.total_tokens ?? 0;
+    const totalTokens = usage.total_tokens ?? promptTokens;
+
+    // Calculate cost (DB-driven) — embeddings have no output tokens
+    const costUsd = await resolveCost(auth.provider, model, promptTokens, 0);
+
+    // Determine input text for trace
+    const inputText = typeof body.input === "string"
+      ? body.input
+      : Array.isArray(body.input)
+        ? body.input.join(" | ")
+        : JSON.stringify(body.input);
+
+    // Log trace
+    const trace: InsertTrace = {
+      projectId: auth.projectId,
+      traceId,
+      model,
+      provider: auth.provider,
+      promptMessages: [{ role: "user", content: inputText }],
+      completion: `[embedding: ${responseData.data?.length ?? 0} vectors, ${responseData.data?.[0]?.embedding?.length ?? 0} dimensions]`,
+      status: upstreamResponse.ok ? "success" : "error",
+      statusCode: upstreamResponse.status,
+      errorMessage: upstreamResponse.ok ? undefined : JSON.stringify(responseData),
+      latencyMs,
+      promptTokens,
+      completionTokens: 0,
+      totalTokens,
+      costUsd: costUsd.toFixed(6),
+      isStreaming: false,
+      endUserId: (req.headers["x-prysm-user-id"] as string) ?? undefined,
+      sessionId: (req.headers["x-prysm-session-id"] as string) ?? undefined,
+      metadata: req.headers["x-prysm-metadata"]
+        ? JSON.parse(req.headers["x-prysm-metadata"] as string)
+        : undefined,
+    };
+
+    insertTrace(trace).catch((err) =>
+      console.error("[Proxy] Failed to insert trace:", err)
+    );
+
+    res.set("X-Prysm-Trace-Id", traceId);
+    res.set("X-Prysm-Latency-Ms", latencyMs.toString());
+    res.status(upstreamResponse.status).json(responseData);
+  } catch (error: any) {
+    const latencyMs = Date.now() - startTime;
+    const trace: InsertTrace = {
+      projectId: auth.projectId,
+      traceId,
+      model,
+      provider: auth.provider,
+      promptMessages: [{ role: "user", content: typeof req.body.input === "string" ? req.body.input : JSON.stringify(req.body.input) }],
+      status: "error",
+      statusCode: 502,
+      errorMessage: error.message ?? "Upstream connection failed",
+      latencyMs,
+      isStreaming: false,
+    };
+    insertTrace(trace).catch(console.error);
+
+    res.set("X-Prysm-Trace-Id", traceId);
+    res.status(502).json({
+      error: {
+        message: "Upstream provider error",
+        type: "proxy_error",
+        prysm_trace_id: traceId,
+      },
+    });
+  }
+}
+
+// ─── Routes ───
+
+// Chat completions (streaming + non-streaming)
 proxyRouter.post("/chat/completions", async (req: Request, res: Response) => {
   const auth = await authenticateProxyRequest(req);
   if (!auth) {
@@ -405,17 +617,46 @@ proxyRouter.post("/chat/completions", async (req: Request, res: Response) => {
   }
 
   const isStreaming = req.body.stream === true;
-
   if (isStreaming) {
-    await handleStreaming(req, res, auth);
+    await handleChatStreaming(req, res, auth);
   } else {
-    await handleNonStreaming(req, res, auth);
+    await handleChatNonStreaming(req, res, auth);
   }
+});
+
+// Legacy completions (non-chat)
+proxyRouter.post("/completions", async (req: Request, res: Response) => {
+  const auth = await authenticateProxyRequest(req);
+  if (!auth) {
+    return res.status(401).json({
+      error: {
+        message: "Invalid API key. Use a valid sk-prysm-* key.",
+        type: "authentication_error",
+      },
+    });
+  }
+
+  await handleCompletions(req, res, auth);
+});
+
+// Embeddings
+proxyRouter.post("/embeddings", async (req: Request, res: Response) => {
+  const auth = await authenticateProxyRequest(req);
+  if (!auth) {
+    return res.status(401).json({
+      error: {
+        message: "Invalid API key. Use a valid sk-prysm-* key.",
+        type: "authentication_error",
+      },
+    });
+  }
+
+  await handleEmbeddings(req, res, auth);
 });
 
 // Health check
 proxyRouter.get("/health", (_req: Request, res: Response) => {
-  res.json({ status: "ok", service: "prysm-proxy", version: "0.1.0" });
+  res.json({ status: "ok", service: "prysm-proxy", version: "0.2.0", endpoints: ["/chat/completions", "/completions", "/embeddings"] });
 });
 
 export { proxyRouter };

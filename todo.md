@@ -238,3 +238,11 @@
 - [x] Add cost accumulation (cumulative spend) chart to dashboard
 - [x] Vitest tests pass (69/69) — pre-existing tests cover trace schema
 - [x] Display logprobs and tool_calls in trace detail panel (RequestExplorer)
+
+## Next Steps — Layer 1 Completion
+- [x] Seed model_pricing DB table with 33 models (OpenAI + Anthropic, Feb 2026 prices)
+- [x] Update cost calculation in proxy to use DB pricing (getPricingForModel with hardcoded fallback)
+- [x] Add /v1/completions proxy endpoint (text completions)
+- [x] Add /v1/embeddings proxy endpoint
+- [x] Update proxy to handle different response shapes for completions and embeddings
+- [x] End-to-end tool-calling test: tool_calls captured (get_weather), embeddings endpoint verified (1536-dim)
