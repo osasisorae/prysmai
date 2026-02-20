@@ -12,11 +12,14 @@ import {
   getLatencyPercentiles, getUsageForOrg,
   getAlertConfigs, createAlertConfig, updateAlertConfig, deleteAlertConfig,
   getOrgMembers, inviteOrgMember, removeOrgMember,
+  acceptOrgInvite, getOrgInviteByToken,
+  getCustomPricing, upsertCustomPricing, deleteCustomPricing,
 } from "./db";
 import { z } from "zod";
 import { notifyOwner } from "./_core/notification";
 import { sendWaitlistConfirmation } from "./email";
 import { sendInviteEmail } from "./inviteEmail";
+import { sendTeamInviteEmail } from "./teamInviteEmail";
 import { generateInviteToken, approveWaitlistEntry, rejectWaitlistEntry } from "./customAuth";
 import { TRPCError } from "@trpc/server";
 
@@ -376,6 +379,40 @@ export const appRouter = router({
     }),
   }),
 
+  // ─── Custom Pricing ───
+  pricing: router({
+    list: protectedProcedure
+      .input(z.object({ projectId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        const org = await requireOrg(ctx.user.id);
+        await requireProject(input.projectId, org.id);
+        return await getCustomPricing(input.projectId);
+      }),
+
+    upsert: protectedProcedure
+      .input(z.object({
+        projectId: z.number(),
+        provider: z.string().min(1).max(64),
+        model: z.string().min(1).max(128),
+        inputCostPer1k: z.string(),
+        outputCostPer1k: z.string(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const org = await requireOrg(ctx.user.id);
+        await requireProject(input.projectId, org.id);
+        return await upsertCustomPricing(input);
+      }),
+
+    delete: protectedProcedure
+      .input(z.object({ id: z.number(), projectId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const org = await requireOrg(ctx.user.id);
+        await requireProject(input.projectId, org.id);
+        await deleteCustomPricing(input.id);
+        return { success: true };
+      }),
+  }),
+
   // ─── Team (Org Members) ───
   team: router({
     list: protectedProcedure.query(async ({ ctx }) => {
@@ -390,12 +427,46 @@ export const appRouter = router({
       }))
       .mutation(async ({ ctx, input }) => {
         const org = await requireOrg(ctx.user.id);
-        return await inviteOrgMember({
+        const result = await inviteOrgMember({
           orgId: org.id,
           email: input.email,
           role: input.role,
           invitedBy: ctx.user.id,
         });
+
+        // Send invite email if successful
+        if (result.success && result.inviteToken) {
+          const siteUrl = process.env.SITE_URL;
+          let baseUrl: string;
+          if (siteUrl) {
+            baseUrl = siteUrl.replace(/\/$/, "");
+          } else {
+            baseUrl = "https://prysmai.manus.space";
+          }
+          sendTeamInviteEmail(input.email, result.inviteToken, baseUrl, org.name).catch((err: any) =>
+            console.error("[Email] Team invite send failed:", err)
+          );
+        }
+
+        return result;
+      }),
+
+    // Validate invite token (public, for accept-invite page)
+    validateInvite: publicProcedure
+      .input(z.object({ token: z.string() }))
+      .query(async ({ input }) => {
+        const invite = await getOrgInviteByToken(input.token);
+        if (!invite || invite.status !== "pending") {
+          return { valid: false, invite: null };
+        }
+        return { valid: true, invite };
+      }),
+
+    // Accept invite (requires authenticated user)
+    acceptInvite: protectedProcedure
+      .input(z.object({ token: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        return await acceptOrgInvite(input.token, ctx.user.id);
       }),
 
     remove: protectedProcedure

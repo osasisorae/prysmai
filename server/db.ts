@@ -892,6 +892,7 @@ export async function getOrgMembers(orgId: number) {
     userId: orgMembers.userId,
     email: orgMembers.email,
     role: orgMembers.role,
+    status: orgMembers.status,
     invitedAt: orgMembers.invitedAt,
     joinedAt: orgMembers.joinedAt,
     userName: users.name,
@@ -918,14 +919,72 @@ export async function inviteOrgMember(data: { orgId: number; email: string; role
     return { success: false, error: "User already invited" };
   }
 
+  // Generate invite token
+  const inviteToken = crypto.randomBytes(48).toString("hex");
+
   const result = await db.insert(orgMembers).values({
     orgId: data.orgId,
     email: data.email,
     role: (data.role as "admin" | "member") ?? "member",
     invitedBy: data.invitedBy,
+    inviteToken,
+    status: "pending",
   }).$returningId();
 
-  return { success: true, id: result[0].id };
+  return { success: true, id: result[0].id, inviteToken };
+}
+
+export async function acceptOrgInvite(token: string, userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  // Find the invite by token
+  const invites = await db.select().from(orgMembers)
+    .where(and(eq(orgMembers.inviteToken, token), eq(orgMembers.status, "pending")))
+    .limit(1);
+
+  if (invites.length === 0) {
+    return { success: false, error: "Invalid or expired invite" };
+  }
+
+  const invite = invites[0];
+
+  // Update the invite to active
+  await db.update(orgMembers)
+    .set({
+      userId,
+      status: "active",
+      inviteToken: null,
+      joinedAt: new Date(),
+    })
+    .where(eq(orgMembers.id, invite.id));
+
+  // Also update the user's orgId
+  await db.update(users)
+    .set({ orgId: invite.orgId })
+    .where(eq(users.id, userId));
+
+  return { success: true, orgId: invite.orgId };
+}
+
+export async function getOrgInviteByToken(token: string) {
+  const db = await getDb();
+  if (!db) return null;
+
+  const invites = await db.select({
+    id: orgMembers.id,
+    orgId: orgMembers.orgId,
+    email: orgMembers.email,
+    role: orgMembers.role,
+    status: orgMembers.status,
+    orgName: organizations.name,
+  })
+    .from(orgMembers)
+    .leftJoin(organizations, eq(orgMembers.orgId, organizations.id))
+    .where(eq(orgMembers.inviteToken, token))
+    .limit(1);
+
+  return invites.length > 0 ? invites[0] : null;
 }
 
 export async function removeOrgMember(memberId: number, orgId: number) {
@@ -933,4 +992,90 @@ export async function removeOrgMember(memberId: number, orgId: number) {
   if (!db) throw new Error("Database not available");
   await db.delete(orgMembers)
     .where(and(eq(orgMembers.id, memberId), eq(orgMembers.orgId, orgId)));
+}
+
+// ─── Custom Pricing ───
+
+export async function getCustomPricing(projectId: number) {
+  const db = await getDb();
+  if (!db) return [];
+
+  // Get all custom pricing entries (project-specific ones stored in model_pricing)
+  // We use a convention: provider field stores "custom:{projectId}" for project-specific pricing
+  const result = await db.select().from(modelPricing)
+    .where(eq(modelPricing.provider, `custom:${projectId}`))
+    .orderBy(modelPricing.model);
+
+  return result;
+}
+
+export async function upsertCustomPricing(data: {
+  projectId: number;
+  provider: string;
+  model: string;
+  inputCostPer1k: string;
+  outputCostPer1k: string;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  // Check if entry exists for this project + model
+  const customProvider = `custom:${data.projectId}`;
+  const existing = await db.select().from(modelPricing)
+    .where(and(
+      eq(modelPricing.provider, customProvider),
+      eq(modelPricing.model, data.model)
+    ))
+    .limit(1);
+
+  if (existing.length > 0) {
+    await db.update(modelPricing)
+      .set({
+        inputCostPer1k: data.inputCostPer1k,
+        outputCostPer1k: data.outputCostPer1k,
+      })
+      .where(eq(modelPricing.id, existing[0].id));
+    return { success: true, id: existing[0].id };
+  }
+
+  // Also upsert into the global pricing table for the actual provider
+  // so the proxy can pick it up
+  const globalExisting = await db.select().from(modelPricing)
+    .where(and(
+      eq(modelPricing.provider, data.provider),
+      eq(modelPricing.model, data.model)
+    ))
+    .limit(1);
+
+  if (globalExisting.length > 0) {
+    await db.update(modelPricing)
+      .set({
+        inputCostPer1k: data.inputCostPer1k,
+        outputCostPer1k: data.outputCostPer1k,
+      })
+      .where(eq(modelPricing.id, globalExisting[0].id));
+  } else {
+    await db.insert(modelPricing).values({
+      provider: data.provider,
+      model: data.model,
+      inputCostPer1k: data.inputCostPer1k,
+      outputCostPer1k: data.outputCostPer1k,
+    });
+  }
+
+  // Insert the custom:projectId entry for tracking
+  const result = await db.insert(modelPricing).values({
+    provider: customProvider,
+    model: data.model,
+    inputCostPer1k: data.inputCostPer1k,
+    outputCostPer1k: data.outputCostPer1k,
+  }).$returningId();
+
+  return { success: true, id: result[0].id };
+}
+
+export async function deleteCustomPricing(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(modelPricing).where(eq(modelPricing.id, id));
 }

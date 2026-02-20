@@ -12,6 +12,7 @@ import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { proxyRouter } from "../proxy";
 import { startMetricsScheduler } from "../metrics-scheduler";
+import { initWebSocketServer } from "../ws-live-feed";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -74,6 +75,8 @@ async function startServer() {
     console.log(`Server running on http://localhost:${port}/`);
     // Start the metrics aggregation scheduler
     startMetricsScheduler();
+    // Initialize WebSocket live feed
+    initWebSocketServer(server);
   });
 }
 

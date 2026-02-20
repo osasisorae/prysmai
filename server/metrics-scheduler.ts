@@ -7,6 +7,7 @@
  */
 
 import { runMetricsAggregation } from "./db";
+import { evaluateAlerts } from "./alert-engine";
 
 let aggregationInterval: ReturnType<typeof setInterval> | null = null;
 let dailyAggregationInterval: ReturnType<typeof setInterval> | null = null;
@@ -24,16 +25,22 @@ export function startMetricsScheduler() {
     }
   }, 10_000);
 
-  // Run every 5 minutes for hourly buckets
+  // Run every 5 minutes for hourly buckets + alert evaluation
   aggregationInterval = setInterval(async () => {
     try {
       await runMetricsAggregation();
     } catch (err) {
       console.error("[Metrics Scheduler] Aggregation failed:", err);
     }
+    // Evaluate alerts after metrics are fresh
+    try {
+      await evaluateAlerts();
+    } catch (err) {
+      console.error("[Alert Engine] Evaluation failed:", err);
+    }
   }, 5 * 60 * 1000); // 5 minutes
 
-  console.log("[Metrics Scheduler] Scheduled: every 5 minutes");
+  console.log("[Metrics Scheduler] Scheduled: every 5 minutes (metrics + alerts)");
 }
 
 export function stopMetricsScheduler() {

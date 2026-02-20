@@ -21,12 +21,12 @@ import {
   hashApiKey,
   lookupApiKey,
   getProjectById,
-  insertTrace,
   getPricingForModel,
   calculateCost,
   incrementUsage,
   checkUsageLimit,
 } from "./db";
+import { emitTrace } from "./trace-emitter";
 import type { InsertTrace } from "../drizzle/schema";
 import {
   translateRequestToAnthropic,
@@ -213,7 +213,7 @@ async function handleChatNonStreaming(req: Request, res: Response, auth: AuthRes
       ...meta,
     };
 
-    insertTrace(trace).catch((err) =>
+    emitTrace(trace).catch((err) =>
       console.error("[Proxy] Failed to insert trace:", err)
     );
 
@@ -234,7 +234,7 @@ async function handleChatNonStreaming(req: Request, res: Response, auth: AuthRes
       latencyMs,
       isStreaming: false,
     };
-    insertTrace(trace).catch(console.error);
+    emitTrace(trace).catch(console.error);
 
     res.set("X-Prysm-Trace-Id", traceId);
     res.status(502).json({
@@ -289,7 +289,7 @@ async function handleChatStreamingOpenAI(req: Request, res: Response, auth: Auth
         latencyMs,
         isStreaming: true,
       };
-      insertTrace(trace).catch(console.error);
+      emitTrace(trace).catch(console.error);
       res.set("X-Prysm-Trace-Id", traceId);
       res.status(upstreamResponse.status).send(errorText);
       return;
@@ -401,7 +401,7 @@ async function handleChatStreamingOpenAI(req: Request, res: Response, auth: Auth
       ...meta,
     };
 
-    insertTrace(trace).catch((err) =>
+    emitTrace(trace).catch((err) =>
       console.error("[Proxy] Failed to insert trace:", err)
     );
   } catch (error: any) {
@@ -418,7 +418,7 @@ async function handleChatStreamingOpenAI(req: Request, res: Response, auth: Auth
       latencyMs,
       isStreaming: true,
     };
-    insertTrace(trace).catch(console.error);
+    emitTrace(trace).catch(console.error);
 
     if (!res.headersSent) {
       res.set("X-Prysm-Trace-Id", traceId);
@@ -467,7 +467,7 @@ async function handleChatStreamingAnthropic(req: Request, res: Response, auth: A
         latencyMs,
         isStreaming: true,
       };
-      insertTrace(trace).catch(console.error);
+      emitTrace(trace).catch(console.error);
       res.set("X-Prysm-Trace-Id", traceId);
       res.status(upstreamResponse.status).send(errorText);
       return;
@@ -579,7 +579,7 @@ async function handleChatStreamingAnthropic(req: Request, res: Response, auth: A
       ...meta,
     };
 
-    insertTrace(trace).catch((err) =>
+    emitTrace(trace).catch((err) =>
       console.error("[Proxy] Failed to insert trace:", err)
     );
   } catch (error: any) {
@@ -596,7 +596,7 @@ async function handleChatStreamingAnthropic(req: Request, res: Response, auth: A
       latencyMs,
       isStreaming: true,
     };
-    insertTrace(trace).catch(console.error);
+    emitTrace(trace).catch(console.error);
 
     if (!res.headersSent) {
       res.set("X-Prysm-Trace-Id", traceId);
@@ -679,7 +679,7 @@ async function handleCompletions(req: Request, res: Response, auth: AuthResult) 
       ...meta,
     };
 
-    insertTrace(trace).catch((err) =>
+    emitTrace(trace).catch((err) =>
       console.error("[Proxy] Failed to insert trace:", err)
     );
 
@@ -700,7 +700,7 @@ async function handleCompletions(req: Request, res: Response, auth: AuthResult) 
       latencyMs,
       isStreaming: false,
     };
-    insertTrace(trace).catch(console.error);
+    emitTrace(trace).catch(console.error);
 
     res.set("X-Prysm-Trace-Id", traceId);
     res.status(502).json({
@@ -777,7 +777,7 @@ async function handleEmbeddings(req: Request, res: Response, auth: AuthResult) {
       ...meta,
     };
 
-    insertTrace(trace).catch((err) =>
+    emitTrace(trace).catch((err) =>
       console.error("[Proxy] Failed to insert trace:", err)
     );
 
@@ -798,7 +798,7 @@ async function handleEmbeddings(req: Request, res: Response, auth: AuthResult) {
       latencyMs,
       isStreaming: false,
     };
-    insertTrace(trace).catch(console.error);
+    emitTrace(trace).catch(console.error);
 
     res.set("X-Prysm-Trace-Id", traceId);
     res.status(502).json({

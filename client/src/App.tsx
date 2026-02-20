@@ -14,6 +14,7 @@ import Login from "./pages/Login";
 import SetupAccount from "./pages/SetupAccount";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
+import AcceptInvite from "./pages/AcceptInvite";
 
 function Router() {
   return (
@@ -26,6 +27,7 @@ function Router() {
       <Route path={"/setup-account"} component={SetupAccount} />
       <Route path={"/forgot-password"} component={ForgotPassword} />
       <Route path={"/reset-password"} component={ResetPassword} />
+      <Route path={"/accept-invite"} component={AcceptInvite} />
       <Route path={"/admin"} component={Admin} />
       <Route path={"/onboarding"} component={Onboarding} />
       <Route path={"/dashboard"} component={DashboardShell} />

@@ -271,11 +271,11 @@
 ### Phase 4: Alerting System
 - [x] Build alert_configs CRUD tRPC procedures (create, list, update, delete, toggle)
 - [x] Add Alerts tab in Settings page UI (create dialog, list, enable/disable, delete)
-- [ ] Build alert evaluation engine (check conditions against latest metrics)
-- [ ] Implement email alerts via Resend (reuse existing Resend config)
-- [ ] Implement Slack webhook alerts
-- [ ] Implement Discord webhook alerts
-- [ ] Implement custom webhook alerts
+- [x] Build alert evaluation engine (check conditions against latest metrics)
+- [x] Implement email alerts via Resend (reuse existing Resend config)
+- [x] Implement Slack webhook alerts
+- [x] Implement Discord webhook alerts
+- [x] Implement custom webhook alerts
 
 ### Phase 5: Usage Tracking
 - [x] Build usage counting (incrementUsage called after each proxy request)
@@ -287,12 +287,12 @@
 - [x] Build org member list tRPC procedure
 - [x] Build remove member tRPC procedure
 - [x] Add Team tab in Settings page UI (member list, invite dialog, role badges)
-- [ ] Build accept invite flow (email link → join org)
-- [ ] Send invite email via Resend
+- [x] Build accept invite flow (email link → /accept-invite page → join org)
+- [x] Send invite email via Resend (team invite email with HTML template)
 
 ### Phase 7: WebSocket + Custom Pricing
-- [ ] Add WebSocket endpoint /api/v1/projects/:id/live
-- [ ] Emit "trace" events on new trace insert
-- [ ] Replace 5s polling with WebSocket on dashboard live feed
-- [ ] Add custom cost-per-token config UI in Settings for open-source models
-- [ ] Store custom pricing in project config or model_pricing table
+- [x] Add WebSocket endpoint /ws/live-feed?projectId=N
+- [x] Emit "trace" events on new trace insert (emitTrace wraps insertTrace + broadcastTrace)
+- [x] Replace 5s polling with WebSocket on dashboard live feed (with polling fallback)
+- [x] Add custom cost-per-token config UI in Settings (Pricing tab with add/delete/quick-fill)
+- [x] Store custom pricing in model_pricing table (upsert + global override for proxy)

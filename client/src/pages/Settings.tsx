@@ -14,6 +14,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -34,6 +35,7 @@ import {
   UserPlus,
   Crown,
   User,
+  DollarSign,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -46,6 +48,7 @@ const PROVIDERS = [
 
 const TABS = [
   { id: "provider", label: "Provider", icon: Settings2 },
+  { id: "pricing", label: "Pricing", icon: DollarSign },
   { id: "alerts", label: "Alerts", icon: Bell },
   { id: "team", label: "Team", icon: Users },
   { id: "usage", label: "Usage", icon: BarChart3 },
@@ -198,6 +201,260 @@ function ProviderTab({ projectId }: { projectId: number }) {
             All requests will be forwarded to{" "}
             {PROVIDERS.find((p) => p.value === provider)?.label ?? "your provider"} and logged for observability.
           </p>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CUSTOM PRICING TAB
+// ═══════════════════════════════════════════════════════════════
+
+const COMMON_MODELS = [
+  { provider: "openai", model: "gpt-4o", label: "GPT-4o" },
+  { provider: "openai", model: "gpt-4o-mini", label: "GPT-4o Mini" },
+  { provider: "openai", model: "gpt-4-turbo", label: "GPT-4 Turbo" },
+  { provider: "anthropic", model: "claude-3-5-sonnet-20241022", label: "Claude 3.5 Sonnet" },
+  { provider: "anthropic", model: "claude-3-5-haiku-20241022", label: "Claude 3.5 Haiku" },
+  { provider: "vllm", model: "llama-3.1-70b", label: "Llama 3.1 70B" },
+  { provider: "vllm", model: "llama-3.1-8b", label: "Llama 3.1 8B" },
+  { provider: "vllm", model: "mistral-7b", label: "Mistral 7B" },
+  { provider: "ollama", model: "llama3", label: "Ollama Llama 3" },
+  { provider: "ollama", model: "mistral", label: "Ollama Mistral" },
+];
+
+function PricingTab({ projectId }: { projectId: number }) {
+  const pricing = trpc.pricing.list.useQuery({ projectId });
+  const utils = trpc.useUtils();
+  const upsertMut = trpc.pricing.upsert.useMutation({
+    onSuccess: () => {
+      utils.pricing.list.invalidate({ projectId });
+      toast.success("Pricing saved");
+      setDialogOpen(false);
+      resetForm();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+  const deleteMut = trpc.pricing.delete.useMutation({
+    onSuccess: () => {
+      utils.pricing.list.invalidate({ projectId });
+      toast.success("Pricing entry removed");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [provider, setProvider] = useState("");
+  const [model, setModel] = useState("");
+  const [inputCost, setInputCost] = useState("");
+  const [outputCost, setOutputCost] = useState("");
+
+  const resetForm = () => {
+    setProvider("");
+    setModel("");
+    setInputCost("");
+    setOutputCost("");
+  };
+
+  const handleQuickFill = (m: typeof COMMON_MODELS[0]) => {
+    setProvider(m.provider);
+    setModel(m.model);
+  };
+
+  const handleSave = () => {
+    if (!provider || !model || !inputCost || !outputCost) {
+      toast.error("All fields are required");
+      return;
+    }
+    const inputNum = parseFloat(inputCost);
+    const outputNum = parseFloat(outputCost);
+    if (isNaN(inputNum) || isNaN(outputNum) || inputNum < 0 || outputNum < 0) {
+      toast.error("Costs must be valid non-negative numbers");
+      return;
+    }
+    upsertMut.mutate({
+      projectId,
+      provider,
+      model,
+      inputCostPer1k: inputCost,
+      outputCostPer1k: outputCost,
+    });
+  };
+
+  return (
+    <div className="space-y-6">
+      <Card className="bg-card border-border">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-base">Custom Model Pricing</CardTitle>
+              <p className="text-sm text-muted-foreground mt-1">
+                Set custom cost-per-token rates for open-source or self-hosted models.
+                These override default pricing for cost tracking.
+              </p>
+            </div>
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+              <DialogTrigger asChild>
+                <Button size="sm" onClick={() => { resetForm(); setDialogOpen(true); }}>
+                  <Plus className="w-4 h-4 mr-1" /> Add Pricing
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Add Custom Pricing</DialogTitle>
+                  <DialogDescription>
+                    Set input and output cost per 1,000 tokens for a model.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 pt-2">
+                  {/* Quick fill buttons */}
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground mb-2 block">Quick Fill</label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {COMMON_MODELS.map((m) => (
+                        <button
+                          key={`${m.provider}-${m.model}`}
+                          onClick={() => handleQuickFill(m)}
+                          className="px-2 py-1 text-xs rounded border border-border hover:border-primary/50 hover:bg-primary/5 transition-colors text-muted-foreground hover:text-foreground"
+                        >
+                          {m.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-sm font-medium mb-1.5 block">Provider</label>
+                      <Input
+                        value={provider}
+                        onChange={(e) => setProvider(e.target.value)}
+                        placeholder="e.g. vllm, ollama, openai"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium mb-1.5 block">Model</label>
+                      <Input
+                        value={model}
+                        onChange={(e) => setModel(e.target.value)}
+                        placeholder="e.g. llama-3.1-70b"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-sm font-medium mb-1.5 block">Input Cost / 1K tokens ($)</label>
+                      <Input
+                        type="number"
+                        step="0.000001"
+                        min="0"
+                        value={inputCost}
+                        onChange={(e) => setInputCost(e.target.value)}
+                        placeholder="0.000150"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium mb-1.5 block">Output Cost / 1K tokens ($)</label>
+                      <Input
+                        type="number"
+                        step="0.000001"
+                        min="0"
+                        value={outputCost}
+                        onChange={(e) => setOutputCost(e.target.value)}
+                        placeholder="0.000600"
+                      />
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-muted-foreground">
+                    For self-hosted models with no API cost, set both to 0. For open-source models
+                    on inference providers, enter the provider's per-token rate.
+                  </p>
+
+                  <div className="flex justify-end gap-2 pt-2">
+                    <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
+                    <Button onClick={handleSave} disabled={upsertMut.isPending}>
+                      {upsertMut.isPending && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
+                      Save Pricing
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {pricing.isLoading ? (
+            <div className="space-y-2">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="h-10 bg-muted/30 rounded animate-pulse" />
+              ))}
+            </div>
+          ) : pricing.data && pricing.data.length > 0 ? (
+            <div className="border border-border rounded-lg overflow-hidden">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border bg-muted/30">
+                    <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Model</th>
+                    <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">Input / 1K</th>
+                    <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">Output / 1K</th>
+                    <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">Updated</th>
+                    <th className="w-10" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {pricing.data.map((entry: any) => (
+                    <tr key={entry.id} className="border-b border-border/50 last:border-0 hover:bg-accent/30">
+                      <td className="px-4 py-2.5">
+                        <span className="font-mono text-xs">{entry.model}</span>
+                      </td>
+                      <td className="px-4 py-2.5 text-right font-mono text-xs">
+                        ${parseFloat(entry.inputCostPer1k).toFixed(6)}
+                      </td>
+                      <td className="px-4 py-2.5 text-right font-mono text-xs">
+                        ${parseFloat(entry.outputCostPer1k).toFixed(6)}
+                      </td>
+                      <td className="px-4 py-2.5 text-right text-xs text-muted-foreground">
+                        {new Date(entry.updatedAt).toLocaleDateString()}
+                      </td>
+                      <td className="px-2 py-2.5">
+                        <button
+                          onClick={() => deleteMut.mutate({ id: entry.id, projectId })}
+                          className="p-1 text-muted-foreground hover:text-red-400 transition-colors"
+                          title="Remove"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="py-12 text-center text-sm text-muted-foreground">
+              <DollarSign className="w-8 h-8 mx-auto mb-3 opacity-30" />
+              <p>No custom pricing configured</p>
+              <p className="text-xs mt-1">
+                Add custom rates for self-hosted or open-source models to track costs accurately.
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Info card */}
+      <Card className="bg-card/50 border-border">
+        <CardContent className="pt-5">
+          <h3 className="text-sm font-medium mb-2">How pricing works</h3>
+          <ul className="text-xs text-muted-foreground space-y-1.5">
+            <li>• Custom pricing overrides default rates for cost calculation in the proxy.</li>
+            <li>• Default pricing is included for popular OpenAI and Anthropic models.</li>
+            <li>• For self-hosted models (vLLM, Ollama), set rates based on your infrastructure cost or set to $0.</li>
+            <li>• Costs are calculated as: (input_tokens / 1000) × input_rate + (output_tokens / 1000) × output_rate</li>
+          </ul>
         </CardContent>
       </Card>
     </div>
@@ -739,6 +996,7 @@ export default function Settings({ projectId }: { projectId: number }) {
 
       {/* Tab Content */}
       {activeTab === "provider" && <ProviderTab projectId={projectId} />}
+      {activeTab === "pricing" && <PricingTab projectId={projectId} />}
       {activeTab === "alerts" && <AlertsTab projectId={projectId} />}
       {activeTab === "team" && <TeamTab />}
       {activeTab === "usage" && <UsageTab />}

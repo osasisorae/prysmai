@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
+import { useTraceFeed } from "@/hooks/useTraceFeed";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -201,8 +202,11 @@ export default function DashboardOverview({ projectId }: { projectId: number }) 
 
   const recentTraces = trpc.trace.list.useQuery(
     { projectId, limit: 15 },
-    { refetchInterval: 5000 }
+    { refetchInterval: 15000 } // Slower polling as fallback; WebSocket handles real-time
   );
+
+  // WebSocket live feed for real-time trace updates
+  const liveFeed = useTraceFeed({ projectId, enabled: true, maxTraces: 15 });
 
   const summary = metrics.data?.summary;
   const totalRequests = Number(summary?.totalRequests ?? 0);
@@ -499,39 +503,74 @@ export default function DashboardOverview({ projectId }: { projectId: number }) 
           <div className="flex items-center justify-between">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
               <Activity className="w-4 h-4" /> Live Request Feed
+              {liveFeed.connected && (
+                <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" title="WebSocket connected" />
+              )}
             </CardTitle>
-            <span className="text-xs text-muted-foreground">Auto-refreshing every 5s</span>
+            <span className="text-xs text-muted-foreground">
+              {liveFeed.connected ? "Real-time" : "Polling every 15s"}
+            </span>
           </div>
         </CardHeader>
         <CardContent className="p-0">
-          {recentTraces.isLoading ? (
-            <div className="p-4 space-y-2">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <Skeleton key={i} className="h-8 w-full" />
-              ))}
-            </div>
-          ) : recentTraces.data?.traces && recentTraces.data.traces.length > 0 ? (
-            <div>
-              {/* Header */}
-              <div className="flex items-center gap-4 py-2 px-3 text-xs text-muted-foreground border-b border-border font-medium">
-                <span className="w-2 shrink-0" />
-                <span className="w-16 shrink-0">Time</span>
-                <span className="flex-1">Model</span>
-                <span className="w-16 text-right">Latency</span>
-                <span className="w-16 text-right">Tokens</span>
-                <span className="w-14 text-right">Status</span>
+          {(() => {
+            // Merge WebSocket live traces with polled traces, dedup by traceId
+            const polledTraces = recentTraces.data?.traces || [];
+            const wsTraces = liveFeed.traces;
+            const seenIds = new Set<string>();
+            const merged: any[] = [];
+            // WS traces first (newest)
+            for (const t of wsTraces) {
+              if (!seenIds.has(t.traceId)) {
+                seenIds.add(t.traceId);
+                merged.push(t);
+              }
+            }
+            // Then polled traces
+            for (const t of polledTraces) {
+              if (!seenIds.has(t.traceId)) {
+                seenIds.add(t.traceId);
+                merged.push(t);
+              }
+            }
+            const displayTraces = merged.slice(0, 15);
+
+            if (recentTraces.isLoading && wsTraces.length === 0) {
+              return (
+                <div className="p-4 space-y-2">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <Skeleton key={i} className="h-8 w-full" />
+                  ))}
+                </div>
+              );
+            }
+
+            if (displayTraces.length > 0) {
+              return (
+                <div>
+                  <div className="flex items-center gap-4 py-2 px-3 text-xs text-muted-foreground border-b border-border font-medium">
+                    <span className="w-2 shrink-0" />
+                    <span className="w-16 shrink-0">Time</span>
+                    <span className="flex-1">Model</span>
+                    <span className="w-16 text-right">Latency</span>
+                    <span className="w-16 text-right">Tokens</span>
+                    <span className="w-14 text-right">Status</span>
+                  </div>
+                  {displayTraces.map((trace: any, i: number) => (
+                    <LiveTraceRow key={trace.traceId || trace.id || i} trace={trace} />
+                  ))}
+                </div>
+              );
+            }
+
+            return (
+              <div className="py-12 text-center text-sm text-muted-foreground">
+                <Activity className="w-8 h-8 mx-auto mb-3 opacity-30" />
+                <p>No requests yet</p>
+                <p className="text-xs mt-1">Send your first request through the proxy to see it here</p>
               </div>
-              {recentTraces.data.traces.map((trace: any) => (
-                <LiveTraceRow key={trace.id} trace={trace} />
-              ))}
-            </div>
-          ) : (
-            <div className="py-12 text-center text-sm text-muted-foreground">
-              <Activity className="w-8 h-8 mx-auto mb-3 opacity-30" />
-              <p>No requests yet</p>
-              <p className="text-xs mt-1">Send your first request through the proxy to see it here</p>
-            </div>
-          )}
+            );
+          })()}
         </CardContent>
       </Card>
     </div>
