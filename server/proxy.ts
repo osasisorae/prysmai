@@ -3,9 +3,10 @@
  *
  * OpenAI-compatible reverse proxy that:
  * 1. Authenticates via sk-prysm-* API keys
- * 2. Forwards requests to the upstream LLM provider
- * 3. Captures full request/response + metrics
- * 4. Logs everything to the traces table
+ * 2. Detects provider and translates format if needed (Anthropic)
+ * 3. Forwards requests to the upstream LLM provider
+ * 4. Captures full request/response + metrics
+ * 5. Logs everything to the traces table
  *
  * Endpoints:
  *   POST /api/v1/chat/completions
@@ -23,19 +24,35 @@ import {
   insertTrace,
   getPricingForModel,
   calculateCost,
+  incrementUsage,
+  checkUsageLimit,
 } from "./db";
 import type { InsertTrace } from "../drizzle/schema";
+import {
+  translateRequestToAnthropic,
+  translateResponseToOpenAI,
+  translateStreamEvent,
+  createStreamState,
+  getAnthropicHeaders,
+  getAnthropicBaseUrl,
+} from "./anthropic-translator";
 
 const proxyRouter = Router();
 
 // ─── Auth middleware: extract and validate sk-prysm-* key ───
 
-async function authenticateProxyRequest(req: Request): Promise<{
+interface AuthResult {
   projectId: number;
+  orgId: number | null;
   provider: string;
   baseUrl: string;
   upstreamApiKey: string;
-} | null> {
+  rateLimited?: boolean;
+  currentCount?: number;
+  limit?: number;
+}
+
+async function authenticateProxyRequest(req: Request): Promise<AuthResult | null> {
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith("Bearer sk-prysm-")) {
     return null;
@@ -58,8 +75,18 @@ async function authenticateProxyRequest(req: Request): Promise<{
 
   if (!config?.apiKeyEncrypted) return null;
 
+  // Check usage limits (free tier enforcement)
+  const org = project.orgId;
+  if (org) {
+    const usageCheck = await checkUsageLimit(org, "free"); // TODO: look up actual plan from org
+    if (!usageCheck.allowed) {
+      return { rateLimited: true, currentCount: usageCheck.currentCount, limit: usageCheck.limit } as any;
+    }
+  }
+
   return {
     projectId: project.id,
+    orgId: project.orgId,
     provider: config.provider ?? "openai",
     baseUrl: config.baseUrl ?? "https://api.openai.com/v1",
     upstreamApiKey: config.apiKeyEncrypted, // stored as plaintext for MVP
@@ -79,31 +106,71 @@ async function resolveCost(
   return calculateCost(promptTokens, completionTokens, pricing.input, pricing.output);
 }
 
-// ─── Chat Completions: Non-streaming ───
+// ─── Helper: detect if provider is Anthropic ───
 
-async function handleChatNonStreaming(
-  req: Request,
-  res: Response,
-  auth: { projectId: number; provider: string; baseUrl: string; upstreamApiKey: string },
-) {
+function isAnthropic(provider: string): boolean {
+  return provider.toLowerCase() === "anthropic";
+}
+
+// ─── Helper: extract common trace metadata from request ───
+
+function extractTraceMetadata(req: Request) {
+  return {
+    endUserId: (req.headers["x-prysm-user-id"] as string) ?? undefined,
+    sessionId: (req.headers["x-prysm-session-id"] as string) ?? undefined,
+    metadata: req.headers["x-prysm-metadata"]
+      ? JSON.parse(req.headers["x-prysm-metadata"] as string)
+      : undefined,
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CHAT COMPLETIONS
+// ═══════════════════════════════════════════════════════════════
+
+// ─── Chat Completions: Non-streaming (OpenAI native) ───
+
+async function handleChatNonStreaming(req: Request, res: Response, auth: AuthResult) {
   const traceId = uuidv4();
   const startTime = Date.now();
   const body = req.body;
   const model = body.model ?? "unknown";
 
   try {
-    const upstreamUrl = `${auth.baseUrl}/chat/completions`;
-    const upstreamResponse = await fetch(upstreamUrl, {
-      method: "POST",
-      headers: {
+    let upstreamUrl: string;
+    let upstreamHeaders: Record<string, string>;
+    let upstreamBody: string;
+
+    if (isAnthropic(auth.provider)) {
+      // Translate OpenAI → Anthropic
+      const anthropicReq = translateRequestToAnthropic({ ...body, stream: false });
+      const baseUrl = getAnthropicBaseUrl(auth.baseUrl !== "https://api.openai.com/v1" ? auth.baseUrl : undefined);
+      upstreamUrl = `${baseUrl}/messages`;
+      upstreamHeaders = getAnthropicHeaders(auth.upstreamApiKey);
+      upstreamBody = JSON.stringify(anthropicReq);
+    } else {
+      // OpenAI / OpenAI-compatible (vLLM, Ollama, TGI)
+      upstreamUrl = `${auth.baseUrl}/chat/completions`;
+      upstreamHeaders = {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${auth.upstreamApiKey}`,
-      },
-      body: JSON.stringify({ ...body, stream: false }),
+      };
+      upstreamBody = JSON.stringify({ ...body, stream: false });
+    }
+
+    const upstreamResponse = await fetch(upstreamUrl, {
+      method: "POST",
+      headers: upstreamHeaders,
+      body: upstreamBody,
     });
 
     const latencyMs = Date.now() - startTime;
-    const responseData = await upstreamResponse.json() as any;
+    const rawResponse = await upstreamResponse.json() as any;
+
+    // Translate response if Anthropic
+    const responseData = isAnthropic(auth.provider)
+      ? translateResponseToOpenAI(rawResponse, model)
+      : rawResponse;
 
     // Extract metrics
     const usage = responseData.usage ?? {};
@@ -118,6 +185,8 @@ async function handleChatNonStreaming(
     // Calculate cost (DB-driven)
     const costUsd = await resolveCost(auth.provider, model, promptTokens, completionTokens);
 
+    const meta = extractTraceMetadata(req);
+
     // Log trace
     const trace: InsertTrace = {
       projectId: auth.projectId,
@@ -131,7 +200,7 @@ async function handleChatNonStreaming(
       logprobs: logprobs ?? undefined,
       status: upstreamResponse.ok ? "success" : "error",
       statusCode: upstreamResponse.status,
-      errorMessage: upstreamResponse.ok ? undefined : JSON.stringify(responseData),
+      errorMessage: upstreamResponse.ok ? undefined : JSON.stringify(rawResponse),
       latencyMs,
       promptTokens,
       completionTokens,
@@ -141,26 +210,18 @@ async function handleChatNonStreaming(
       maxTokens: body.max_tokens,
       topP: body.top_p?.toString(),
       isStreaming: false,
-      endUserId: (req.headers["x-prysm-user-id"] as string) ?? undefined,
-      sessionId: (req.headers["x-prysm-session-id"] as string) ?? undefined,
-      metadata: req.headers["x-prysm-metadata"]
-        ? JSON.parse(req.headers["x-prysm-metadata"] as string)
-        : undefined,
+      ...meta,
     };
 
-    // Fire-and-forget trace insert
     insertTrace(trace).catch((err) =>
       console.error("[Proxy] Failed to insert trace:", err)
     );
 
-    // Add Prysm headers to response
     res.set("X-Prysm-Trace-Id", traceId);
     res.set("X-Prysm-Latency-Ms", latencyMs.toString());
-    res.status(upstreamResponse.status).json(responseData);
+    res.status(upstreamResponse.ok ? 200 : upstreamResponse.status).json(responseData);
   } catch (error: any) {
     const latencyMs = Date.now() - startTime;
-
-    // Log error trace
     const trace: InsertTrace = {
       projectId: auth.projectId,
       traceId,
@@ -186,13 +247,9 @@ async function handleChatNonStreaming(
   }
 }
 
-// ─── Chat Completions: Streaming ───
+// ─── Chat Completions: Streaming (OpenAI native) ───
 
-async function handleChatStreaming(
-  req: Request,
-  res: Response,
-  auth: { projectId: number; provider: string; baseUrl: string; upstreamApiKey: string },
-) {
+async function handleChatStreamingOpenAI(req: Request, res: Response, auth: AuthResult) {
   const traceId = uuidv4();
   const startTime = Date.now();
   const body = req.body;
@@ -233,7 +290,6 @@ async function handleChatStreaming(
         isStreaming: true,
       };
       insertTrace(trace).catch(console.error);
-
       res.set("X-Prysm-Trace-Id", traceId);
       res.status(upstreamResponse.status).send(errorText);
       return;
@@ -274,18 +330,13 @@ async function handleChatStreaming(
         try {
           const parsed = JSON.parse(data);
 
-          // Time to first token
           if (!ttftMs && parsed.choices?.[0]?.delta?.content) {
             ttftMs = Date.now() - startTime;
           }
 
-          // Collect completion text
           const deltaContent = parsed.choices?.[0]?.delta?.content;
-          if (deltaContent) {
-            completionChunks.push(deltaContent);
-          }
+          if (deltaContent) completionChunks.push(deltaContent);
 
-          // Collect tool calls (streamed incrementally)
           const deltaToolCalls = parsed.choices?.[0]?.delta?.tool_calls;
           if (deltaToolCalls) {
             for (const tc of deltaToolCalls) {
@@ -299,18 +350,11 @@ async function handleChatStreaming(
             }
           }
 
-          // Collect logprobs
           const chunkLogprobs = parsed.choices?.[0]?.logprobs;
-          if (chunkLogprobs?.content) {
-            logprobsAccum.push(...chunkLogprobs.content);
-          }
+          if (chunkLogprobs?.content) logprobsAccum.push(...chunkLogprobs.content);
 
-          // Finish reason
-          if (parsed.choices?.[0]?.finish_reason) {
-            finishReason = parsed.choices[0].finish_reason;
-          }
+          if (parsed.choices?.[0]?.finish_reason) finishReason = parsed.choices[0].finish_reason;
 
-          // Usage (sent in final chunk when stream_options.include_usage is true)
           if (parsed.usage) {
             promptTokens = parsed.usage.prompt_tokens ?? 0;
             completionTokens = parsed.usage.completion_tokens ?? 0;
@@ -326,19 +370,12 @@ async function handleChatStreaming(
 
     const latencyMs = Date.now() - startTime;
     const completion = completionChunks.join("");
-
-    // Calculate cost (DB-driven)
     const costUsd = await resolveCost(auth.provider, model, promptTokens, completionTokens);
 
-    // Assemble tool calls and logprobs
-    const toolCallsFinal = Object.keys(toolCallsAccum).length > 0
-      ? Object.values(toolCallsAccum)
-      : undefined;
-    const logprobsFinal = logprobsAccum.length > 0
-      ? { content: logprobsAccum }
-      : undefined;
+    const toolCallsFinal = Object.keys(toolCallsAccum).length > 0 ? Object.values(toolCallsAccum) : undefined;
+    const logprobsFinal = logprobsAccum.length > 0 ? { content: logprobsAccum } : undefined;
+    const meta = extractTraceMetadata(req);
 
-    // Log trace
     const trace: InsertTrace = {
       projectId: auth.projectId,
       traceId,
@@ -361,11 +398,7 @@ async function handleChatStreaming(
       maxTokens: body.max_tokens,
       topP: body.top_p?.toString(),
       isStreaming: true,
-      endUserId: (req.headers["x-prysm-user-id"] as string) ?? undefined,
-      sessionId: (req.headers["x-prysm-session-id"] as string) ?? undefined,
-      metadata: req.headers["x-prysm-metadata"]
-        ? JSON.parse(req.headers["x-prysm-metadata"] as string)
-        : undefined,
+      ...meta,
     };
 
     insertTrace(trace).catch((err) =>
@@ -390,11 +423,7 @@ async function handleChatStreaming(
     if (!res.headersSent) {
       res.set("X-Prysm-Trace-Id", traceId);
       res.status(502).json({
-        error: {
-          message: "Upstream provider error",
-          type: "proxy_error",
-          prysm_trace_id: traceId,
-        },
+        error: { message: "Upstream provider error", type: "proxy_error", prysm_trace_id: traceId },
       });
     } else {
       res.end();
@@ -402,17 +431,204 @@ async function handleChatStreaming(
   }
 }
 
-// ─── Legacy Completions (non-chat) ───
+// ─── Chat Completions: Streaming (Anthropic translated) ───
 
-async function handleCompletions(
-  req: Request,
-  res: Response,
-  auth: { projectId: number; provider: string; baseUrl: string; upstreamApiKey: string },
-) {
+async function handleChatStreamingAnthropic(req: Request, res: Response, auth: AuthResult) {
   const traceId = uuidv4();
   const startTime = Date.now();
   const body = req.body;
   const model = body.model ?? "unknown";
+  let ttftMs: number | undefined;
+  let completionChunks: string[] = [];
+
+  try {
+    const anthropicReq = translateRequestToAnthropic({ ...body, stream: true });
+    const baseUrl = getAnthropicBaseUrl(auth.baseUrl !== "https://api.openai.com/v1" ? auth.baseUrl : undefined);
+    const upstreamUrl = `${baseUrl}/messages`;
+
+    const upstreamResponse = await fetch(upstreamUrl, {
+      method: "POST",
+      headers: getAnthropicHeaders(auth.upstreamApiKey),
+      body: JSON.stringify({ ...anthropicReq, stream: true }),
+    });
+
+    if (!upstreamResponse.ok || !upstreamResponse.body) {
+      const errorText = await upstreamResponse.text();
+      const latencyMs = Date.now() - startTime;
+      const trace: InsertTrace = {
+        projectId: auth.projectId,
+        traceId,
+        model,
+        provider: auth.provider,
+        promptMessages: body.messages,
+        status: "error",
+        statusCode: upstreamResponse.status,
+        errorMessage: errorText,
+        latencyMs,
+        isStreaming: true,
+      };
+      insertTrace(trace).catch(console.error);
+      res.set("X-Prysm-Trace-Id", traceId);
+      res.status(upstreamResponse.status).send(errorText);
+      return;
+    }
+
+    // Set SSE headers
+    res.set({
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      "Connection": "keep-alive",
+      "X-Prysm-Trace-Id": traceId,
+    });
+    res.flushHeaders();
+
+    const reader = upstreamResponse.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    const streamState = createStreamState(model);
+    let toolCallsAccum: Array<{ id: string; type: string; function: { name: string; arguments: string } }> = [];
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      const chunk = decoder.decode(value, { stream: true });
+      buffer += chunk;
+
+      // Parse Anthropic SSE events
+      const lines = buffer.split("\n");
+      buffer = lines.pop() ?? "";
+
+      let currentEventType = "";
+      for (const line of lines) {
+        if (line.startsWith("event: ")) {
+          currentEventType = line.slice(7).trim();
+          continue;
+        }
+        if (!line.startsWith("data: ")) continue;
+        const data = line.slice(6).trim();
+        if (!data) continue;
+
+        try {
+          const parsed = JSON.parse(data);
+          parsed.type = parsed.type || currentEventType;
+
+          // Track TTFT
+          if (!ttftMs && parsed.type === "content_block_delta" && parsed.delta?.type === "text_delta") {
+            ttftMs = Date.now() - startTime;
+          }
+
+          // Collect completion text
+          if (parsed.type === "content_block_delta" && parsed.delta?.type === "text_delta") {
+            completionChunks.push(parsed.delta.text || "");
+          }
+
+          // Collect tool calls
+          if (parsed.type === "content_block_start" && parsed.content_block?.type === "tool_use") {
+            toolCallsAccum.push({
+              id: parsed.content_block.id,
+              type: "function",
+              function: { name: parsed.content_block.name, arguments: "" },
+            });
+          }
+          if (parsed.type === "content_block_delta" && parsed.delta?.type === "input_json_delta") {
+            if (toolCallsAccum.length > 0) {
+              toolCallsAccum[toolCallsAccum.length - 1].function.arguments += parsed.delta.partial_json || "";
+            }
+          }
+
+          // Translate to OpenAI SSE and forward
+          const openaiChunk = translateStreamEvent(parsed, streamState);
+          if (openaiChunk) {
+            res.write(openaiChunk);
+          }
+        } catch {
+          // Skip unparseable
+        }
+      }
+    }
+
+    res.end();
+
+    const latencyMs = Date.now() - startTime;
+    const completion = completionChunks.join("");
+    const costUsd = await resolveCost(auth.provider, model, streamState.promptTokens, streamState.completionTokens);
+    const meta = extractTraceMetadata(req);
+
+    const trace: InsertTrace = {
+      projectId: auth.projectId,
+      traceId,
+      model,
+      provider: auth.provider,
+      promptMessages: body.messages,
+      completion,
+      finishReason: streamState.finishReason || "stop",
+      toolCalls: toolCallsAccum.length > 0 ? toolCallsAccum : undefined,
+      status: "success",
+      statusCode: 200,
+      latencyMs,
+      ttftMs,
+      promptTokens: streamState.promptTokens,
+      completionTokens: streamState.completionTokens,
+      totalTokens: streamState.promptTokens + streamState.completionTokens,
+      costUsd: costUsd.toFixed(6),
+      temperature: body.temperature?.toString(),
+      maxTokens: body.max_tokens,
+      topP: body.top_p?.toString(),
+      isStreaming: true,
+      ...meta,
+    };
+
+    insertTrace(trace).catch((err) =>
+      console.error("[Proxy] Failed to insert trace:", err)
+    );
+  } catch (error: any) {
+    const latencyMs = Date.now() - startTime;
+    const trace: InsertTrace = {
+      projectId: auth.projectId,
+      traceId,
+      model,
+      provider: auth.provider,
+      promptMessages: body.messages,
+      status: "error",
+      statusCode: 502,
+      errorMessage: error.message ?? "Upstream connection failed",
+      latencyMs,
+      isStreaming: true,
+    };
+    insertTrace(trace).catch(console.error);
+
+    if (!res.headersSent) {
+      res.set("X-Prysm-Trace-Id", traceId);
+      res.status(502).json({
+        error: { message: "Upstream provider error", type: "proxy_error", prysm_trace_id: traceId },
+      });
+    } else {
+      res.end();
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// LEGACY COMPLETIONS
+// ═══════════════════════════════════════════════════════════════
+
+async function handleCompletions(req: Request, res: Response, auth: AuthResult) {
+  const traceId = uuidv4();
+  const startTime = Date.now();
+  const body = req.body;
+  const model = body.model ?? "unknown";
+
+  // Anthropic doesn't support legacy completions — return error
+  if (isAnthropic(auth.provider)) {
+    res.status(400).json({
+      error: {
+        message: "Anthropic does not support the legacy /completions endpoint. Use /chat/completions instead.",
+        type: "invalid_request_error",
+      },
+    });
+    return;
+  }
 
   try {
     const upstreamUrl = `${auth.baseUrl}/completions`;
@@ -428,7 +644,6 @@ async function handleCompletions(
     const latencyMs = Date.now() - startTime;
     const responseData = await upstreamResponse.json() as any;
 
-    // Extract metrics
     const usage = responseData.usage ?? {};
     const promptTokens = usage.prompt_tokens ?? 0;
     const completionTokens = usage.completion_tokens ?? 0;
@@ -437,10 +652,9 @@ async function handleCompletions(
     const finishReason = responseData.choices?.[0]?.finish_reason ?? "";
     const logprobs = responseData.choices?.[0]?.logprobs ?? undefined;
 
-    // Calculate cost (DB-driven)
     const costUsd = await resolveCost(auth.provider, model, promptTokens, completionTokens);
+    const meta = extractTraceMetadata(req);
 
-    // Log trace — store prompt as messages-like format for consistency
     const trace: InsertTrace = {
       projectId: auth.projectId,
       traceId,
@@ -462,11 +676,7 @@ async function handleCompletions(
       maxTokens: body.max_tokens,
       topP: body.top_p?.toString(),
       isStreaming: false,
-      endUserId: (req.headers["x-prysm-user-id"] as string) ?? undefined,
-      sessionId: (req.headers["x-prysm-session-id"] as string) ?? undefined,
-      metadata: req.headers["x-prysm-metadata"]
-        ? JSON.parse(req.headers["x-prysm-metadata"] as string)
-        : undefined,
+      ...meta,
     };
 
     insertTrace(trace).catch((err) =>
@@ -494,26 +704,31 @@ async function handleCompletions(
 
     res.set("X-Prysm-Trace-Id", traceId);
     res.status(502).json({
-      error: {
-        message: "Upstream provider error",
-        type: "proxy_error",
-        prysm_trace_id: traceId,
-      },
+      error: { message: "Upstream provider error", type: "proxy_error", prysm_trace_id: traceId },
     });
   }
 }
 
-// ─── Embeddings ───
+// ═══════════════════════════════════════════════════════════════
+// EMBEDDINGS
+// ═══════════════════════════════════════════════════════════════
 
-async function handleEmbeddings(
-  req: Request,
-  res: Response,
-  auth: { projectId: number; provider: string; baseUrl: string; upstreamApiKey: string },
-) {
+async function handleEmbeddings(req: Request, res: Response, auth: AuthResult) {
   const traceId = uuidv4();
   const startTime = Date.now();
   const body = req.body;
   const model = body.model ?? "text-embedding-3-small";
+
+  // Anthropic doesn't support embeddings — return error
+  if (isAnthropic(auth.provider)) {
+    res.status(400).json({
+      error: {
+        message: "Anthropic does not support the /embeddings endpoint. Use an OpenAI-compatible embedding model.",
+        type: "invalid_request_error",
+      },
+    });
+    return;
+  }
 
   try {
     const upstreamUrl = `${auth.baseUrl}/embeddings`;
@@ -529,22 +744,20 @@ async function handleEmbeddings(
     const latencyMs = Date.now() - startTime;
     const responseData = await upstreamResponse.json() as any;
 
-    // Extract metrics — embeddings only have prompt tokens
     const usage = responseData.usage ?? {};
     const promptTokens = usage.prompt_tokens ?? usage.total_tokens ?? 0;
     const totalTokens = usage.total_tokens ?? promptTokens;
 
-    // Calculate cost (DB-driven) — embeddings have no output tokens
     const costUsd = await resolveCost(auth.provider, model, promptTokens, 0);
 
-    // Determine input text for trace
     const inputText = typeof body.input === "string"
       ? body.input
       : Array.isArray(body.input)
         ? body.input.join(" | ")
         : JSON.stringify(body.input);
 
-    // Log trace
+    const meta = extractTraceMetadata(req);
+
     const trace: InsertTrace = {
       projectId: auth.projectId,
       traceId,
@@ -561,11 +774,7 @@ async function handleEmbeddings(
       totalTokens,
       costUsd: costUsd.toFixed(6),
       isStreaming: false,
-      endUserId: (req.headers["x-prysm-user-id"] as string) ?? undefined,
-      sessionId: (req.headers["x-prysm-session-id"] as string) ?? undefined,
-      metadata: req.headers["x-prysm-metadata"]
-        ? JSON.parse(req.headers["x-prysm-metadata"] as string)
-        : undefined,
+      ...meta,
     };
 
     insertTrace(trace).catch((err) =>
@@ -593,18 +802,16 @@ async function handleEmbeddings(
 
     res.set("X-Prysm-Trace-Id", traceId);
     res.status(502).json({
-      error: {
-        message: "Upstream provider error",
-        type: "proxy_error",
-        prysm_trace_id: traceId,
-      },
+      error: { message: "Upstream provider error", type: "proxy_error", prysm_trace_id: traceId },
     });
   }
 }
 
-// ─── Routes ───
+// ═══════════════════════════════════════════════════════════════
+// ROUTES
+// ═══════════════════════════════════════════════════════════════
 
-// Chat completions (streaming + non-streaming)
+// Chat completions (streaming + non-streaming, OpenAI + Anthropic)
 proxyRouter.post("/chat/completions", async (req: Request, res: Response) => {
   const auth = await authenticateProxyRequest(req);
   if (!auth) {
@@ -615,10 +822,25 @@ proxyRouter.post("/chat/completions", async (req: Request, res: Response) => {
       },
     });
   }
+  if (auth.rateLimited) {
+    return res.status(429).json({
+      error: {
+        message: `Rate limit exceeded. ${auth.currentCount}/${auth.limit} requests used this billing period.`,
+        type: "rate_limit_error",
+      },
+    });
+  }
+
+  // Increment usage counter
+  if (auth.orgId) incrementUsage(auth.orgId, auth.projectId).catch(console.error);
 
   const isStreaming = req.body.stream === true;
   if (isStreaming) {
-    await handleChatStreaming(req, res, auth);
+    if (isAnthropic(auth.provider)) {
+      await handleChatStreamingAnthropic(req, res, auth);
+    } else {
+      await handleChatStreamingOpenAI(req, res, auth);
+    }
   } else {
     await handleChatNonStreaming(req, res, auth);
   }
@@ -635,7 +857,15 @@ proxyRouter.post("/completions", async (req: Request, res: Response) => {
       },
     });
   }
-
+  if (auth.rateLimited) {
+    return res.status(429).json({
+      error: {
+        message: `Rate limit exceeded. ${auth.currentCount}/${auth.limit} requests used this billing period.`,
+        type: "rate_limit_error",
+      },
+    });
+  }
+  if (auth.orgId) incrementUsage(auth.orgId, auth.projectId).catch(console.error);
   await handleCompletions(req, res, auth);
 });
 
@@ -650,13 +880,27 @@ proxyRouter.post("/embeddings", async (req: Request, res: Response) => {
       },
     });
   }
-
+  if (auth.rateLimited) {
+    return res.status(429).json({
+      error: {
+        message: `Rate limit exceeded. ${auth.currentCount}/${auth.limit} requests used this billing period.`,
+        type: "rate_limit_error",
+      },
+    });
+  }
+  if (auth.orgId) incrementUsage(auth.orgId, auth.projectId).catch(console.error);
   await handleEmbeddings(req, res, auth);
 });
 
 // Health check
 proxyRouter.get("/health", (_req: Request, res: Response) => {
-  res.json({ status: "ok", service: "prysm-proxy", version: "0.2.0", endpoints: ["/chat/completions", "/completions", "/embeddings"] });
+  res.json({
+    status: "ok",
+    service: "prysm-proxy",
+    version: "0.3.0",
+    endpoints: ["/chat/completions", "/completions", "/embeddings"],
+    providers: ["openai", "anthropic", "vllm", "ollama", "tgi"],
+  });
 });
 
 export { proxyRouter };

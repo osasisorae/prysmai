@@ -184,3 +184,115 @@ export const modelPricing = mysqlTable(
 
 export type ModelPricing = typeof modelPricing.$inferSelect;
 export type InsertModelPricing = typeof modelPricing.$inferInsert;
+
+// ─── Pre-aggregated Metrics ───
+
+export const metrics = mysqlTable(
+  "metrics",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    projectId: int("projectId").notNull(),
+    bucket: timestamp("bucket").notNull(), // start of the time bucket
+    bucketSize: mysqlEnum("bucketSize", ["1m", "1h", "1d"]).notNull(),
+    model: varchar("model", { length: 128 }), // null = all models combined
+    requestCount: int("requestCount").default(0).notNull(),
+    errorCount: int("errorCount").default(0).notNull(),
+    totalTokens: bigint("totalTokens", { mode: "number" }).default(0).notNull(),
+    totalPromptTokens: bigint("totalPromptTokens", { mode: "number" }).default(0).notNull(),
+    totalCompletionTokens: bigint("totalCompletionTokens", { mode: "number" }).default(0).notNull(),
+    totalCostUsd: decimal("totalCostUsd", { precision: 14, scale: 8 }).default("0").notNull(),
+    latencyP50: int("latencyP50"),
+    latencyP95: int("latencyP95"),
+    latencyP99: int("latencyP99"),
+    ttftP50: int("ttftP50"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (table) => [
+    index("metrics_project_bucket_idx").on(table.projectId, table.bucketSize, table.bucket),
+    uniqueIndex("metrics_unique_idx").on(table.projectId, table.bucket, table.bucketSize, table.model),
+  ]
+);
+
+export type Metric = typeof metrics.$inferSelect;
+export type InsertMetric = typeof metrics.$inferInsert;
+
+// ─── Alert Configurations ───
+
+export const alertConfigs = mysqlTable(
+  "alert_configs",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    projectId: int("projectId").notNull(),
+    name: varchar("name", { length: 255 }).notNull(),
+    enabled: boolean("enabled").default(true).notNull(),
+    // What to monitor: error_rate, latency_p95, cost_per_hour, request_count
+    metric: varchar("metric", { length: 64 }).notNull(),
+    // Condition: gt (greater than), lt (less than), gte, lte
+    condition: varchar("condition", { length: 16 }).notNull(),
+    threshold: decimal("threshold", { precision: 14, scale: 6 }).notNull(),
+    // Evaluation window in minutes (e.g., 5 = check last 5 minutes)
+    windowMinutes: int("windowMinutes").default(5).notNull(),
+    // Notification channels: array of { type: "email"|"slack"|"discord"|"webhook", target: string }
+    channels: json("channels").$type<Array<{ type: string; target: string }>>().notNull(),
+    // Cooldown: minimum minutes between alerts to prevent spam
+    cooldownMinutes: int("cooldownMinutes").default(60).notNull(),
+    lastTriggeredAt: timestamp("lastTriggeredAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  (table) => [
+    index("alerts_project_idx").on(table.projectId),
+  ]
+);
+
+export type AlertConfig = typeof alertConfigs.$inferSelect;
+export type InsertAlertConfig = typeof alertConfigs.$inferInsert;
+
+// ─── Usage Records (billing/metering) ───
+
+export const usageRecords = mysqlTable(
+  "usage_records",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    orgId: int("orgId").notNull(),
+    projectId: int("projectId").notNull(),
+    periodStart: timestamp("periodStart").notNull(), // start of billing period (1st of month)
+    periodEnd: timestamp("periodEnd").notNull(), // end of billing period
+    requestCount: int("requestCount").default(0).notNull(),
+    totalTokens: bigint("totalTokens", { mode: "number" }).default(0).notNull(),
+    totalCostUsd: decimal("totalCostUsd", { precision: 14, scale: 8 }).default("0").notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("usage_org_project_period_idx").on(table.orgId, table.projectId, table.periodStart),
+  ]
+);
+
+export type UsageRecord = typeof usageRecords.$inferSelect;
+export type InsertUsageRecord = typeof usageRecords.$inferInsert;
+
+// ─── Organization Members ───
+
+export const orgMembers = mysqlTable(
+  "org_members",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    orgId: int("orgId").notNull(),
+    userId: int("userId"), // null until invite is accepted
+    email: varchar("email", { length: 320 }).notNull(), // email of invited member
+    role: mysqlEnum("role", ["owner", "admin", "member", "viewer"]).default("member").notNull(),
+    status: mysqlEnum("status", ["pending", "active", "removed"]).default("pending").notNull(),
+    inviteToken: varchar("inviteToken", { length: 128 }),
+    invitedBy: int("invitedBy"),
+    invitedAt: timestamp("invitedAt").defaultNow().notNull(),
+    joinedAt: timestamp("joinedAt"),
+  },
+  (table) => [
+    index("orgmembers_org_idx").on(table.orgId),
+    index("orgmembers_user_idx").on(table.userId),
+    uniqueIndex("orgmembers_org_email_idx").on(table.orgId, table.email),
+  ]
+);
+
+export type OrgMember = typeof orgMembers.$inferSelect;
+export type InsertOrgMember = typeof orgMembers.$inferInsert;

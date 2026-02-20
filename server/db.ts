@@ -514,3 +514,423 @@ export async function getLatencyDistribution(projectId: number, from: Date, to: 
     count: Number(r.count),
   }));
 }
+
+// ─── Pre-aggregated Metrics Pipeline ───
+
+import { metrics, InsertMetric, usageRecords, alertConfigs, InsertAlertConfig, orgMembers, InsertOrgMember } from "../drizzle/schema";
+
+/**
+ * Compute approximate percentile from a sorted array of numbers.
+ * Uses nearest-rank method.
+ */
+function percentile(sortedArr: number[], p: number): number {
+  if (sortedArr.length === 0) return 0;
+  const idx = Math.ceil((p / 100) * sortedArr.length) - 1;
+  return sortedArr[Math.max(0, idx)];
+}
+
+/**
+ * Aggregate traces into the pre-aggregated metrics table.
+ * Computes metrics for a given time range and bucket size.
+ * Uses INSERT ... ON DUPLICATE KEY UPDATE for idempotent upserts.
+ */
+export async function aggregateMetrics(
+  projectId: number,
+  bucketSize: "1m" | "1h" | "1d",
+  from: Date,
+  to: Date,
+) {
+  const db = await getDb();
+  if (!db) return;
+
+  // Determine the DATE_FORMAT pattern for bucketing
+  const formatPattern = bucketSize === "1m"
+    ? "%Y-%m-%d %H:%i:00"
+    : bucketSize === "1h"
+      ? "%Y-%m-%d %H:00:00"
+      : "%Y-%m-%d 00:00:00";
+
+  const fromStr = from.toISOString().slice(0, 19).replace("T", " ");
+  const toStr = to.toISOString().slice(0, 19).replace("T", " ");
+
+  // Get all traces in the time range, grouped by model
+  const rawTraces = await db.execute(
+    sql`SELECT
+      DATE_FORMAT(\`timestamp\`, ${formatPattern}) AS bucket,
+      model,
+      latencyMs,
+      ttftMs,
+      status,
+      totalTokens,
+      promptTokens,
+      completionTokens,
+      costUsd
+    FROM traces
+    WHERE projectId = ${projectId}
+      AND \`timestamp\` >= ${fromStr}
+      AND \`timestamp\` <= ${toStr}
+    ORDER BY \`timestamp\``
+  );
+
+  const rows = (Array.isArray(rawTraces) && Array.isArray(rawTraces[0])) ? rawTraces[0] : rawTraces;
+
+  // Group by (bucket, model)
+  const groups = new Map<string, {
+    bucket: string;
+    model: string;
+    latencies: number[];
+    ttfts: number[];
+    requestCount: number;
+    errorCount: number;
+    totalTokens: number;
+    totalPromptTokens: number;
+    totalCompletionTokens: number;
+    totalCostUsd: number;
+  }>();
+
+  for (const row of rows as any[]) {
+    const key = `${row.bucket}|${row.model || "unknown"}`;
+    if (!groups.has(key)) {
+      groups.set(key, {
+        bucket: row.bucket,
+        model: row.model || "unknown",
+        latencies: [],
+        ttfts: [],
+        requestCount: 0,
+        errorCount: 0,
+        totalTokens: 0,
+        totalPromptTokens: 0,
+        totalCompletionTokens: 0,
+        totalCostUsd: 0,
+      });
+    }
+    const g = groups.get(key)!;
+    g.requestCount++;
+    if (row.status === "error") g.errorCount++;
+    if (row.latencyMs != null) g.latencies.push(Number(row.latencyMs));
+    if (row.ttftMs != null) g.ttfts.push(Number(row.ttftMs));
+    g.totalTokens += Number(row.totalTokens || 0);
+    g.totalPromptTokens += Number(row.promptTokens || 0);
+    g.totalCompletionTokens += Number(row.completionTokens || 0);
+    g.totalCostUsd += Number(row.costUsd || 0);
+  }
+
+  // Upsert each group into the metrics table
+  for (const g of Array.from(groups.values())) {
+    g.latencies.sort((a: number, b: number) => a - b);
+    g.ttfts.sort((a: number, b: number) => a - b);
+
+    const p50 = percentile(g.latencies, 50);
+    const p95 = percentile(g.latencies, 95);
+    const p99 = percentile(g.latencies, 99);
+    const ttftP50 = g.ttfts.length > 0 ? percentile(g.ttfts, 50) : null;
+
+    await db.insert(metrics).values({
+      projectId,
+      bucket: new Date(g.bucket),
+      bucketSize,
+      model: g.model,
+      requestCount: g.requestCount,
+      errorCount: g.errorCount,
+      totalTokens: g.totalTokens,
+      totalPromptTokens: g.totalPromptTokens,
+      totalCompletionTokens: g.totalCompletionTokens,
+      totalCostUsd: g.totalCostUsd.toFixed(8),
+      latencyP50: p50,
+      latencyP95: p95,
+      latencyP99: p99,
+      ttftP50,
+    }).onDuplicateKeyUpdate({
+      set: {
+        requestCount: sql`VALUES(requestCount)`,
+        errorCount: sql`VALUES(errorCount)`,
+        totalTokens: sql`VALUES(totalTokens)`,
+        totalPromptTokens: sql`VALUES(totalPromptTokens)`,
+        totalCompletionTokens: sql`VALUES(totalCompletionTokens)`,
+        totalCostUsd: sql`VALUES(totalCostUsd)`,
+        latencyP50: sql`VALUES(latencyP50)`,
+        latencyP95: sql`VALUES(latencyP95)`,
+        latencyP99: sql`VALUES(latencyP99)`,
+        ttftP50: sql`VALUES(ttftP50)`,
+      },
+    });
+  }
+}
+
+/**
+ * Run aggregation for all projects. Called by the scheduled job.
+ */
+export async function runMetricsAggregation() {
+  const db = await getDb();
+  if (!db) return;
+
+  // Get all project IDs
+  const allProjects = await db.select({ id: projects.id }).from(projects);
+
+  const now = new Date();
+
+  for (const project of allProjects) {
+    // 1-hour buckets: aggregate the last 2 hours (overlap for safety)
+    const twoHoursAgo = new Date(now.getTime() - 2 * 60 * 60 * 1000);
+    await aggregateMetrics(project.id, "1h", twoHoursAgo, now);
+
+    // 1-day buckets: aggregate the last 2 days (overlap for safety)
+    const twoDaysAgo = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000);
+    await aggregateMetrics(project.id, "1d", twoDaysAgo, now);
+  }
+
+  console.log(`[Metrics] Aggregation complete for ${allProjects.length} projects at ${now.toISOString()}`);
+}
+
+/**
+ * Get pre-aggregated metrics from the metrics table.
+ * Falls back to raw trace queries if metrics table is empty for the range.
+ */
+export async function getAggregatedMetrics(
+  projectId: number,
+  bucketSize: "1h" | "1d",
+  from: Date,
+  to: Date,
+) {
+  const db = await getDb();
+  if (!db) return [];
+
+  const result = await db.select()
+    .from(metrics)
+    .where(and(
+      eq(metrics.projectId, projectId),
+      eq(metrics.bucketSize, bucketSize),
+      gte(metrics.bucket, from),
+      lte(metrics.bucket, to),
+    ))
+    .orderBy(asc(metrics.bucket));
+
+  return result;
+}
+
+/**
+ * Get overall percentile latencies from the metrics table.
+ */
+export async function getLatencyPercentiles(
+  projectId: number,
+  from: Date,
+  to: Date,
+) {
+  const db = await getDb();
+  if (!db) return { p50: 0, p95: 0, p99: 0 };
+
+  // If we have pre-aggregated data, compute weighted percentiles from 1h buckets
+  const hourlyMetrics = await db.select()
+    .from(metrics)
+    .where(and(
+      eq(metrics.projectId, projectId),
+      eq(metrics.bucketSize, "1h"),
+      gte(metrics.bucket, from),
+      lte(metrics.bucket, to),
+    ));
+
+  if (hourlyMetrics.length > 0) {
+    // Weighted average of percentiles (approximate but fast)
+    let totalRequests = 0;
+    let weightedP50 = 0;
+    let weightedP95 = 0;
+    let weightedP99 = 0;
+
+    for (const m of hourlyMetrics) {
+      const w = m.requestCount;
+      totalRequests += w;
+      weightedP50 += (m.latencyP50 ?? 0) * w;
+      weightedP95 += (m.latencyP95 ?? 0) * w;
+      weightedP99 += (m.latencyP99 ?? 0) * w;
+    }
+
+    if (totalRequests > 0) {
+      return {
+        p50: Math.round(weightedP50 / totalRequests),
+        p95: Math.round(weightedP95 / totalRequests),
+        p99: Math.round(weightedP99 / totalRequests),
+      };
+    }
+  }
+
+  // Fallback: compute from raw traces (for when metrics haven't been aggregated yet)
+  const fromStr = from.toISOString().slice(0, 19).replace("T", " ");
+  const toStr = to.toISOString().slice(0, 19).replace("T", " ");
+
+  const rawResult = await db.execute(
+    sql`SELECT latencyMs FROM traces
+    WHERE projectId = ${projectId}
+      AND \`timestamp\` >= ${fromStr}
+      AND \`timestamp\` <= ${toStr}
+      AND latencyMs IS NOT NULL
+    ORDER BY latencyMs`
+  );
+
+  const rawRows = (Array.isArray(rawResult) && Array.isArray(rawResult[0])) ? rawResult[0] : rawResult;
+  const latencies = (rawRows as any[]).map((r: any) => Number(r.latencyMs));
+
+  if (latencies.length === 0) return { p50: 0, p95: 0, p99: 0 };
+
+  return {
+    p50: percentile(latencies, 50),
+    p95: percentile(latencies, 95),
+    p99: percentile(latencies, 99),
+  };
+}
+
+// ─── Usage tracking helpers ───
+
+export async function incrementUsage(orgId: number, projectId: number) {
+  const db = await getDb();
+  if (!db) return;
+
+  const now = new Date();
+  const periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+
+  const periodStartStr = periodStart.toISOString().slice(0, 19).replace("T", " ");
+  const periodEndStr = periodEnd.toISOString().slice(0, 19).replace("T", " ");
+
+  // Upsert: increment request_count for the current billing period
+  await db.execute(
+    sql`INSERT INTO usage_records (orgId, projectId, periodStart, periodEnd, requestCount)
+    VALUES (${orgId}, ${projectId}, ${periodStartStr}, ${periodEndStr}, 1)
+    ON DUPLICATE KEY UPDATE requestCount = requestCount + 1`
+  );
+}
+
+export async function getUsageForOrg(orgId: number) {
+  const db = await getDb();
+  if (!db) return null;
+
+  const now = new Date();
+  const periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  const result = await db.select()
+    .from(usageRecords)
+    .where(and(
+      eq(usageRecords.orgId, orgId),
+      gte(usageRecords.periodStart, periodStart),
+    ));
+
+  const totalRequests = result.reduce((sum, r) => sum + (r.requestCount ?? 0), 0);
+  return {
+    totalRequests,
+    records: result,
+    period: {
+      start: periodStart,
+      end: new Date(now.getFullYear(), now.getMonth() + 1, 0),
+    },
+  };
+}
+
+/**
+ * Check if org has exceeded free tier limit (10K requests/month).
+ * Returns { allowed: boolean, currentCount: number, limit: number }
+ */
+export async function checkUsageLimit(orgId: number, plan: string = "free") {
+  const limits: Record<string, number> = {
+    free: 10000,
+    pro: 100000,
+    team: 500000,
+    enterprise: Infinity,
+  };
+
+  const limit = limits[plan] ?? limits.free;
+  const usage = await getUsageForOrg(orgId);
+  const currentCount = usage?.totalRequests ?? 0;
+
+  return {
+    allowed: currentCount < limit,
+    currentCount,
+    limit,
+    plan,
+  };
+}
+
+// ─── Alert config helpers ───
+
+export async function getAlertConfigs(projectId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(alertConfigs)
+    .where(eq(alertConfigs.projectId, projectId))
+    .orderBy(desc(alertConfigs.createdAt));
+}
+
+export async function createAlertConfig(data: InsertAlertConfig) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(alertConfigs).values(data).$returningId();
+  return { id: result[0].id, ...data };
+}
+
+export async function updateAlertConfig(id: number, projectId: number, data: Partial<InsertAlertConfig>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(alertConfigs)
+    .set(data)
+    .where(and(eq(alertConfigs.id, id), eq(alertConfigs.projectId, projectId)));
+}
+
+export async function deleteAlertConfig(id: number, projectId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(alertConfigs)
+    .where(and(eq(alertConfigs.id, id), eq(alertConfigs.projectId, projectId)));
+}
+
+// ─── Org member helpers ───
+
+export async function getOrgMembers(orgId: number) {
+  const db = await getDb();
+  if (!db) return [];
+
+  const result = await db.select({
+    id: orgMembers.id,
+    orgId: orgMembers.orgId,
+    userId: orgMembers.userId,
+    email: orgMembers.email,
+    role: orgMembers.role,
+    invitedAt: orgMembers.invitedAt,
+    joinedAt: orgMembers.joinedAt,
+    userName: users.name,
+    userEmail: users.email,
+  })
+    .from(orgMembers)
+    .leftJoin(users, eq(orgMembers.userId, users.id))
+    .where(eq(orgMembers.orgId, orgId))
+    .orderBy(desc(orgMembers.invitedAt));
+
+  return result;
+}
+
+export async function inviteOrgMember(data: { orgId: number; email: string; role?: string; invitedBy: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  // Check if already invited
+  const existing = await db.select().from(orgMembers)
+    .where(and(eq(orgMembers.orgId, data.orgId), eq(orgMembers.email, data.email)))
+    .limit(1);
+
+  if (existing.length > 0) {
+    return { success: false, error: "User already invited" };
+  }
+
+  const result = await db.insert(orgMembers).values({
+    orgId: data.orgId,
+    email: data.email,
+    role: (data.role as "admin" | "member") ?? "member",
+    invitedBy: data.invitedBy,
+  }).$returningId();
+
+  return { success: true, id: result[0].id };
+}
+
+export async function removeOrgMember(memberId: number, orgId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(orgMembers)
+    .where(and(eq(orgMembers.id, memberId), eq(orgMembers.orgId, orgId)));
+}

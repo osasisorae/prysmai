@@ -246,3 +246,52 @@
 - [x] Add /v1/embeddings proxy endpoint
 - [x] Update proxy to handle different response shapes for completions and embeddings
 - [x] End-to-end tool-calling test: tool_calls captured (get_weather), embeddings endpoint verified (1536-dim)
+
+## Layer 1 Full Completion
+### Phase 1: Missing DB Tables
+- [x] Add metrics table (pre-aggregated: project_id, bucket, bucket_size, model, request_count, error_count, total_tokens, total_cost_usd, latency_p50, latency_p95, latency_p99, ttft_p50)
+- [x] Add alert_configs table (project_id, name, metric, condition, threshold, channels JSON, enabled, created_at)
+- [x] Add usage_records table (org_id, project_id, period_start, period_end, request_count)
+- [x] Add org_members table (org_id, user_id, role, invited_by, invited_at, joined_at)
+- [x] Run db:push migration (0004_common_bill_hollister.sql applied)
+
+### Phase 2: Anthropic Translation
+- [x] Build OpenAI→Anthropic request translator (role mapping, system→system param, tool defs)
+- [x] Build Anthropic→OpenAI response translator (content_block→choices, usage mapping)
+- [x] Handle Anthropic streaming format (message_start, content_block_delta, message_delta)
+- [x] Wire into proxy: detect provider=anthropic, translate before forwarding
+
+### Phase 3: Pre-aggregated Metrics Pipeline
+- [ ] Build metrics aggregation function (compute 1-min, 1-hour, 1-day buckets from traces)
+- [ ] Compute latency percentiles (p50, p95, p99) and ttft_p50 per bucket
+- [ ] Trigger aggregation after each trace insert (fire-and-forget)
+- [ ] Update dashboard to read from metrics table instead of raw traces
+- [ ] Show p50/p95/p99 latency on dashboard instead of just average
+
+### Phase 4: Alerting System
+- [ ] Build alert_configs CRUD tRPC procedures (create, list, update, delete)
+- [ ] Build alert evaluation engine (check conditions against latest metrics)
+- [ ] Implement email alerts via Resend (reuse existing Resend config)
+- [ ] Implement Slack webhook alerts
+- [ ] Implement Discord webhook alerts
+- [ ] Implement custom webhook alerts
+- [ ] Add Alerts page/section in dashboard sidebar + UI
+
+### Phase 5: Usage Tracking
+- [ ] Build usage counting (increment request_count per org/project after each proxy request)
+- [ ] Add free tier enforcement in proxy (429 after 10K req/mo)
+- [ ] Add usage display in Settings page
+
+### Phase 6: Team Management
+- [ ] Build invite member tRPC procedure (sends email invite)
+- [ ] Build accept invite flow
+- [ ] Build org member list tRPC procedure
+- [ ] Build remove member tRPC procedure
+- [ ] Add Team section in Settings page UI (member list, invite form, role badges)
+
+### Phase 7: WebSocket + Custom Pricing
+- [ ] Add WebSocket endpoint /api/v1/projects/:id/live
+- [ ] Emit "trace" events on new trace insert
+- [ ] Replace 5s polling with WebSocket on dashboard live feed
+- [ ] Add custom cost-per-token config UI in Settings for open-source models
+- [ ] Store custom pricing in project config or model_pricing table
