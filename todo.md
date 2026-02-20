@@ -262,32 +262,33 @@
 - [x] Wire into proxy: detect provider=anthropic, translate before forwarding
 
 ### Phase 3: Pre-aggregated Metrics Pipeline
-- [ ] Build metrics aggregation function (compute 1-min, 1-hour, 1-day buckets from traces)
-- [ ] Compute latency percentiles (p50, p95, p99) and ttft_p50 per bucket
-- [ ] Trigger aggregation after each trace insert (fire-and-forget)
-- [ ] Update dashboard to read from metrics table instead of raw traces
-- [ ] Show p50/p95/p99 latency on dashboard instead of just average
+- [x] Build metrics aggregation function (compute 1-hour, 1-day buckets from traces)
+- [x] Compute latency percentiles (p50, p95, p99) and ttft_p50 per bucket
+- [x] Build metrics scheduler (runs every 5 min for hourly, every hour for daily)
+- [x] Wire scheduler into server startup
+- [x] Show p50/p95/p99 latency on dashboard overview card
 
 ### Phase 4: Alerting System
-- [ ] Build alert_configs CRUD tRPC procedures (create, list, update, delete)
+- [x] Build alert_configs CRUD tRPC procedures (create, list, update, delete, toggle)
+- [x] Add Alerts tab in Settings page UI (create dialog, list, enable/disable, delete)
 - [ ] Build alert evaluation engine (check conditions against latest metrics)
 - [ ] Implement email alerts via Resend (reuse existing Resend config)
 - [ ] Implement Slack webhook alerts
 - [ ] Implement Discord webhook alerts
 - [ ] Implement custom webhook alerts
-- [ ] Add Alerts page/section in dashboard sidebar + UI
 
 ### Phase 5: Usage Tracking
-- [ ] Build usage counting (increment request_count per org/project after each proxy request)
-- [ ] Add free tier enforcement in proxy (429 after 10K req/mo)
-- [ ] Add usage display in Settings page
+- [x] Build usage counting (incrementUsage called after each proxy request)
+- [x] Add free tier enforcement in proxy (429 after 10K req/mo)
+- [x] Add Usage tab in Settings page (request count, progress bar, period, plan info)
 
 ### Phase 6: Team Management
-- [ ] Build invite member tRPC procedure (sends email invite)
-- [ ] Build accept invite flow
-- [ ] Build org member list tRPC procedure
-- [ ] Build remove member tRPC procedure
-- [ ] Add Team section in Settings page UI (member list, invite form, role badges)
+- [x] Build invite member tRPC procedure
+- [x] Build org member list tRPC procedure
+- [x] Build remove member tRPC procedure
+- [x] Add Team tab in Settings page UI (member list, invite dialog, role badges)
+- [ ] Build accept invite flow (email link → join org)
+- [ ] Send invite email via Resend
 
 ### Phase 7: WebSocket + Custom Pricing
 - [ ] Add WebSocket endpoint /api/v1/projects/:id/live

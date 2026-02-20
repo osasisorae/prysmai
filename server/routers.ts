@@ -9,6 +9,9 @@ import {
   createApiKey, getApiKeysByProjectId, revokeApiKey,
   getTraces, getTraceById,
   getProjectMetrics, getRequestTimeline, getDistinctModels, getLatencyDistribution,
+  getLatencyPercentiles, getUsageForOrg,
+  getAlertConfigs, createAlertConfig, updateAlertConfig, deleteAlertConfig,
+  getOrgMembers, inviteOrgMember, removeOrgMember,
 } from "./db";
 import { z } from "zod";
 import { notifyOwner } from "./_core/notification";
@@ -286,6 +289,121 @@ export const appRouter = router({
         const org = await requireOrg(ctx.user.id);
         await requireProject(input.projectId, org.id);
         return await getLatencyDistribution(input.projectId, input.from, input.to);
+      }),
+
+    percentiles: protectedProcedure
+      .input(z.object({
+        projectId: z.number(),
+        from: z.date(),
+        to: z.date(),
+      }))
+      .query(async ({ ctx, input }) => {
+        const org = await requireOrg(ctx.user.id);
+        await requireProject(input.projectId, org.id);
+        return await getLatencyPercentiles(input.projectId, input.from, input.to);
+      }),
+  }),
+
+  // ─── Alerts ───
+  alert: router({
+    list: protectedProcedure
+      .input(z.object({ projectId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        const org = await requireOrg(ctx.user.id);
+        await requireProject(input.projectId, org.id);
+        return await getAlertConfigs(input.projectId);
+      }),
+
+    create: protectedProcedure
+      .input(z.object({
+        projectId: z.number(),
+        name: z.string().min(1).max(255),
+        metric: z.string(),
+        condition: z.string(),
+        threshold: z.string(),
+        channels: z.any(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const org = await requireOrg(ctx.user.id);
+        await requireProject(input.projectId, org.id);
+        return await createAlertConfig({
+          projectId: input.projectId,
+          name: input.name,
+          metric: input.metric,
+          condition: input.condition,
+          threshold: input.threshold,
+          channels: input.channels,
+        });
+      }),
+
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        projectId: z.number(),
+        name: z.string().optional(),
+        metric: z.string().optional(),
+        condition: z.string().optional(),
+        threshold: z.string().optional(),
+        channels: z.any().optional(),
+        enabled: z.boolean().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const org = await requireOrg(ctx.user.id);
+        await requireProject(input.projectId, org.id);
+        const { id, projectId, ...data } = input;
+        await updateAlertConfig(id, projectId, data);
+        return { success: true };
+      }),
+
+    delete: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        projectId: z.number(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const org = await requireOrg(ctx.user.id);
+        await requireProject(input.projectId, org.id);
+        await deleteAlertConfig(input.id, input.projectId);
+        return { success: true };
+      }),
+  }),
+
+  // ─── Usage ───
+  usage: router({
+    get: protectedProcedure.query(async ({ ctx }) => {
+      const org = await requireOrg(ctx.user.id);
+      return await getUsageForOrg(org.id);
+    }),
+  }),
+
+  // ─── Team (Org Members) ───
+  team: router({
+    list: protectedProcedure.query(async ({ ctx }) => {
+      const org = await requireOrg(ctx.user.id);
+      return await getOrgMembers(org.id);
+    }),
+
+    invite: protectedProcedure
+      .input(z.object({
+        email: z.string().email(),
+        role: z.enum(["admin", "member"]).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const org = await requireOrg(ctx.user.id);
+        return await inviteOrgMember({
+          orgId: org.id,
+          email: input.email,
+          role: input.role,
+          invitedBy: ctx.user.id,
+        });
+      }),
+
+    remove: protectedProcedure
+      .input(z.object({ memberId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const org = await requireOrg(ctx.user.id);
+        await removeOrgMember(input.memberId, org.id);
+        return { success: true };
       }),
   }),
 });

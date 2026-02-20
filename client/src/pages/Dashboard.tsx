@@ -194,6 +194,11 @@ export default function DashboardOverview({ projectId }: { projectId: number }) 
     { refetchInterval: 30000 }
   );
 
+  const percentiles = trpc.metrics.percentiles.useQuery(
+    { projectId, from, to },
+    { refetchInterval: 30000 }
+  );
+
   const recentTraces = trpc.trace.list.useQuery(
     { projectId, limit: 15 },
     { refetchInterval: 5000 }
@@ -257,6 +262,7 @@ export default function DashboardOverview({ projectId }: { projectId: number }) 
         <MetricCard
           title="Avg Latency"
           value={`${avgLatency}ms`}
+          subtitle={percentiles.data ? `p50: ${percentiles.data.p50}ms · p95: ${percentiles.data.p95}ms · p99: ${percentiles.data.p99}ms` : undefined}
           icon={Clock}
           loading={metrics.isLoading}
         />
