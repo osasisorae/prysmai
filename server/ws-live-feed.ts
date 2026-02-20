@@ -14,10 +14,23 @@ const projectClients = new Map<number, Set<WebSocket>>();
 let wss: WebSocketServer | null = null;
 
 /**
- * Initialize WebSocket server on the existing HTTP server
+ * Initialize WebSocket server on the existing HTTP server.
+ * Uses noServer mode + manual upgrade handling so we only claim
+ * /ws/live-feed and leave all other WebSocket upgrades (e.g. Vite HMR) alone.
  */
 export function initWebSocketServer(server: Server): void {
-  wss = new WebSocketServer({ server, path: "/ws/live-feed" });
+  wss = new WebSocketServer({ noServer: true });
+
+  // Only handle upgrade requests for our specific path
+  server.on("upgrade", (request, socket, head) => {
+    const pathname = new URL(request.url || "", `http://${request.headers.host}`).pathname;
+    if (pathname === "/ws/live-feed") {
+      wss!.handleUpgrade(request, socket, head, (ws) => {
+        wss!.emit("connection", ws, request);
+      });
+    }
+    // Do NOT call socket.destroy() for other paths — let Vite HMR handle them
+  });
 
   wss.on("connection", (ws, req) => {
     // Parse projectId from query string: /ws/live-feed?projectId=123

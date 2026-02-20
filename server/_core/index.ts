@@ -57,6 +57,10 @@ async function startServer() {
       createContext,
     })
   );
+  // Initialize WebSocket live feed BEFORE Vite so our upgrade handler
+  // only claims /ws/live-feed and Vite HMR gets all other WS upgrades
+  initWebSocketServer(server);
+
   // development mode uses Vite, production mode uses static files
   if (process.env.NODE_ENV === "development") {
     await setupVite(app, server);
@@ -75,8 +79,6 @@ async function startServer() {
     console.log(`Server running on http://localhost:${port}/`);
     // Start the metrics aggregation scheduler
     startMetricsScheduler();
-    // Initialize WebSocket live feed
-    initWebSocketServer(server);
   });
 }
 

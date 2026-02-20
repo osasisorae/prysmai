@@ -296,3 +296,6 @@
 - [x] Replace 5s polling with WebSocket on dashboard live feed (with polling fallback)
 - [x] Add custom cost-per-token config UI in Settings (Pricing tab with add/delete/quick-fill)
 - [x] Store custom pricing in model_pricing table (upsert + global override for proxy)
+
+## Bug Fixes
+- [x] Fix Vite HMR WebSocket connection failure (switched to noServer mode + manual upgrade handler for /ws/live-feed only)
