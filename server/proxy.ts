@@ -28,6 +28,7 @@ import {
 } from "./db";
 import { emitTrace } from "./trace-emitter";
 import type { InsertTrace } from "../drizzle/schema";
+import { assessRequest } from "./security/proxy-middleware";
 import {
   translateRequestToAnthropic,
   translateResponseToOpenAI,
@@ -859,6 +860,24 @@ proxyRouter.post("/chat/completions", async (req: Request, res: Response) => {
 
   // Increment usage counter
   if (auth.orgId) incrementUsage(auth.orgId, auth.projectId).catch(console.error);
+
+  // ─── Security Assessment ───
+  const securityResult = await assessRequest(auth.projectId, req.body);
+  if (securityResult) {
+    res.set("X-Prysm-Threat-Score", securityResult.threatScore.toString());
+    res.set("X-Prysm-Threat-Level", securityResult.threatLevel);
+    if (securityResult.action === "block") {
+      return res.status(403).json({
+        error: {
+          message: "Request blocked by security policy",
+          type: "security_error",
+          threat_level: securityResult.threatLevel,
+          threat_score: securityResult.threatScore,
+          details: securityResult.summary,
+        },
+      });
+    }
+  }
 
   const isStreaming = req.body.stream === true;
   if (isStreaming) {

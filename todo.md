@@ -326,3 +326,39 @@
 - [x] Update Settings UI — Google Gemini in provider dropdown + Gemini models in quick-fill
 - [x] Update /docs page — provider table, feature table, dedicated Google Gemini section, pricing table
 - [x] Write tests for Gemini provider support (29 tests: detection, URL resolution, pricing, request format)
+
+## GitHub README & PyPI — Gemini Update
+- [x] Update README with Google Gemini provider support (provider table, example, pricing)
+- [x] Bump version to 0.2.1 and republish to PyPI (https://pypi.org/project/prysmai/0.2.1/)
+
+## Layer 2: Security
+### Prompt Injection Detection
+- [x] Research prompt injection patterns (OWASP LLM Top 10, Pangea taxonomy of 145+ techniques)
+- [x] Build pattern-matching engine (20+ regex patterns: role hijacking, system prompt extraction, encoding attacks, delimiter injection, etc.)
+- [x] Build heuristic scoring (weighted scoring across 6 categories)
+- [x] Wire injection detection into proxy pipeline (pre-request via security middleware)
+- [x] Add configurable block/warn/log modes (per-project security config)
+
+### PII / Sensitive Data Redaction
+- [x] Build PII detection (emails, phone numbers, SSNs, credit cards, API keys, IP addresses, dates of birth)
+- [x] Build configurable redaction modes (mask [***], hash [SHA-256 prefix], or block)
+- [x] Wire PII detection into proxy pipeline (pre-request scanning)
+
+### Content Policy Enforcement
+- [x] Build content policy rules engine (violence, illegal, self-harm, sexual, hate speech categories)
+- [x] Add custom blocked keywords (configurable per project)
+- [x] Build composite threat scoring (injection + PII + policy = weighted threat level)
+
+### Threat Scoring
+- [x] Build composite threat score per request (0-100 scale, low/medium/high/critical levels)
+- [x] Store security events in security_events table (threat_type, threat_level, score, action_taken, details)
+- [x] Add security_config JSON column to projects table
+
+### Security Dashboard
+- [x] Build Security page in dashboard sidebar (/dashboard/security)
+- [x] Overview tab: 5 stat cards (total/low/medium/high/blocked), top patterns chart, recent threats list
+- [x] Threat Log tab: paginated events table with level filter + refresh
+- [x] Configuration tab: 3 detection toggles, blocking toggle, PII redaction dropdown, custom keywords
+
+### Testing
+- [x] Write comprehensive tests for all security features (108 tests: injection, PII, content policy, threat scoring)

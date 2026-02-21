@@ -296,3 +296,65 @@ export const orgMembers = mysqlTable(
 
 export type OrgMember = typeof orgMembers.$inferSelect;
 export type InsertOrgMember = typeof orgMembers.$inferInsert;
+
+// ─── Security Events (threat detection log) ───
+
+export const securityEvents = mysqlTable(
+  "security_events",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    projectId: int("projectId").notNull(),
+    traceId: varchar("traceId", { length: 64 }),
+    timestamp: timestamp("timestamp").defaultNow().notNull(),
+    // Threat assessment
+    threatScore: int("threatScore").notNull(),
+    threatLevel: mysqlEnum("threatLevel", ["clean", "low", "medium", "high"]).notNull(),
+    action: mysqlEnum("action", ["pass", "log", "warn", "block"]).notNull(),
+    summary: text("summary"),
+    // Breakdown scores
+    injectionScore: int("injectionScore").default(0),
+    piiScore: int("piiScore").default(0),
+    policyScore: int("policyScore").default(0),
+    // Details (JSON for flexibility)
+    injectionMatches: json("injectionMatches").$type<Array<{ patternName: string; category: string; severity: number }>>(),
+    piiTypes: json("piiTypes").$type<string[]>(),
+    policyViolations: json("policyViolations").$type<string[]>(),
+    // Context
+    model: varchar("model", { length: 128 }),
+    inputPreview: text("inputPreview"), // first 200 chars of the prompt
+    processingTimeMs: int("processingTimeMs"),
+  },
+  (table) => [
+    index("secevents_project_ts_idx").on(table.projectId, table.timestamp),
+    index("secevents_project_level_idx").on(table.projectId, table.threatLevel),
+    index("secevents_trace_idx").on(table.traceId),
+  ]
+);
+
+export type SecurityEvent = typeof securityEvents.$inferSelect;
+export type InsertSecurityEvent = typeof securityEvents.$inferInsert;
+
+// ─── Security Config (per-project security settings) ───
+
+export const securityConfigs = mysqlTable(
+  "security_configs",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    projectId: int("projectId").notNull().unique(),
+    // Feature toggles
+    injectionDetection: boolean("injectionDetection").default(true).notNull(),
+    piiDetection: boolean("piiDetection").default(true).notNull(),
+    piiRedactionMode: mysqlEnum("piiRedactionMode", ["none", "mask", "hash", "block"]).default("none").notNull(),
+    contentPolicyEnabled: boolean("contentPolicyEnabled").default(true).notNull(),
+    blockHighThreats: boolean("blockHighThreats").default(false).notNull(),
+    // Custom rules
+    customKeywords: json("customKeywords").$type<string[]>(),
+    customPolicies: json("customPolicies").$type<Array<{ name: string; type: string; pattern: string; severity: number; action: string; description: string }>>(),
+    // Timestamps
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  }
+);
+
+export type SecurityConfig = typeof securityConfigs.$inferSelect;
+export type InsertSecurityConfig = typeof securityConfigs.$inferInsert;

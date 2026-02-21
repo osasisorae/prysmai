@@ -10,6 +10,7 @@ import {
   Search,
   Key,
   Settings as SettingsIcon,
+  Shield,
   LogOut,
   ChevronDown,
   Loader2,
@@ -25,11 +26,13 @@ import DashboardOverview from "./Dashboard";
 import RequestExplorer from "./RequestExplorer";
 import ApiKeys from "./ApiKeys";
 import SettingsPage from "./Settings";
+import SecurityDashboard from "./SecurityDashboard";
 
 const NAV_ITEMS = [
   { id: "overview", label: "Overview", icon: LayoutDashboard, path: "/dashboard" },
   { id: "explorer", label: "Requests", icon: Search, path: "/dashboard/requests" },
   { id: "keys", label: "API Keys", icon: Key, path: "/dashboard/keys" },
+  { id: "security", label: "Security", icon: Shield, path: "/dashboard/security" },
   { id: "settings", label: "Settings", icon: SettingsIcon, path: "/dashboard/settings" },
 ];
 
@@ -178,6 +181,7 @@ export default function DashboardShell() {
           {activeNav.id === "overview" && <DashboardOverview projectId={activeProject.id} />}
           {activeNav.id === "explorer" && <RequestExplorer projectId={activeProject.id} />}
           {activeNav.id === "keys" && <ApiKeys projectId={activeProject.id} />}
+          {activeNav.id === "security" && <SecurityDashboard projectId={activeProject.id} />}
           {activeNav.id === "settings" && <SettingsPage projectId={activeProject.id} />}
         </div>
       </main>

@@ -20,6 +20,10 @@ import { notifyOwner } from "./_core/notification";
 import { sendWaitlistConfirmation } from "./email";
 import { sendInviteEmail } from "./inviteEmail";
 import { sendTeamInviteEmail } from "./teamInviteEmail";
+import {
+  getSecurityConfigForProject, upsertSecurityConfig,
+  getSecurityEvents, getSecurityStats, getSecurityTimeline, getTopInjectionPatterns,
+} from "./security/db-helpers";
 import { generateInviteToken, approveWaitlistEntry, rejectWaitlistEntry } from "./customAuth";
 import { TRPCError } from "@trpc/server";
 
@@ -476,7 +480,106 @@ export const appRouter = router({
         await removeOrgMember(input.memberId, org.id);
         return { success: true };
       }),
+   }),
+
+  // ═══════════════════════════════════════════════════════════════
+  // SECURITY
+  // ═══════════════════════════════════════════════════════════════
+  security: router({
+    // Get security config for a project
+    getConfig: protectedProcedure
+      .input(z.object({ projectId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        const org = await requireOrg(ctx.user.id);
+        await requireProject(input.projectId, org.id);
+        const config = await getSecurityConfigForProject(input.projectId);
+        return config ?? {
+          injectionDetection: true,
+          piiDetection: true,
+          piiRedactionMode: "none" as const,
+          contentPolicyEnabled: true,
+          blockHighThreats: false,
+          customKeywords: [],
+          customPolicies: [],
+        };
+      }),
+
+    // Update security config
+    updateConfig: protectedProcedure
+      .input(z.object({
+        projectId: z.number(),
+        injectionDetection: z.boolean().optional(),
+        piiDetection: z.boolean().optional(),
+        piiRedactionMode: z.enum(["none", "mask", "hash", "block"]).optional(),
+        contentPolicyEnabled: z.boolean().optional(),
+        blockHighThreats: z.boolean().optional(),
+        customKeywords: z.array(z.string()).optional(),
+        customPolicies: z.array(z.object({
+          name: z.string(),
+          type: z.enum(["keyword", "regex", "topic"]),
+          pattern: z.string(),
+          severity: z.number().min(1).max(100),
+          action: z.enum(["flag", "block"]),
+          description: z.string().optional(),
+        })).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const org = await requireOrg(ctx.user.id);
+        await requireProject(input.projectId, org.id);
+        const { projectId, ...config } = input;
+        return await upsertSecurityConfig(projectId, config);
+      }),
+
+    // Get security events (threat log)
+    getEvents: protectedProcedure
+      .input(z.object({
+        projectId: z.number(),
+        limit: z.number().min(1).max(200).default(50),
+        offset: z.number().min(0).default(0),
+        threatLevel: z.enum(["clean", "low", "medium", "high"]).optional(),
+        since: z.date().optional(),
+      }))
+      .query(async ({ ctx, input }) => {
+        const org = await requireOrg(ctx.user.id);
+        await requireProject(input.projectId, org.id);
+        return await getSecurityEvents(input.projectId, input);
+      }),
+
+    // Get security stats (summary counts)
+    getStats: protectedProcedure
+      .input(z.object({
+        projectId: z.number(),
+        since: z.date().optional(),
+      }))
+      .query(async ({ ctx, input }) => {
+        const org = await requireOrg(ctx.user.id);
+        await requireProject(input.projectId, org.id);
+        return await getSecurityStats(input.projectId, input.since);
+      }),
+
+    // Get security timeline (daily counts by threat level)
+    getTimeline: protectedProcedure
+      .input(z.object({
+        projectId: z.number(),
+        days: z.number().min(1).max(90).default(7),
+      }))
+      .query(async ({ ctx, input }) => {
+        const org = await requireOrg(ctx.user.id);
+        await requireProject(input.projectId, org.id);
+        return await getSecurityTimeline(input.projectId, input.days);
+      }),
+
+    // Get top injection patterns
+    getTopPatterns: protectedProcedure
+      .input(z.object({
+        projectId: z.number(),
+        limit: z.number().min(1).max(50).default(10),
+      }))
+      .query(async ({ ctx, input }) => {
+        const org = await requireOrg(ctx.user.id);
+        await requireProject(input.projectId, org.id);
+        return await getTopInjectionPatterns(input.projectId, input.limit);
+      }),
   }),
 });
-
 export type AppRouter = typeof appRouter;
