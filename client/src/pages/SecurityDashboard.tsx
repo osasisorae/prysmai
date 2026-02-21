@@ -40,6 +40,16 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -86,8 +96,27 @@ function ActionBadge({ action }: { action: string }) {
 
 function OverviewTab({ projectId }: { projectId: number }) {
   const stats = trpc.security.getStats.useQuery({ projectId });
+  const timeline = trpc.security.getTimeline.useQuery({ projectId, days: 14 });
   const topPatterns = trpc.security.getTopPatterns.useQuery({ projectId, limit: 8 });
   const recentEvents = trpc.security.getEvents.useQuery({ projectId, limit: 10 });
+
+  // Transform timeline data for Recharts stacked bar chart
+  const chartData = useMemo(() => {
+    if (!timeline.data?.length) return [];
+    const dateMap = new Map<string, { date: string; low: number; medium: number; high: number }>();
+    for (const row of timeline.data) {
+      const d = row.date;
+      if (!dateMap.has(d)) {
+        dateMap.set(d, { date: d, low: 0, medium: 0, high: 0 });
+      }
+      const entry = dateMap.get(d)!;
+      const count = Number(row.count);
+      if (row.threatLevel === "low") entry.low += count;
+      else if (row.threatLevel === "medium") entry.medium += count;
+      else if (row.threatLevel === "high") entry.high += count;
+    }
+    return Array.from(dateMap.values()).sort((a, b) => a.date.localeCompare(b.date));
+  }, [timeline.data]);
 
   if (stats.isLoading) {
     return (
@@ -120,6 +149,65 @@ function OverviewTab({ projectId }: { projectId: number }) {
             <p className="text-2xl font-bold tabular-nums">{card.value.toLocaleString()}</p>
           </div>
         ))}
+      </div>
+
+      {/* Threat Timeline Chart */}
+      <div className="rounded-lg border border-border bg-card/50 p-5">
+        <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
+          <Activity className="w-4 h-4 text-primary" />
+          Threat Timeline (14 days)
+        </h3>
+        {timeline.isLoading ? (
+          <div className="flex justify-center py-12">
+            <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : !chartData.length ? (
+          <div className="text-center py-12">
+            <ShieldCheck className="w-8 h-8 text-green-400 mx-auto mb-2" />
+            <p className="text-sm text-muted-foreground">No threat data in the last 14 days</p>
+          </div>
+        ) : (
+          <div style={{ height: 260 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartData} barCategoryGap="20%">
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+                <XAxis
+                  dataKey="date"
+                  tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
+                  tickFormatter={(v: string) => {
+                    const d = new Date(v + "T00:00:00");
+                    return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+                  }}
+                  axisLine={{ stroke: "hsl(var(--border))" }}
+                />
+                <YAxis
+                  tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
+                  axisLine={{ stroke: "hsl(var(--border))" }}
+                  allowDecimals={false}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "hsl(var(--card))",
+                    border: "1px solid hsl(var(--border))",
+                    borderRadius: 8,
+                    fontSize: 12,
+                    color: "hsl(var(--foreground))",
+                  }}
+                  labelFormatter={(v: string) => {
+                    const d = new Date(v + "T00:00:00");
+                    return d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+                  }}
+                />
+                <Legend
+                  wrapperStyle={{ fontSize: 11, color: "hsl(var(--muted-foreground))" }}
+                />
+                <Bar dataKey="low" stackId="threats" fill="#facc15" name="Low" radius={[0, 0, 0, 0]} />
+                <Bar dataKey="medium" stackId="threats" fill="#fb923c" name="Medium" radius={[0, 0, 0, 0]} />
+                <Bar dataKey="high" stackId="threats" fill="#ef4444" name="High" radius={[2, 2, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
       </div>
 
       {/* Two columns: Top Patterns + Recent Events */}
@@ -480,6 +568,70 @@ function ConfigTab({ projectId }: { projectId: number }) {
               <SelectItem value="block">Block — Reject requests containing PII</SelectItem>
             </SelectContent>
           </Select>
+        </div>
+      </div>
+
+      {/* Output Scanning */}
+      <div>
+        <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
+          <ShieldAlert className="w-4 h-4 text-purple-400" />
+          Output Scanning (Response Side)
+        </h3>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between p-4 rounded-lg border border-border bg-card/50">
+            <div>
+              <p className="text-sm font-medium">Enable Output Scanning</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Scan LLM responses for PII leakage and toxic content before delivery
+              </p>
+            </div>
+            <Switch
+              checked={(c as any).outputScanning ?? false}
+              onCheckedChange={(v) => handleToggle("outputScanning", v)}
+            />
+          </div>
+
+          <div className="flex items-center justify-between p-4 rounded-lg border border-border bg-card/50">
+            <div>
+              <p className="text-sm font-medium">Output PII Detection</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Detect PII in model responses (emails, SSNs, credit cards, etc.)
+              </p>
+            </div>
+            <Switch
+              checked={(c as any).outputPiiDetection ?? true}
+              onCheckedChange={(v) => handleToggle("outputPiiDetection", v)}
+              disabled={!(c as any).outputScanning}
+            />
+          </div>
+
+          <div className="flex items-center justify-between p-4 rounded-lg border border-border bg-card/50">
+            <div>
+              <p className="text-sm font-medium">Output Toxicity Detection</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Detect hate speech, harassment, self-harm, violence, and dangerous instructions
+              </p>
+            </div>
+            <Switch
+              checked={(c as any).outputToxicityDetection ?? true}
+              onCheckedChange={(v) => handleToggle("outputToxicityDetection", v)}
+              disabled={!(c as any).outputScanning}
+            />
+          </div>
+
+          <div className="flex items-center justify-between p-4 rounded-lg border border-border bg-card/50">
+            <div>
+              <p className="text-sm font-medium">Block Toxic Responses</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Block responses with high output threat scores (non-streaming only; streaming events are logged)
+              </p>
+            </div>
+            <Switch
+              checked={(c as any).outputBlockThreats ?? false}
+              onCheckedChange={(v) => handleToggle("outputBlockThreats", v)}
+              disabled={!(c as any).outputScanning}
+            />
+          </div>
         </div>
       </div>
 

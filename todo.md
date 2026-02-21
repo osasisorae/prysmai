@@ -367,3 +367,32 @@
 - [x] Add security section to /docs page (injection detection, PII redaction, content policies, configuration)
 - [x] Update GitHub README with security features
 - [x] Republish to PyPI v0.3.0 with security documentation (https://pypi.org/project/prysmai/0.3.0/)
+
+## QA Testing Guide Update
+- [x] Review current prysmai-layer1-qa-testing-guide.md
+- [x] Add Layer 2 security test cases (injection detection, PII redaction, content policies, threat scoring, security dashboard, configuration)
+- [x] Rename to prysmai-qa-testing-guide.md (covers Layer 1 + Layer 2) — 152 total tests (109 Layer 1 + 43 Layer 2)
+
+## Layer 2 Completion Sprint
+### Output Scanning (Response-Side Security)
+- [x] 1. Build output scanner module (reuse pii-detector + toxicity keyword matcher on completions)
+- [x] 2. Add output scanning toggle to security_configs schema + DB migration
+- [x] 3. Integrate output scanning into proxy — non-streaming (buffer response, scan, then forward)
+- [x] 4. Integrate output scanning into proxy — streaming (accumulate chunks, scan after complete, log event)
+- [x] 5. Add response security headers (X-Prysm-Output-Threat-Score, X-Prysm-Output-Threat-Level)
+- [x] 6. Log output security events to security_events table (with source=output flag)
+- [x] 7. Add output scanning config UI in Security Dashboard Configuration tab (4 toggles: enable, PII, toxicity, blocking)
+
+### Threat Timeline Chart
+- [x] 8. Install Recharts and build stacked bar chart for Security Dashboard Overview tab (14-day, low/medium/high stacked)
+
+### Per-Category Threshold Config
+- [x] 9. Output scanning config integrated into existing security_configs schema (4 new boolean columns)
+- [x] 10. Output scanning config UI added to Security Dashboard Configuration tab
+- [x] 11. Output scan config wired into proxy via getOutputScanConfig with 5-min cache
+
+### Testing & QA
+- [x] 12. Write vitest tests for output scanning (46 tests: toxicity detection, PII output, composite scoring, blocking, config)
+- [x] 13. All 345 tests passing (16 test files)
+- [x] 14. Update QA testing guide v2.1 with output scanning (Y1-Y10) + threat timeline chart (Z1-Z3) — 165 total tests
+- [x] 15. Final full test suite pass — 345 tests, 16 files, all green

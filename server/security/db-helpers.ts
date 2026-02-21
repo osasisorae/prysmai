@@ -31,6 +31,10 @@ export async function upsertSecurityConfig(
     blockHighThreats?: boolean;
     customKeywords?: string[];
     customPolicies?: any[];
+    outputScanning?: boolean;
+    outputPiiDetection?: boolean;
+    outputToxicityDetection?: boolean;
+    outputBlockThreats?: boolean;
   }
 ) {
   const db = await getDb();
@@ -59,6 +63,10 @@ export async function upsertSecurityConfig(
       blockHighThreats: config.blockHighThreats ?? false,
       customKeywords: config.customKeywords ?? [],
       customPolicies: config.customPolicies ?? [],
+      outputScanning: config.outputScanning ?? false,
+      outputPiiDetection: config.outputPiiDetection ?? true,
+      outputToxicityDetection: config.outputToxicityDetection ?? true,
+      outputBlockThreats: config.outputBlockThreats ?? false,
     });
     return { id: Number((result as any)[0]?.insertId), projectId, ...config };
   }

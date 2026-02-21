@@ -311,17 +311,22 @@ export const securityEvents = mysqlTable(
     threatLevel: mysqlEnum("threatLevel", ["clean", "low", "medium", "high"]).notNull(),
     action: mysqlEnum("action", ["pass", "log", "warn", "block"]).notNull(),
     summary: text("summary"),
+    // Source: input (prompt) or output (completion)
+    source: mysqlEnum("source", ["input", "output"]).default("input").notNull(),
     // Breakdown scores
     injectionScore: int("injectionScore").default(0),
     piiScore: int("piiScore").default(0),
     policyScore: int("policyScore").default(0),
+    toxicityScore: int("toxicityScore").default(0),
     // Details (JSON for flexibility)
     injectionMatches: json("injectionMatches").$type<Array<{ patternName: string; category: string; severity: number }>>(),
     piiTypes: json("piiTypes").$type<string[]>(),
     policyViolations: json("policyViolations").$type<string[]>(),
+    toxicityCategories: json("toxicityCategories").$type<string[]>(),
     // Context
     model: varchar("model", { length: 128 }),
     inputPreview: text("inputPreview"), // first 200 chars of the prompt
+    outputPreview: text("outputPreview"), // first 200 chars of the completion (for output events)
     processingTimeMs: int("processingTimeMs"),
   },
   (table) => [
@@ -347,6 +352,13 @@ export const securityConfigs = mysqlTable(
     piiRedactionMode: mysqlEnum("piiRedactionMode", ["none", "mask", "hash", "block"]).default("none").notNull(),
     contentPolicyEnabled: boolean("contentPolicyEnabled").default(true).notNull(),
     blockHighThreats: boolean("blockHighThreats").default(false).notNull(),
+    // Output scanning
+    outputScanning: boolean("outputScanning").default(false).notNull(),
+    outputPiiDetection: boolean("outputPiiDetection").default(true).notNull(),
+    outputToxicityDetection: boolean("outputToxicityDetection").default(true).notNull(),
+    outputBlockThreats: boolean("outputBlockThreats").default(false).notNull(),
+    // Per-category thresholds (JSON: { category: { threshold: number, action: "pass"|"log"|"warn"|"block" } })
+    categoryThresholds: json("categoryThresholds").$type<Record<string, { threshold: number; action: string }>>(),
     // Custom rules
     customKeywords: json("customKeywords").$type<string[]>(),
     customPolicies: json("customPolicies").$type<Array<{ name: string; type: string; pattern: string; severity: number; action: string; description: string }>>(),

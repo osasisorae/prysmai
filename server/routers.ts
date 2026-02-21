@@ -501,6 +501,10 @@ export const appRouter = router({
           blockHighThreats: false,
           customKeywords: [],
           customPolicies: [],
+          outputScanning: false,
+          outputPiiDetection: true,
+          outputToxicityDetection: true,
+          outputBlockThreats: false,
         };
       }),
 
@@ -522,6 +526,10 @@ export const appRouter = router({
           action: z.enum(["flag", "block"]),
           description: z.string().optional(),
         })).optional(),
+        outputScanning: z.boolean().optional(),
+        outputPiiDetection: z.boolean().optional(),
+        outputToxicityDetection: z.boolean().optional(),
+        outputBlockThreats: z.boolean().optional(),
       }))
       .mutation(async ({ ctx, input }) => {
         const org = await requireOrg(ctx.user.id);

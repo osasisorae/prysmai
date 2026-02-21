@@ -29,6 +29,7 @@ import {
 import { emitTrace } from "./trace-emitter";
 import type { InsertTrace } from "../drizzle/schema";
 import { assessRequest } from "./security/proxy-middleware";
+import { scanOutput, logOutputSecurityEvent, getOutputScanConfig } from "./security/output-scanner";
 import {
   translateRequestToAnthropic,
   translateResponseToOpenAI,
@@ -212,6 +213,78 @@ async function handleChatNonStreaming(req: Request, res: Response, auth: AuthRes
 
     const meta = extractTraceMetadata(req);
 
+    // ─── Output Scanning (non-streaming) ───
+    let finalResponseData = responseData;
+    if (upstreamResponse.ok && completion) {
+      try {
+        const outputConfig = await getOutputScanConfig(auth.projectId);
+        if (outputConfig.outputScanning) {
+          const outputResult = scanOutput(completion, outputConfig);
+
+          // Add output security headers
+          res.set("X-Prysm-Output-Threat-Score", outputResult.outputThreatScore.toString());
+          res.set("X-Prysm-Output-Threat-Level", outputResult.outputThreatLevel);
+          if (outputResult.toxicityCategories.length > 0) {
+            res.set("X-Prysm-Output-Flags", outputResult.toxicityCategories.join(","));
+          }
+
+          // Log output security event asynchronously
+          logOutputSecurityEvent(auth.projectId, traceId, model, outputResult, completion).catch(console.error);
+
+          // Block if output threats are high and blocking is enabled
+          if (outputResult.shouldBlock) {
+            // Log trace first
+            const trace: InsertTrace = {
+              projectId: auth.projectId,
+              traceId,
+              model,
+              provider: auth.provider,
+              promptMessages: body.messages,
+              completion,
+              finishReason,
+              toolCalls: toolCalls?.length ? toolCalls : undefined,
+              logprobs: logprobs ?? undefined,
+              status: "error",
+              statusCode: 403,
+              latencyMs,
+              promptTokens,
+              completionTokens,
+              totalTokens,
+              costUsd: costUsd.toFixed(6),
+              temperature: body.temperature?.toString(),
+              maxTokens: body.max_tokens,
+              topP: body.top_p?.toString(),
+              isStreaming: false,
+              ...meta,
+            };
+            emitTrace(trace).catch(console.error);
+
+            res.set("X-Prysm-Trace-Id", traceId);
+            res.status(403).json({
+              error: {
+                message: "Response blocked by output security policy",
+                type: "output_security_error",
+                threat_level: outputResult.outputThreatLevel,
+                threat_score: outputResult.outputThreatScore,
+                details: outputResult.summary,
+              },
+            });
+            return;
+          }
+
+          // Apply PII redaction to output if configured
+          if (outputResult.redactedOutput && outputConfig.piiRedactionMode !== "none") {
+            finalResponseData = JSON.parse(JSON.stringify(responseData));
+            if (finalResponseData.choices?.[0]?.message?.content) {
+              finalResponseData.choices[0].message.content = outputResult.redactedOutput;
+            }
+          }
+        }
+      } catch (err) {
+        console.error("[Security] Output scanning error:", err);
+      }
+    }
+
     // Log trace
     const trace: InsertTrace = {
       projectId: auth.projectId,
@@ -244,7 +317,7 @@ async function handleChatNonStreaming(req: Request, res: Response, auth: AuthRes
 
     res.set("X-Prysm-Trace-Id", traceId);
     res.set("X-Prysm-Latency-Ms", latencyMs.toString());
-    res.status(upstreamResponse.ok ? 200 : upstreamResponse.status).json(responseData);
+    res.status(upstreamResponse.ok ? 200 : upstreamResponse.status).json(finalResponseData);
   } catch (error: any) {
     const latencyMs = Date.now() - startTime;
     const trace: InsertTrace = {
@@ -400,6 +473,19 @@ async function handleChatStreamingOpenAI(req: Request, res: Response, auth: Auth
     const toolCallsFinal = Object.keys(toolCallsAccum).length > 0 ? Object.values(toolCallsAccum) : undefined;
     const logprobsFinal = logprobsAccum.length > 0 ? { content: logprobsAccum } : undefined;
     const meta = extractTraceMetadata(req);
+
+    // ─── Output Scanning (streaming — log-only, stream already sent) ───
+    if (completion) {
+      try {
+        const outputConfig = await getOutputScanConfig(auth.projectId);
+        if (outputConfig.outputScanning) {
+          const outputResult = scanOutput(completion, outputConfig);
+          logOutputSecurityEvent(auth.projectId, traceId, model, outputResult, completion).catch(console.error);
+        }
+      } catch (err) {
+        console.error("[Security] Output scanning error (streaming):", err);
+      }
+    }
 
     const trace: InsertTrace = {
       projectId: auth.projectId,
@@ -579,6 +665,19 @@ async function handleChatStreamingAnthropic(req: Request, res: Response, auth: A
     const completion = completionChunks.join("");
     const costUsd = await resolveCost(auth.provider, model, streamState.promptTokens, streamState.completionTokens);
     const meta = extractTraceMetadata(req);
+
+    // ─── Output Scanning (Anthropic streaming — log-only) ───
+    if (completion) {
+      try {
+        const outputConfig = await getOutputScanConfig(auth.projectId);
+        if (outputConfig.outputScanning) {
+          const outputResult = scanOutput(completion, outputConfig);
+          logOutputSecurityEvent(auth.projectId, traceId, model, outputResult, completion).catch(console.error);
+        }
+      } catch (err) {
+        console.error("[Security] Output scanning error (Anthropic streaming):", err);
+      }
+    }
 
     const trace: InsertTrace = {
       projectId: auth.projectId,
