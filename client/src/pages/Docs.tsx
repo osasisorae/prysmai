@@ -367,7 +367,7 @@ export default function Docs() {
               <span className="text-foreground">LLM Provider</span>
               <br />
               <span className="text-muted-foreground text-xs mt-2 inline-block">
-                (OpenAI, Anthropic, vLLM, Ollama, or any OpenAI-compatible endpoint)
+                (OpenAI, Anthropic, Google Gemini, vLLM, Ollama, or any OpenAI-compatible endpoint)
               </span>
               <br />
               <span className="text-muted-foreground text-xs inline-block">
@@ -386,7 +386,7 @@ export default function Docs() {
                 </thead>
                 <tbody>
                   {[
-                    ["Multi-provider proxy", "OpenAI, Anthropic (auto-translated), vLLM, Ollama, any OpenAI-compatible endpoint"],
+                    ["Multi-provider proxy", "OpenAI, Anthropic (auto-translated), Google Gemini (native OpenAI-compatible), vLLM, Ollama, any OpenAI-compatible endpoint"],
                     ["Full trace capture", "Every request/response logged with tokens, latency, cost, model, and metadata"],
                     ["Real-time dashboard", "Live metrics charts, request explorer, model usage breakdown, WebSocket live feed"],
                     ["3 proxy endpoints", "Chat completions, text completions, and embeddings"],
@@ -440,6 +440,7 @@ export default function Docs() {
                   {[
                     ["OpenAI", "https://api.openai.com/v1", "Default. All models supported."],
                     ["Anthropic", "https://api.anthropic.com", "Auto-translated to/from OpenAI format."],
+                    ["Google Gemini", "https://generativelanguage.googleapis.com/v1beta/openai", "Native OpenAI-compatible endpoint. All Gemini models."],
                     ["vLLM", "http://your-server:8000/v1", "Any vLLM-served model."],
                     ["Ollama", "http://localhost:11434/v1", "Local models via Ollama."],
                     ["Custom", "Any URL", "Any OpenAI-compatible endpoint."],
@@ -819,6 +820,41 @@ console.log(response.choices[0].message.content);`}
               the rest.
             </p>
 
+            <SubHeading id="provider-google">Google Gemini</SubHeading>
+            <p className="text-muted-foreground leading-relaxed mb-4">
+              Google Gemini provides a native OpenAI-compatible endpoint, so no translation is needed.
+              Prysm routes your requests directly to Google's API using the standard OpenAI format.
+            </p>
+            <div className="overflow-x-auto my-6">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left py-2.5 pr-4 text-muted-foreground font-medium">Feature</th>
+                    <th className="text-left py-2.5 text-muted-foreground font-medium">Details</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    ["Request format", "Standard OpenAI format — sent directly to Google's OpenAI-compatible endpoint"],
+                    ["Response format", "Standard OpenAI format — returned natively by Google"],
+                    ["Streaming", "Full SSE streaming support via OpenAI-compatible endpoint"],
+                    ["Embeddings", "Supported via Google's text-embedding model"],
+                    ["Models", "gemini-2.5-pro, gemini-2.5-flash, gemini-2.0-flash, gemini-3-pro-preview, and all Gemini models"],
+                  ].map(([what, how]) => (
+                    <tr key={what} className="border-b border-border/50">
+                      <td className="py-2.5 pr-4 font-medium text-foreground whitespace-nowrap">{what}</td>
+                      <td className="py-2.5 text-muted-foreground">{how}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="text-muted-foreground leading-relaxed mb-4">
+              Set provider to <IC>google</IC> in your project settings. The base URL is automatically
+              set to <IC>https://generativelanguage.googleapis.com/v1beta/openai</IC>. Use your Google AI
+              API key as the upstream API key.
+            </p>
+
             <SubHeading id="provider-custom">Custom / Self-Hosted Models</SubHeading>
             <p className="text-muted-foreground leading-relaxed mb-4">
               Any endpoint that speaks the OpenAI API format works with Prysm. This includes
@@ -1085,8 +1121,13 @@ console.log(response.choices[0].message.content);`}
                     ["claude-3-5-sonnet", "$0.003", "$0.015"],
                     ["claude-3-5-haiku", "$0.0008", "$0.004"],
                     ["claude-3-opus", "$0.015", "$0.075"],
+                    ["gemini-2.5-pro", "$0.00125", "$0.01"],
+                    ["gemini-2.5-flash", "$0.0003", "$0.0025"],
+                    ["gemini-2.5-flash-lite", "$0.0001", "$0.0004"],
                     ["gemini-2.0-flash", "$0.0001", "$0.0004"],
-                    ["gemini-1.5-pro", "$0.00125", "$0.005"],
+                    ["gemini-2.0-flash-lite", "$0.000075", "$0.0003"],
+                    ["gemini-3-pro-preview", "$0.002", "$0.012"],
+                    ["gemini-3-flash-preview", "$0.0005", "$0.003"],
                   ].map(([model, input, output]) => (
                     <tr key={model} className="border-b border-border/50">
                       <td className="py-2.5 pr-4 font-mono text-xs text-foreground">{model}</td>
@@ -1175,7 +1216,7 @@ ws.onmessage = (event) => {
 
             <SubHeading id="tool-calling">Tool Calling / Function Calling</SubHeading>
             <p className="text-muted-foreground leading-relaxed mb-4">
-              Prysm captures tool calls (function calling) from both OpenAI and Anthropic models.
+              Prysm captures tool calls (function calling) from OpenAI, Anthropic, and Google Gemini models.
               When a model returns tool calls, they're stored in the trace and displayed in the
               Request Explorer detail panel.
             </p>
@@ -1236,7 +1277,7 @@ ws.onmessage = (event) => {
                 <tbody>
                   {[
                     ["Model", "Which model was called (gpt-4o, claude-3-5-sonnet, etc.)"],
-                    ["Provider", "The upstream provider (openai, anthropic, custom)"],
+                    ["Provider", "The upstream provider (openai, anthropic, google, custom)"],
                     ["Latency", "Total request duration in milliseconds"],
                     ["TTFT", "Time to first token (streaming requests only)"],
                     ["Prompt tokens", "Input token count from the provider response"],

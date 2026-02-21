@@ -414,8 +414,17 @@ const DEFAULT_PRICING: Record<string, { input: number; output: number }> = {
   "claude-3-5-sonnet-20241022": { input: 0.003, output: 0.015 },
   "claude-3-5-haiku-20241022": { input: 0.0008, output: 0.004 },
   "claude-3-opus-20240229": { input: 0.015, output: 0.075 },
+  // Google Gemini models (per 1K tokens, converted from per 1M)
+  "gemini-2.5-pro": { input: 0.00125, output: 0.01 },
+  "gemini-2.5-flash": { input: 0.0003, output: 0.0025 },
+  "gemini-2.5-flash-lite": { input: 0.0001, output: 0.0004 },
   "gemini-2.0-flash": { input: 0.0001, output: 0.0004 },
+  "gemini-2.0-flash-lite": { input: 0.000075, output: 0.0003 },
+  "gemini-3-pro-preview": { input: 0.002, output: 0.012 },
+  "gemini-3-flash-preview": { input: 0.0005, output: 0.003 },
+  "gemini-3.1-pro-preview": { input: 0.002, output: 0.012 },
   "gemini-1.5-pro": { input: 0.00125, output: 0.005 },
+  "gemini-1.5-flash": { input: 0.000075, output: 0.0003 },
 };
 
 export function getDefaultPricing(model: string): { input: number; output: number } | undefined {

@@ -42,7 +42,7 @@ import { toast } from "sonner";
 const PROVIDERS = [
   { value: "openai", label: "OpenAI", baseUrl: "https://api.openai.com/v1" },
   { value: "anthropic", label: "Anthropic", baseUrl: "https://api.anthropic.com/v1" },
-  { value: "google", label: "Google AI", baseUrl: "https://generativelanguage.googleapis.com/v1beta" },
+  { value: "google", label: "Google Gemini", baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai" },
   { value: "custom", label: "Custom / OpenAI-compatible", baseUrl: "" },
 ];
 
@@ -87,7 +87,7 @@ function ProviderTab({ projectId }: { projectId: number }) {
       providerConfig: {
         provider,
         baseUrl,
-        defaultModel: provider === "openai" ? "gpt-4o-mini" : undefined,
+        defaultModel: provider === "openai" ? "gpt-4o-mini" : provider === "google" ? "gemini-2.5-flash" : undefined,
         ...(apiKey.trim() ? { apiKeyEncrypted: apiKey } : {}),
       },
     });
@@ -217,11 +217,11 @@ const COMMON_MODELS = [
   { provider: "openai", model: "gpt-4-turbo", label: "GPT-4 Turbo" },
   { provider: "anthropic", model: "claude-3-5-sonnet-20241022", label: "Claude 3.5 Sonnet" },
   { provider: "anthropic", model: "claude-3-5-haiku-20241022", label: "Claude 3.5 Haiku" },
+  { provider: "google", model: "gemini-2.5-pro", label: "Gemini 2.5 Pro" },
+  { provider: "google", model: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
+  { provider: "google", model: "gemini-2.0-flash", label: "Gemini 2.0 Flash" },
   { provider: "vllm", model: "llama-3.1-70b", label: "Llama 3.1 70B" },
-  { provider: "vllm", model: "llama-3.1-8b", label: "Llama 3.1 8B" },
-  { provider: "vllm", model: "mistral-7b", label: "Mistral 7B" },
   { provider: "ollama", model: "llama3", label: "Ollama Llama 3" },
-  { provider: "ollama", model: "mistral", label: "Ollama Mistral" },
 ];
 
 function PricingTab({ projectId }: { projectId: number }) {

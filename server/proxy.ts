@@ -84,11 +84,20 @@ async function authenticateProxyRequest(req: Request): Promise<AuthResult | null
     }
   }
 
+  // Resolve base URL based on provider
+  let resolvedProvider = config.provider ?? "openai";
+  let resolvedBaseUrl = config.baseUrl ?? "https://api.openai.com/v1";
+
+  // Google/Gemini: use Google's OpenAI-compatible endpoint
+  if (isGoogle(resolvedProvider)) {
+    resolvedBaseUrl = GOOGLE_OPENAI_BASE_URL;
+  }
+
   return {
     projectId: project.id,
     orgId: project.orgId,
-    provider: config.provider ?? "openai",
-    baseUrl: config.baseUrl ?? "https://api.openai.com/v1",
+    provider: resolvedProvider,
+    baseUrl: resolvedBaseUrl,
     upstreamApiKey: config.apiKeyEncrypted, // stored as plaintext for MVP
   };
 }
@@ -106,11 +115,18 @@ async function resolveCost(
   return calculateCost(promptTokens, completionTokens, pricing.input, pricing.output);
 }
 
-// ─── Helper: detect if provider is Anthropic ───
+// ─── Helper: detect provider type ───
 
 function isAnthropic(provider: string): boolean {
   return provider.toLowerCase() === "anthropic";
 }
+
+function isGoogle(provider: string): boolean {
+  return provider.toLowerCase() === "google" || provider.toLowerCase() === "gemini";
+}
+
+// Google Gemini has a native OpenAI-compatible endpoint
+const GOOGLE_OPENAI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai";
 
 // ─── Helper: extract common trace metadata from request ───
 
@@ -148,6 +164,14 @@ async function handleChatNonStreaming(req: Request, res: Response, auth: AuthRes
       upstreamUrl = `${baseUrl}/messages`;
       upstreamHeaders = getAnthropicHeaders(auth.upstreamApiKey);
       upstreamBody = JSON.stringify(anthropicReq);
+    } else if (isGoogle(auth.provider)) {
+      // Google Gemini: uses OpenAI-compatible endpoint with API key as Bearer token
+      upstreamUrl = `${auth.baseUrl}/chat/completions`;
+      upstreamHeaders = {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${auth.upstreamApiKey}`,
+      };
+      upstreamBody = JSON.stringify({ ...body, stream: false });
     } else {
       // OpenAI / OpenAI-compatible (vLLM, Ollama, TGI)
       upstreamUrl = `${auth.baseUrl}/chat/completions`;
@@ -619,11 +643,12 @@ async function handleCompletions(req: Request, res: Response, auth: AuthResult) 
   const body = req.body;
   const model = body.model ?? "unknown";
 
-  // Anthropic doesn't support legacy completions — return error
-  if (isAnthropic(auth.provider)) {
+  // Anthropic and Google don't support legacy completions — return error
+  if (isAnthropic(auth.provider) || isGoogle(auth.provider)) {
+    const providerName = isAnthropic(auth.provider) ? "Anthropic" : "Google Gemini";
     res.status(400).json({
       error: {
-        message: "Anthropic does not support the legacy /completions endpoint. Use /chat/completions instead.",
+        message: `${providerName} does not support the legacy /completions endpoint. Use /chat/completions instead.`,
         type: "invalid_request_error",
       },
     });
@@ -720,6 +745,7 @@ async function handleEmbeddings(req: Request, res: Response, auth: AuthResult) {
   const model = body.model ?? "text-embedding-3-small";
 
   // Anthropic doesn't support embeddings — return error
+  // Google Gemini supports embeddings via its OpenAI-compatible endpoint
   if (isAnthropic(auth.provider)) {
     res.status(400).json({
       error: {
@@ -839,6 +865,7 @@ proxyRouter.post("/chat/completions", async (req: Request, res: Response) => {
     if (isAnthropic(auth.provider)) {
       await handleChatStreamingAnthropic(req, res, auth);
     } else {
+      // Google Gemini uses OpenAI-compatible format, so same handler as OpenAI
       await handleChatStreamingOpenAI(req, res, auth);
     }
   } else {
@@ -899,7 +926,7 @@ proxyRouter.get("/health", (_req: Request, res: Response) => {
     service: "prysm-proxy",
     version: "0.3.0",
     endpoints: ["/chat/completions", "/completions", "/embeddings"],
-    providers: ["openai", "anthropic", "vllm", "ollama", "tgi"],
+    providers: ["openai", "anthropic", "google", "vllm", "ollama", "tgi"],
   });
 });
 

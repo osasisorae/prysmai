@@ -311,3 +311,18 @@
 - [x] Audit current /docs page against all Layer 1 features (found 13 major gaps)
 - [x] Research competitor documentation pages (Langfuse, Helicone, Portkey)
 - [x] Rewrite /docs page with comprehensive Layer 1 coverage (14 sections, full platform docs)
+
+## GitHub README & PyPI Update
+- [x] Audit current prysmai-python README against Layer 1 features
+- [x] Rewrite README with full platform overview + SDK documentation (14 sections)
+- [x] Bump SDK version to 0.2.0 and republish to PyPI
+- [x] Verify GitHub and PyPI pages show updated content
+
+## Google Gemini Provider Support
+- [x] Research Gemini API format (discovered native OpenAI-compatible endpoint — no translator needed)
+- [x] Add Google provider detection in proxy (model name prefix + base URL detection)
+- [x] Route Google requests through OpenAI-compatible endpoint at generativelanguage.googleapis.com/v1beta/openai
+- [x] Add Gemini model pricing (2.5-pro, 2.5-flash, 2.5-flash-lite, 2.0-flash, 2.0-flash-lite, 3-pro, 3-flash, 3.1-pro, 1.5-pro, 1.5-flash)
+- [x] Update Settings UI — Google Gemini in provider dropdown + Gemini models in quick-fill
+- [x] Update /docs page — provider table, feature table, dedicated Google Gemini section, pricing table
+- [x] Write tests for Gemini provider support (29 tests: detection, URL resolution, pricing, request format)
