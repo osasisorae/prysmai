@@ -306,3 +306,8 @@
 - [x] Write metrics scheduler tests (start/stop exports)
 - [x] Write proxy & DB helper tests (24 tests: hashApiKey edge cases, calculateCost edge cases, pricing lookup, module exports)
 - [x] Create comprehensive manual QA testing document for external tester (109 tests across 18 categories)
+
+## Documentation Page Overhaul
+- [x] Audit current /docs page against all Layer 1 features (found 13 major gaps)
+- [x] Research competitor documentation pages (Langfuse, Helicone, Portkey)
+- [x] Rewrite /docs page with comprehensive Layer 1 coverage (14 sections, full platform docs)
