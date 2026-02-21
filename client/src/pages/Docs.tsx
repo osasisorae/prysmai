@@ -1,9 +1,10 @@
 /**
- * Docs — Full platform documentation for Prysm AI Layer 1
+ * Docs — Full platform documentation for Prysm AI (Layer 1 + Layer 2)
  * Design: Matches V5 landing page (Inter, 2-color, generous whitespace)
  * Layout: Sidebar navigation + content area
  * Sections: Overview, Getting Started, Python SDK, REST API, Providers,
  *           Dashboard, API Keys, Alerts, Team, Cost Tracking,
+ *           Security (Injection, PII, Policies, Threat Scoring),
  *           Embeddings & Completions, Tool Calling & Logprobs,
  *           Self-Hosted, Error Handling
  */
@@ -34,6 +35,10 @@ import {
   Wrench,
   Globe,
   Activity,
+  ShieldAlert,
+  Lock,
+  Eye,
+  FileWarning,
 } from "lucide-react";
 
 const LOGO_URL = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663306080277/pKkWElgCpRmlNvjQ.png";
@@ -170,6 +175,7 @@ const NAV_SECTIONS = [
   { id: "alerts", label: "Alerts", icon: Bell },
   { id: "team", label: "Team Management", icon: Users },
   { id: "cost-tracking", label: "Cost Tracking", icon: DollarSign },
+  { id: "security", label: "Security", icon: ShieldAlert },
   { id: "endpoints", label: "All Endpoints", icon: Blocks },
   { id: "advanced", label: "Advanced Features", icon: Wrench },
   { id: "self-hosted", label: "Self-Hosted Proxy", icon: Shield },
@@ -349,9 +355,10 @@ export default function Docs() {
             {/* ═══════════════════════════════════════════════════════════ */}
             <SectionHeading id="overview">Overview</SectionHeading>
             <p className="text-muted-foreground leading-relaxed mb-4">
-              Prysm AI is an observability proxy for LLM applications. It sits between your application
+              Prysm AI is an observability and security proxy for LLM applications. It sits between your application
               and your LLM provider, capturing every request and response with full metrics — latency,
-              token counts, cost, errors, and the complete prompt/completion data.
+              token counts, cost, errors, and the complete prompt/completion data. It also scans every
+              request for prompt injection attacks, PII leakage, and content policy violations in real time.
             </p>
             <p className="text-muted-foreground leading-relaxed mb-4">
               Instead of adding logging code throughout your application, you route your LLM traffic
@@ -371,7 +378,7 @@ export default function Docs() {
               </span>
               <br />
               <span className="text-muted-foreground text-xs inline-block">
-                &darr; traces, metrics, cost, latency, alerts &mdash; all captured automatically
+                &darr; traces, metrics, cost, latency, alerts, security scanning &mdash; all captured automatically
               </span>
             </div>
 
@@ -398,6 +405,10 @@ export default function Docs() {
                     ["Python SDK", "Published on PyPI — one line to integrate"],
                     ["Tool calling & logprobs", "Captured and displayed in the trace detail panel"],
                     ["Usage enforcement", "Free tier limit (10K requests/month) with 429 response at limit"],
+                    ["Prompt injection detection", "20+ attack patterns across 7 categories with configurable blocking"],
+                    ["PII detection & redaction", "8 data types (email, phone, SSN, credit cards, API keys, IPs) with mask/hash/block modes"],
+                    ["Content policy enforcement", "5 built-in policies + custom keywords, composite threat scoring (0–100)"],
+                    ["Security dashboard", "Real-time threat log, stats overview, and configuration management"],
                   ].map(([feature, desc]) => (
                     <tr key={feature} className="border-b border-border/50">
                       <td className="py-2.5 pr-4 font-medium text-foreground whitespace-nowrap">{feature}</td>
@@ -1154,6 +1165,377 @@ console.log(response.choices[0].message.content);`}
               with a message indicating the limit has been reached. View your current usage in
               <strong> Settings &rarr; Usage</strong>.
             </p>
+
+            {/* ═══════════════════════════════════════════════════════════ */}
+            {/* SECURITY */}
+            {/* ═══════════════════════════════════════════════════════════ */}
+            <SectionHeading id="security">Security</SectionHeading>
+            <p className="text-muted-foreground leading-relaxed mb-4">
+              Prysm AI includes a built-in security layer that scans every LLM request in real time
+              before forwarding it to the provider. The security engine detects prompt injection attacks,
+              identifies and redacts PII (personally identifiable information), enforces content policies,
+              and produces a composite threat score (0&ndash;100) for each request. All security events
+              are logged and visible in the <strong>Security Dashboard</strong>.
+            </p>
+
+            <Callout type="info">
+              Security scanning runs automatically on all proxied requests. No SDK changes are required &mdash;
+              your existing integration is already protected. Configure sensitivity and behavior in
+              <strong> Settings &rarr; Security</strong> or via the Security Dashboard.
+            </Callout>
+
+            <SubHeading id="security-overview">How It Works</SubHeading>
+            <p className="text-muted-foreground leading-relaxed mb-4">
+              When a request arrives at the Prysm proxy, the security middleware extracts all text
+              content (system messages, user messages, assistant messages) and runs three detection
+              engines in parallel:
+            </p>
+            <div className="overflow-x-auto my-6">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left py-2.5 pr-4 text-muted-foreground font-medium">Engine</th>
+                    <th className="text-left py-2.5 pr-4 text-muted-foreground font-medium">What It Detects</th>
+                    <th className="text-left py-2.5 text-muted-foreground font-medium">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="text-muted-foreground">
+                  <tr className="border-b border-border/50">
+                    <td className="py-2.5 pr-4 font-mono text-xs text-primary">Injection Detector</td>
+                    <td className="py-2.5 pr-4">Prompt injection attacks (20+ patterns across 7 categories)</td>
+                    <td className="py-2.5">Flag or block</td>
+                  </tr>
+                  <tr className="border-b border-border/50">
+                    <td className="py-2.5 pr-4 font-mono text-xs text-primary">PII Detector</td>
+                    <td className="py-2.5 pr-4">Emails, phone numbers, SSNs, credit cards, API keys, IPs, and more</td>
+                    <td className="py-2.5">Mask, hash, or block</td>
+                  </tr>
+                  <tr className="border-b border-border/50">
+                    <td className="py-2.5 pr-4 font-mono text-xs text-primary">Content Policy</td>
+                    <td className="py-2.5 pr-4">Hate speech, violence, sexual content, self-harm, illegal activities</td>
+                    <td className="py-2.5">Flag or block</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p className="text-muted-foreground leading-relaxed mb-4">
+              Results from all three engines are combined into a <strong>composite threat score</strong> (0&ndash;100).
+              Scores are classified as: <IC>clean</IC> (0&ndash;19), <IC>low</IC> (20&ndash;39),
+              <IC>medium</IC> (40&ndash;69), or <IC>high</IC> (70&ndash;100). When blocking is enabled,
+              requests with a <IC>high</IC> threat level are rejected with a <IC>403</IC> response before
+              reaching the LLM provider.
+            </p>
+
+            <SubHeading id="injection-detection">Prompt Injection Detection</SubHeading>
+            <p className="text-muted-foreground leading-relaxed mb-4">
+              The injection detector scans user and system messages for 20+ attack patterns organized
+              into 7 categories. Each detected pattern contributes to the overall threat score based on
+              its severity weight.
+            </p>
+            <div className="overflow-x-auto my-6">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left py-2.5 pr-4 text-muted-foreground font-medium">Category</th>
+                    <th className="text-left py-2.5 pr-4 text-muted-foreground font-medium">Example Patterns</th>
+                    <th className="text-left py-2.5 text-muted-foreground font-medium">Severity</th>
+                  </tr>
+                </thead>
+                <tbody className="text-muted-foreground">
+                  <tr className="border-b border-border/50">
+                    <td className="py-2.5 pr-4 font-medium">Role Manipulation</td>
+                    <td className="py-2.5 pr-4 font-mono text-xs">"ignore previous instructions", "you are now DAN"</td>
+                    <td className="py-2.5">High (8&ndash;9)</td>
+                  </tr>
+                  <tr className="border-b border-border/50">
+                    <td className="py-2.5 pr-4 font-medium">Delimiter Injection</td>
+                    <td className="py-2.5 pr-4 font-mono text-xs">"---END SYSTEM---", "[INST]", markdown code fences</td>
+                    <td className="py-2.5">Medium (6&ndash;7)</td>
+                  </tr>
+                  <tr className="border-b border-border/50">
+                    <td className="py-2.5 pr-4 font-medium">Context Confusion</td>
+                    <td className="py-2.5 pr-4 font-mono text-xs">"the real instructions are", "admin override"</td>
+                    <td className="py-2.5">High (7&ndash;8)</td>
+                  </tr>
+                  <tr className="border-b border-border/50">
+                    <td className="py-2.5 pr-4 font-medium">Encoding Tricks</td>
+                    <td className="py-2.5 pr-4 font-mono text-xs">Base64 encoded instructions, hex-encoded payloads</td>
+                    <td className="py-2.5">Medium (6&ndash;7)</td>
+                  </tr>
+                  <tr className="border-b border-border/50">
+                    <td className="py-2.5 pr-4 font-medium">Extraction Attempts</td>
+                    <td className="py-2.5 pr-4 font-mono text-xs">"repeat your system prompt", "show your instructions"</td>
+                    <td className="py-2.5">High (7&ndash;8)</td>
+                  </tr>
+                  <tr className="border-b border-border/50">
+                    <td className="py-2.5 pr-4 font-medium">Jailbreak Phrases</td>
+                    <td className="py-2.5 pr-4 font-mono text-xs">"DAN mode", "developer mode", "no restrictions"</td>
+                    <td className="py-2.5">Critical (9&ndash;10)</td>
+                  </tr>
+                  <tr className="border-b border-border/50">
+                    <td className="py-2.5 pr-4 font-medium">Multi-language Attacks</td>
+                    <td className="py-2.5 pr-4 font-mono text-xs">Language-switching evasion, mixed-script injection</td>
+                    <td className="py-2.5">Medium (5&ndash;6)</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <SubHeading id="pii-detection">PII Detection & Redaction</SubHeading>
+            <p className="text-muted-foreground leading-relaxed mb-4">
+              The PII detector identifies 8 types of personally identifiable information in request
+              content. When redaction is enabled, PII is transformed before the request reaches the
+              LLM provider, ensuring sensitive data never leaves your infrastructure.
+            </p>
+            <div className="overflow-x-auto my-6">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left py-2.5 pr-4 text-muted-foreground font-medium">Data Type</th>
+                    <th className="text-left py-2.5 pr-4 text-muted-foreground font-medium">Example</th>
+                    <th className="text-left py-2.5 text-muted-foreground font-medium">Detection Method</th>
+                  </tr>
+                </thead>
+                <tbody className="text-muted-foreground">
+                  <tr className="border-b border-border/50">
+                    <td className="py-2.5 pr-4 font-medium">Email Addresses</td>
+                    <td className="py-2.5 pr-4 font-mono text-xs">user@example.com</td>
+                    <td className="py-2.5">RFC 5322 regex</td>
+                  </tr>
+                  <tr className="border-b border-border/50">
+                    <td className="py-2.5 pr-4 font-medium">Phone Numbers</td>
+                    <td className="py-2.5 pr-4 font-mono text-xs">+1 (555) 123-4567</td>
+                    <td className="py-2.5">International format regex</td>
+                  </tr>
+                  <tr className="border-b border-border/50">
+                    <td className="py-2.5 pr-4 font-medium">Social Security Numbers</td>
+                    <td className="py-2.5 pr-4 font-mono text-xs">123-45-6789</td>
+                    <td className="py-2.5">US SSN format</td>
+                  </tr>
+                  <tr className="border-b border-border/50">
+                    <td className="py-2.5 pr-4 font-medium">Credit Card Numbers</td>
+                    <td className="py-2.5 pr-4 font-mono text-xs">4111-1111-1111-1111</td>
+                    <td className="py-2.5">Luhn algorithm + format</td>
+                  </tr>
+                  <tr className="border-b border-border/50">
+                    <td className="py-2.5 pr-4 font-medium">API Keys</td>
+                    <td className="py-2.5 pr-4 font-mono text-xs">sk-abc123..., AKIA...</td>
+                    <td className="py-2.5">Provider prefix patterns</td>
+                  </tr>
+                  <tr className="border-b border-border/50">
+                    <td className="py-2.5 pr-4 font-medium">IP Addresses</td>
+                    <td className="py-2.5 pr-4 font-mono text-xs">192.168.1.1, 2001:db8::1</td>
+                    <td className="py-2.5">IPv4 and IPv6 regex</td>
+                  </tr>
+                  <tr className="border-b border-border/50">
+                    <td className="py-2.5 pr-4 font-medium">Private Keys</td>
+                    <td className="py-2.5 pr-4 font-mono text-xs">-----BEGIN RSA PRIVATE KEY-----</td>
+                    <td className="py-2.5">PEM header detection</td>
+                  </tr>
+                  <tr className="border-b border-border/50">
+                    <td className="py-2.5 pr-4 font-medium">Dates of Birth</td>
+                    <td className="py-2.5 pr-4 font-mono text-xs">01/15/1990, 1990-01-15</td>
+                    <td className="py-2.5">Date format patterns</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <SubHeading id="redaction-modes">Redaction Modes</SubHeading>
+            <p className="text-muted-foreground leading-relaxed mb-4">
+              Choose how detected PII is handled before the request is forwarded to the LLM provider.
+              Configure the redaction mode in <strong>Settings &rarr; Security</strong> or via the
+              Security Dashboard configuration tab.
+            </p>
+            <div className="overflow-x-auto my-6">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left py-2.5 pr-4 text-muted-foreground font-medium">Mode</th>
+                    <th className="text-left py-2.5 pr-4 text-muted-foreground font-medium">Behavior</th>
+                    <th className="text-left py-2.5 text-muted-foreground font-medium">Example Output</th>
+                  </tr>
+                </thead>
+                <tbody className="text-muted-foreground">
+                  <tr className="border-b border-border/50">
+                    <td className="py-2.5 pr-4 font-mono text-xs text-primary">none</td>
+                    <td className="py-2.5 pr-4">PII is detected and logged but not modified. Requests pass through unchanged.</td>
+                    <td className="py-2.5 font-mono text-xs">user@example.com (unchanged)</td>
+                  </tr>
+                  <tr className="border-b border-border/50">
+                    <td className="py-2.5 pr-4 font-mono text-xs text-primary">mask</td>
+                    <td className="py-2.5 pr-4">PII is replaced with a type-labeled placeholder. The original value is logged in the security event.</td>
+                    <td className="py-2.5 font-mono text-xs">[EMAIL_REDACTED]</td>
+                  </tr>
+                  <tr className="border-b border-border/50">
+                    <td className="py-2.5 pr-4 font-mono text-xs text-primary">hash</td>
+                    <td className="py-2.5 pr-4">PII is replaced with a SHA-256 hash. Useful for correlation without exposing raw values.</td>
+                    <td className="py-2.5 font-mono text-xs">[EMAIL:a1b2c3d4]</td>
+                  </tr>
+                  <tr className="border-b border-border/50">
+                    <td className="py-2.5 pr-4 font-mono text-xs text-primary">block</td>
+                    <td className="py-2.5 pr-4">The entire request is rejected with a 403 response if any PII is detected.</td>
+                    <td className="py-2.5 font-mono text-xs">Request blocked (403)</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <SubHeading id="content-policies">Content Policy Enforcement</SubHeading>
+            <p className="text-muted-foreground leading-relaxed mb-4">
+              Content policies detect harmful or prohibited content in LLM requests. Prysm ships with
+              5 default policies covering the most common categories. You can also add custom keywords
+              to flag domain-specific content.
+            </p>
+            <div className="overflow-x-auto my-6">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left py-2.5 pr-4 text-muted-foreground font-medium">Policy</th>
+                    <th className="text-left py-2.5 pr-4 text-muted-foreground font-medium">Severity</th>
+                    <th className="text-left py-2.5 pr-4 text-muted-foreground font-medium">Default Action</th>
+                    <th className="text-left py-2.5 text-muted-foreground font-medium">Description</th>
+                  </tr>
+                </thead>
+                <tbody className="text-muted-foreground">
+                  <tr className="border-b border-border/50">
+                    <td className="py-2.5 pr-4 font-medium">Malware Creation</td>
+                    <td className="py-2.5 pr-4">10</td>
+                    <td className="py-2.5 pr-4 font-mono text-xs">block</td>
+                    <td className="py-2.5">Requests for ransomware, trojans, keyloggers, or exploit code</td>
+                  </tr>
+                  <tr className="border-b border-border/50">
+                    <td className="py-2.5 pr-4 font-medium">Weapon Instructions</td>
+                    <td className="py-2.5 pr-4">10</td>
+                    <td className="py-2.5 pr-4 font-mono text-xs">block</td>
+                    <td className="py-2.5">Requests for explosives, weapons, poisons, or drug manufacturing</td>
+                  </tr>
+                  <tr className="border-b border-border/50">
+                    <td className="py-2.5 pr-4 font-medium">Illegal Activity</td>
+                    <td className="py-2.5 pr-4">9</td>
+                    <td className="py-2.5 pr-4 font-mono text-xs">block</td>
+                    <td className="py-2.5">Hacking, credential theft, phishing, DDoS attacks</td>
+                  </tr>
+                  <tr className="border-b border-border/50">
+                    <td className="py-2.5 pr-4 font-medium">Data Exfiltration</td>
+                    <td className="py-2.5 pr-4">9</td>
+                    <td className="py-2.5 pr-4 font-mono text-xs">flag</td>
+                    <td className="py-2.5">Database dumping, credential extraction, authentication bypass</td>
+                  </tr>
+                  <tr className="border-b border-border/50">
+                    <td className="py-2.5 pr-4 font-medium">Harmful Content</td>
+                    <td className="py-2.5 pr-4">10</td>
+                    <td className="py-2.5 pr-4 font-mono text-xs">block</td>
+                    <td className="py-2.5">Self-harm, suicide methods, torture techniques</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p className="text-muted-foreground leading-relaxed mb-4">
+              <strong>Custom keywords:</strong> Add your own keywords via the Security Dashboard
+              configuration tab. Custom keywords are matched case-insensitively against the full
+              request text and flagged with a severity of 7.
+            </p>
+
+            <SubHeading id="threat-scoring">Threat Scoring</SubHeading>
+            <p className="text-muted-foreground leading-relaxed mb-4">
+              Every request receives a composite threat score from 0 to 100. The score is calculated
+              by combining findings from all three detection engines:
+            </p>
+            <CodeBlock
+              code={`// Threat score calculation
+injectionScore = sum(pattern.severity * weight) for each detected pattern
+piiScore       = count(pii_findings) * 15  // each PII finding adds 15 points
+policyScore    = sum(policy.severity * 8)  for each policy violation
+
+threatScore    = min(100, injectionScore + piiScore + policyScore)
+
+// Threat levels
+0-19   → "clean"   (no action)
+20-39  → "low"     (logged, visible in dashboard)
+40-69  → "medium"  (logged, triggers alerts if configured)
+70-100 → "high"    (logged, blocked if blocking is enabled)`}
+              language="text"
+              filename="threat-scoring-algorithm"
+            />
+
+            <SubHeading id="security-dashboard">Security Dashboard</SubHeading>
+            <p className="text-muted-foreground leading-relaxed mb-4">
+              The Security Dashboard (<strong>/security</strong>) provides a real-time view of all
+              security events. It includes three tabs:
+            </p>
+            <div className="overflow-x-auto my-6">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left py-2.5 pr-4 text-muted-foreground font-medium">Tab</th>
+                    <th className="text-left py-2.5 text-muted-foreground font-medium">Contents</th>
+                  </tr>
+                </thead>
+                <tbody className="text-muted-foreground">
+                  <tr className="border-b border-border/50">
+                    <td className="py-2.5 pr-4 font-medium">Overview</td>
+                    <td className="py-2.5">Total events, high-severity count, blocked requests, and top threat categories displayed as stat cards</td>
+                  </tr>
+                  <tr className="border-b border-border/50">
+                    <td className="py-2.5 pr-4 font-medium">Threat Log</td>
+                    <td className="py-2.5">Searchable, filterable table of all security events with threat level, score, type, action taken, and timestamp</td>
+                  </tr>
+                  <tr className="border-b border-border/50">
+                    <td className="py-2.5 pr-4 font-medium">Configuration</td>
+                    <td className="py-2.5">Toggle injection detection, PII detection, blocking mode, set redaction mode, and manage custom keywords</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <SubHeading id="security-config">Configuration</SubHeading>
+            <p className="text-muted-foreground leading-relaxed mb-4">
+              Security settings can be configured per-organization through the Security Dashboard
+              configuration tab. The following options are available:
+            </p>
+            <ParamTable
+              params={[
+                { name: "injectionDetection", type: "boolean", default: "true", desc: "Enable or disable prompt injection scanning" },
+                { name: "piiDetection", type: "boolean", default: "true", desc: "Enable or disable PII detection" },
+                { name: "piiRedactionMode", type: "string", default: "none", desc: "How to handle detected PII: none, mask, hash, or block" },
+                { name: "blockHighThreats", type: "boolean", default: "false", desc: "Automatically block requests with threat score ≥ 70" },
+                { name: "customKeywords", type: "string[]", default: "[]", desc: "Custom keywords to flag in request content" },
+              ]}
+            />
+            <Callout type="tip">
+              <strong>Recommended setup:</strong> Start with the defaults (detection on, blocking off) to
+              monitor your traffic patterns. Once you&apos;re confident in the detection accuracy, enable
+              <IC>blockHighThreats</IC> to automatically reject dangerous requests. Use <IC>mask</IC> redaction
+              mode for production workloads that handle customer data.
+            </Callout>
+
+            <SubHeading id="security-api">Security API</SubHeading>
+            <p className="text-muted-foreground leading-relaxed mb-4">
+              Security events are accessible via tRPC procedures for programmatic access:
+            </p>
+            <CodeBlock
+              code={`// Fetch recent security events
+const events = trpc.security.getEvents.useQuery({
+  limit: 50,
+  threatLevel: "high",  // optional filter
+});
+
+// Get security stats
+const stats = trpc.security.getStats.useQuery();
+// Returns: { totalEvents, highSeverity, blocked, topCategories }
+
+// Update security configuration
+trpc.security.updateConfig.useMutation({
+  injectionDetection: true,
+  piiDetection: true,
+  piiRedactionMode: "mask",
+  blockHighThreats: true,
+  customKeywords: ["competitor-name", "internal-project"],
+});`}
+              language="typescript"
+              filename="security-api-examples.ts"
+            />
 
             {/* ═══════════════════════════════════════════════════════════ */}
             {/* ALL ENDPOINTS */}

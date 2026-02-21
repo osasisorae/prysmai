@@ -362,3 +362,8 @@
 
 ### Testing
 - [x] Write comprehensive tests for all security features (108 tests: injection, PII, content policy, threat scoring)
+
+## Security Documentation Update
+- [x] Add security section to /docs page (injection detection, PII redaction, content policies, configuration)
+- [x] Update GitHub README with security features
+- [x] Republish to PyPI v0.3.0 with security documentation (https://pypi.org/project/prysmai/0.3.0/)
