@@ -405,14 +405,51 @@ export function calculateCost(
 }
 
 // Default pricing table (fallback when DB has no entry)
+// All values are cost per 1K tokens (USD). Source: official pricing pages, Feb 2026.
+// OpenAI: https://developers.openai.com/api/docs/pricing/
+// Anthropic: https://platform.claude.com/docs/en/about-claude/pricing
+// Google: https://ai.google.dev/gemini-api/docs/pricing
 const DEFAULT_PRICING: Record<string, { input: number; output: number }> = {
+  // ─── OpenAI GPT-5.x series ───
+  "gpt-5.2": { input: 0.00175, output: 0.014 },
+  "gpt-5.1": { input: 0.00125, output: 0.01 },
+  "gpt-5": { input: 0.00125, output: 0.01 },
+  "gpt-5-mini": { input: 0.00025, output: 0.002 },
+  "gpt-5-nano": { input: 0.00005, output: 0.0004 },
+  "gpt-5.2-pro": { input: 0.021, output: 0.168 },
+  "gpt-5-pro": { input: 0.015, output: 0.12 },
+  "gpt-5.2-chat": { input: 0.00175, output: 0.014 },
+  "gpt-5.1-chat": { input: 0.00125, output: 0.01 },
+  "gpt-5-chat": { input: 0.00125, output: 0.01 },
+  "gpt-5.2-codex": { input: 0.00175, output: 0.014 },
+  "gpt-5.1-codex": { input: 0.00125, output: 0.01 },
+  "gpt-5-codex": { input: 0.00125, output: 0.01 },
+  // ─── OpenAI GPT-4.1 series ───
+  "gpt-4.1": { input: 0.002, output: 0.008 },
+  "gpt-4.1-mini": { input: 0.0004, output: 0.0016 },
+  "gpt-4.1-nano": { input: 0.0001, output: 0.0004 },
+  // ─── OpenAI GPT-4o series ───
   "gpt-4o": { input: 0.0025, output: 0.01 },
+  "gpt-4o-2024-05-13": { input: 0.005, output: 0.015 },
   "gpt-4o-mini": { input: 0.00015, output: 0.0006 },
+  // ─── OpenAI o-series (reasoning) ───
+  "o1": { input: 0.015, output: 0.06 },
+  "o1-pro": { input: 0.15, output: 0.6 },
+  "o1-mini": { input: 0.0011, output: 0.0044 },
+  "o3": { input: 0.002, output: 0.008 },
+  "o3-pro": { input: 0.02, output: 0.08 },
+  "o3-mini": { input: 0.0011, output: 0.0044 },
+  "o4-mini": { input: 0.0011, output: 0.0044 },
+  // ─── OpenAI legacy ───
   "gpt-4-turbo": { input: 0.01, output: 0.03 },
   "gpt-4": { input: 0.03, output: 0.06 },
   "gpt-3.5-turbo": { input: 0.0005, output: 0.0015 },
-  // Anthropic Claude models (per 1K tokens, converted from per 1M)
-  // Claude 4.x series
+  // ─── OpenAI embeddings ───
+  "text-embedding-3-small": { input: 0.00002, output: 0 },
+  "text-embedding-3-large": { input: 0.00013, output: 0 },
+  "text-embedding-ada": { input: 0.0001, output: 0 },
+
+  // ─── Anthropic Claude 4.x series ───
   "claude-opus-4.6": { input: 0.005, output: 0.025 },
   "claude-opus-4.5": { input: 0.005, output: 0.025 },
   "claude-opus-4.1": { input: 0.015, output: 0.075 },
@@ -421,21 +458,25 @@ const DEFAULT_PRICING: Record<string, { input: number; output: number }> = {
   "claude-sonnet-4.5": { input: 0.003, output: 0.015 },
   "claude-sonnet-4": { input: 0.003, output: 0.015 },
   "claude-haiku-4.5": { input: 0.001, output: 0.005 },
-  // Claude 3.x series (legacy / deprecated)
+  // ─── Anthropic Claude 3.x series (legacy) ───
   "claude-3.7-sonnet": { input: 0.003, output: 0.015 },
   "claude-3-5-sonnet": { input: 0.003, output: 0.015 },
   "claude-3-5-haiku": { input: 0.0008, output: 0.004 },
   "claude-3-opus": { input: 0.015, output: 0.075 },
   "claude-3-haiku": { input: 0.00025, output: 0.00125 },
-  // Google Gemini models (per 1K tokens, converted from per 1M)
+
+  // ─── Google Gemini 3.x series (preview) ───
+  "gemini-3.1-pro-preview": { input: 0.002, output: 0.012 },
+  "gemini-3-pro-preview": { input: 0.002, output: 0.012 },
+  "gemini-3-flash-preview": { input: 0.0005, output: 0.003 },
+  // ─── Google Gemini 2.5 series ───
   "gemini-2.5-pro": { input: 0.00125, output: 0.01 },
   "gemini-2.5-flash": { input: 0.0003, output: 0.0025 },
   "gemini-2.5-flash-lite": { input: 0.0001, output: 0.0004 },
+  // ─── Google Gemini 2.0 series ───
   "gemini-2.0-flash": { input: 0.0001, output: 0.0004 },
   "gemini-2.0-flash-lite": { input: 0.000075, output: 0.0003 },
-  "gemini-3-pro-preview": { input: 0.002, output: 0.012 },
-  "gemini-3-flash-preview": { input: 0.0005, output: 0.003 },
-  "gemini-3.1-pro-preview": { input: 0.002, output: 0.012 },
+  // ─── Google Gemini 1.5 series (legacy) ───
   "gemini-1.5-pro": { input: 0.00125, output: 0.005 },
   "gemini-1.5-flash": { input: 0.000075, output: 0.0003 },
 };

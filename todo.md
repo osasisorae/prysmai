@@ -410,3 +410,11 @@
 - [x] 1. Add Claude 4.x model pricing (opus 4/4.1/4.5/4.6, sonnet 4/4.5/4.6, haiku 4.5) + legacy 3.x models
 - [x] 2. Write tests for Anthropic cost calculation (13 new tests: exact match, prefix match, cost calc)
 - [x] 3. Full test suite green — 374 tests, 17 files, all passing
+
+## Comprehensive Model Pricing Update
+- [x] 1. Research latest OpenAI pricing (GPT-5.2/5.1/5, GPT-4.1, o1/o3/o4-mini, embeddings) — from official pricing page
+- [x] 2. Verify Anthropic pricing is complete (confirmed: 13 Claude models covered)
+- [x] 3. Research latest Google Gemini pricing (3.1 Pro, 3 Pro/Flash, 2.5 Pro/Flash/Flash-Lite, 2.0, 1.5) — from official pricing page
+- [x] 4. Update DEFAULT_PRICING table — 48 models across 3 providers (was 23)
+- [x] 5. Update tests — 11 new model-specific tests + comprehensive coverage test updated
+- [x] 6. Full test suite green — 385 tests, 17 files, all passing

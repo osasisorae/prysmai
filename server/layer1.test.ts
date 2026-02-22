@@ -178,23 +178,121 @@ describe("Layer 1 — Proxy & Observability", () => {
 
     it("covers all default pricing entries", () => {
       const models = [
-        // OpenAI
-        "gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "gpt-4", "gpt-3.5-turbo",
+        // OpenAI GPT-5.x
+        "gpt-5.2", "gpt-5.1", "gpt-5", "gpt-5-mini", "gpt-5-nano",
+        "gpt-5.2-pro", "gpt-5-pro",
+        // OpenAI GPT-4.1
+        "gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano",
+        // OpenAI GPT-4o
+        "gpt-4o", "gpt-4o-mini",
+        // OpenAI o-series
+        "o1", "o1-pro", "o1-mini", "o3", "o3-pro", "o3-mini", "o4-mini",
+        // OpenAI legacy
+        "gpt-4-turbo", "gpt-4", "gpt-3.5-turbo",
         // Anthropic Claude 4.x
         "claude-opus-4.6", "claude-opus-4.5", "claude-opus-4.1", "claude-opus-4",
         "claude-sonnet-4.6", "claude-sonnet-4.5", "claude-sonnet-4", "claude-haiku-4.5",
         // Anthropic Claude 3.x (legacy)
         "claude-3.7-sonnet", "claude-3-5-sonnet", "claude-3-5-haiku", "claude-3-opus", "claude-3-haiku",
-        // Google Gemini
-        "gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-pro",
+        // Google Gemini 3.x
+        "gemini-3.1-pro-preview", "gemini-3-pro-preview", "gemini-3-flash-preview",
+        // Google Gemini 2.5
+        "gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.5-flash-lite",
+        // Google Gemini 2.0
+        "gemini-2.0-flash", "gemini-2.0-flash-lite",
+        // Google Gemini 1.5 (legacy)
+        "gemini-1.5-pro", "gemini-1.5-flash",
       ];
       for (const model of models) {
         const pricing = getDefaultPricing(model);
         expect(pricing, `Missing pricing for ${model}`).toBeDefined();
         expect(pricing!.input).toBeGreaterThan(0);
-        expect(pricing!.output).toBeGreaterThan(0);
-        expect(pricing!.output).toBeGreaterThanOrEqual(pricing!.input);
+        // Embeddings have 0 output cost, so skip output > 0 check for them
+        if (!model.startsWith("text-embedding")) {
+          expect(pricing!.output).toBeGreaterThan(0);
+          expect(pricing!.output).toBeGreaterThanOrEqual(pricing!.input);
+        }
       }
+    });
+
+    // ─── New model family tests ───
+    it("returns pricing for GPT-5.2", () => {
+      const pricing = getDefaultPricing("gpt-5.2");
+      expect(pricing).toBeDefined();
+      expect(pricing!.input).toBe(0.00175);
+      expect(pricing!.output).toBe(0.014);
+    });
+
+    it("returns pricing for GPT-4.1", () => {
+      const pricing = getDefaultPricing("gpt-4.1");
+      expect(pricing).toBeDefined();
+      expect(pricing!.input).toBe(0.002);
+      expect(pricing!.output).toBe(0.008);
+    });
+
+    it("returns pricing for GPT-4.1-mini", () => {
+      const pricing = getDefaultPricing("gpt-4.1-mini");
+      expect(pricing).toBeDefined();
+      expect(pricing!.input).toBe(0.0004);
+      expect(pricing!.output).toBe(0.0016);
+    });
+
+    it("returns pricing for GPT-4.1-nano", () => {
+      const pricing = getDefaultPricing("gpt-4.1-nano");
+      expect(pricing).toBeDefined();
+      expect(pricing!.input).toBe(0.0001);
+      expect(pricing!.output).toBe(0.0004);
+    });
+
+    it("returns pricing for o3", () => {
+      const pricing = getDefaultPricing("o3");
+      expect(pricing).toBeDefined();
+      expect(pricing!.input).toBe(0.002);
+      expect(pricing!.output).toBe(0.008);
+    });
+
+    it("returns pricing for o4-mini", () => {
+      const pricing = getDefaultPricing("o4-mini");
+      expect(pricing).toBeDefined();
+      expect(pricing!.input).toBe(0.0011);
+      expect(pricing!.output).toBe(0.0044);
+    });
+
+    it("returns pricing for gemini-3-flash-preview", () => {
+      const pricing = getDefaultPricing("gemini-3-flash-preview");
+      expect(pricing).toBeDefined();
+      expect(pricing!.input).toBe(0.0005);
+      expect(pricing!.output).toBe(0.003);
+    });
+
+    it("returns pricing for gemini-2.5-flash-lite", () => {
+      const pricing = getDefaultPricing("gemini-2.5-flash-lite");
+      expect(pricing).toBeDefined();
+      expect(pricing!.input).toBe(0.0001);
+      expect(pricing!.output).toBe(0.0004);
+    });
+
+    it("returns pricing for text-embedding-3-small", () => {
+      const pricing = getDefaultPricing("text-embedding-3-small");
+      expect(pricing).toBeDefined();
+      expect(pricing!.input).toBe(0.00002);
+      expect(pricing!.output).toBe(0);
+    });
+
+    it("calculates cost correctly for gpt-4.1-mini (your screenshot model)", () => {
+      const pricing = getDefaultPricing("gpt-4.1-mini")!;
+      // 1000 input + 500 output tokens
+      const cost = calculateCost(1000, 500, pricing.input, pricing.output);
+      // (1000/1000) * 0.0004 + (500/1000) * 0.0016 = 0.0004 + 0.0008 = 0.0012
+      expect(cost).toBeCloseTo(0.0012, 6);
+    });
+
+    it("calculates cost correctly for gpt-4.1-nano (your screenshot model)", () => {
+      const pricing = getDefaultPricing("gpt-4.1-nano")!;
+      // 1000 input + 500 output tokens
+      const cost = calculateCost(1000, 500, pricing.input, pricing.output);
+      // (1000/1000) * 0.0001 + (500/1000) * 0.0004 = 0.0001 + 0.0002 = 0.0003
+      expect(cost).toBeCloseTo(0.0003, 6);
     });
   });
 
