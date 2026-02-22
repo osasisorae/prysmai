@@ -39,6 +39,7 @@ import {
   Lock,
   Eye,
   FileWarning,
+  Plug,
 } from "lucide-react";
 
 const LOGO_URL = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663306080277/pKkWElgCpRmlNvjQ.png";
@@ -176,6 +177,7 @@ const NAV_SECTIONS = [
   { id: "team", label: "Team Management", icon: Users },
   { id: "cost-tracking", label: "Cost Tracking", icon: DollarSign },
   { id: "security", label: "Security", icon: ShieldAlert },
+  { id: "cicd", label: "CI/CD Integration", icon: Plug },
   { id: "endpoints", label: "All Endpoints", icon: Blocks },
   { id: "advanced", label: "Advanced Features", icon: Wrench },
   { id: "self-hosted", label: "Self-Hosted Proxy", icon: Shield },
@@ -1536,6 +1538,145 @@ trpc.security.updateConfig.useMutation({
               language="typescript"
               filename="security-api-examples.ts"
             />
+
+            {/* ═══════════════════════════════════════════════════════════ */}
+            {/* CI/CD INTEGRATION */}
+            {/* ═══════════════════════════════════════════════════════════ */}
+            <SectionHeading id="cicd">CI/CD Integration</SectionHeading>
+            <p className="text-muted-foreground leading-relaxed mb-4">
+              Prysm supports dynamic upstream API keys and custom header forwarding,
+              enabling seamless integration with CI/CD pipelines and AI gateway platforms
+              like <strong className="text-foreground">GitLab AI Gateway</strong>,
+              AWS Bedrock, and Azure OpenAI Service.
+            </p>
+
+            <SubHeading id="cicd-dynamic-key">Dynamic Upstream API Key</SubHeading>
+            <p className="text-muted-foreground leading-relaxed mb-4">
+              Override the stored provider API key at request time by passing the
+              <IC>X-Prysm-Upstream-Key</IC> header. This is useful when the API key
+              is injected by a CI/CD runner or gateway at runtime rather than stored
+              in the Prysm dashboard.
+            </p>
+
+            <CodeBlock
+              code={`# The upstream key overrides the stored project API key
+curl -X POST https://prysmai.io/api/v1/chat/completions \\
+  -H "Authorization: Bearer sk-prysm-YOUR_KEY" \\
+  -H "X-Prysm-Upstream-Key: glpat-xxxxxxxxxxxxxxxxxxxx" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "model": "claude-sonnet-4-20250514",
+    "messages": [{"role": "user", "content": "Hello"}]
+  }'`}
+              language="bash"
+              filename="dynamic-key.sh"
+            />
+
+            <SubHeading id="cicd-forward-headers">Custom Header Forwarding</SubHeading>
+            <p className="text-muted-foreground leading-relaxed mb-4">
+              Pass custom headers to the upstream provider via the
+              <IC>X-Prysm-Forward-Headers</IC> header (JSON string). These headers
+              are merged into the upstream request. <IC>Content-Type</IC> and
+              <IC>Authorization</IC> cannot be overridden for security.
+            </p>
+
+            <CodeBlock
+              code={`# Forward GitLab-specific headers to the upstream provider
+curl -X POST https://prysmai.io/api/v1/chat/completions \\
+  -H "Authorization: Bearer sk-prysm-YOUR_KEY" \\
+  -H "X-Prysm-Upstream-Key: \$AI_GATEWAY_TOKEN" \\
+  -H 'X-Prysm-Forward-Headers: {"X-Gitlab-Instance-Id": "ea8bf810-...", "X-Gitlab-Realm": "saas"}' \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "model": "claude-sonnet-4-20250514",
+    "messages": [{"role": "user", "content": "Review this code"}]
+  }'`}
+              language="bash"
+              filename="forward-headers.sh"
+            />
+
+            <SubHeading id="cicd-python-sdk">Python SDK Integration</SubHeading>
+            <p className="text-muted-foreground leading-relaxed mb-4">
+              Both <IC>monitor()</IC> and <IC>PrysmClient</IC> accept
+              <IC>upstream_api_key</IC> and <IC>forward_headers</IC> parameters
+              (available in SDK v0.3.1+).
+            </p>
+
+            <CodeBlock
+              code={`import os
+import openai
+from prysmai import monitor
+
+client = openai.OpenAI()
+monitored = monitor(
+    client,
+    prysm_key="sk-prysm-...",
+    upstream_api_key=os.environ["AI_GATEWAY_TOKEN"],
+    forward_headers={
+        "X-Gitlab-Instance-Id": os.environ.get("CI_SERVER_HOST", ""),
+        "X-Gitlab-Realm": "saas",
+    },
+)
+
+# All calls route through Prysm with the dynamic key
+response = monitored.chat.completions.create(
+    model="claude-sonnet-4-20250514",
+    messages=[{"role": "user", "content": "Hello"}],
+)`}
+              language="python"
+              filename="gitlab_integration.py"
+            />
+
+            <SubHeading id="cicd-gitlab">GitLab AI Gateway Example</SubHeading>
+            <p className="text-muted-foreground leading-relaxed mb-4">
+              GitLab&apos;s Duo Agent Platform injects AI Gateway tokens into CI/CD jobs.
+              Prysm acts as a transparent security and observability layer between your
+              agent and the AI Gateway — scanning for prompt injection, PII leakage,
+              and policy violations without modifying your agent code.
+            </p>
+
+            <CodeBlock
+              code={`# .gitlab-ci.yml — GitLab CI job with Prysm observability
+code_review_agent:
+  stage: review
+  image: python:3.12
+  variables:
+    PRYSM_API_KEY: \$PRYSM_API_KEY
+  id_tokens:
+    AI_GATEWAY_TOKEN:
+      aud: https://gitlab.com
+  script:
+    - pip install prysmai openai
+    - python run_agent.py
+  rules:
+    - if: \$CI_PIPELINE_SOURCE == "merge_request_event"`}
+              language="yaml"
+              filename=".gitlab-ci.yml"
+            />
+
+            <div className="overflow-x-auto my-6">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left py-2.5 pr-4 text-muted-foreground font-medium">Header</th>
+                    <th className="text-left py-2.5 pr-4 text-muted-foreground font-medium">Required</th>
+                    <th className="text-left py-2.5 text-muted-foreground font-medium">Description</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/50">
+                  <tr>
+                    <td className="py-2.5 pr-4"><IC>X-Prysm-Upstream-Key</IC></td>
+                    <td className="py-2.5 pr-4 text-muted-foreground">Optional</td>
+                    <td className="py-2.5 text-muted-foreground">Overrides the stored provider API key for this request</td>
+                  </tr>
+                  <tr>
+                    <td className="py-2.5 pr-4"><IC>X-Prysm-Forward-Headers</IC></td>
+                    <td className="py-2.5 pr-4 text-muted-foreground">Optional</td>
+                    <td className="py-2.5 text-muted-foreground">JSON string of headers to forward to the upstream provider</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
 
             {/* ═══════════════════════════════════════════════════════════ */}
             {/* ALL ENDPOINTS */}

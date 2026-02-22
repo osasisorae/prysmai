@@ -49,6 +49,7 @@ interface AuthResult {
   provider: string;
   baseUrl: string;
   upstreamApiKey: string;
+  forwardHeaders?: Record<string, string>;
   rateLimited?: boolean;
   currentCount?: number;
   limit?: number;
@@ -75,7 +76,21 @@ async function authenticateProxyRequest(req: Request): Promise<AuthResult | null
     apiKeyEncrypted?: string;
   } | null;
 
-  if (!config?.apiKeyEncrypted) return null;
+  // Dynamic upstream API key: X-Prysm-Upstream-Key overrides stored key
+  const dynamicKey = req.headers["x-prysm-upstream-key"] as string | undefined;
+  const effectiveApiKey = dynamicKey || config?.apiKeyEncrypted;
+  if (!effectiveApiKey) return null;
+
+  // Custom header forwarding: X-Prysm-Forward-Headers (JSON object)
+  let forwardHeaders: Record<string, string> | undefined;
+  const forwardHeadersRaw = req.headers["x-prysm-forward-headers"] as string | undefined;
+  if (forwardHeadersRaw) {
+    try {
+      forwardHeaders = JSON.parse(forwardHeadersRaw);
+    } catch {
+      // Ignore malformed forward headers
+    }
+  }
 
   // Check usage limits (free tier enforcement)
   const org = project.orgId;
@@ -87,8 +102,8 @@ async function authenticateProxyRequest(req: Request): Promise<AuthResult | null
   }
 
   // Resolve base URL based on provider
-  let resolvedProvider = config.provider ?? "openai";
-  let resolvedBaseUrl = config.baseUrl ?? "https://api.openai.com/v1";
+  let resolvedProvider = config?.provider ?? "openai";
+  let resolvedBaseUrl = config?.baseUrl ?? "https://api.openai.com/v1";
 
   // Google/Gemini: use Google's OpenAI-compatible endpoint
   if (isGoogle(resolvedProvider)) {
@@ -100,7 +115,8 @@ async function authenticateProxyRequest(req: Request): Promise<AuthResult | null
     orgId: project.orgId,
     provider: resolvedProvider,
     baseUrl: resolvedBaseUrl,
-    upstreamApiKey: config.apiKeyEncrypted, // stored as plaintext for MVP
+    upstreamApiKey: effectiveApiKey,
+    forwardHeaders,
   };
 }
 
@@ -129,6 +145,23 @@ function isGoogle(provider: string): boolean {
 
 // Google Gemini has a native OpenAI-compatible endpoint
 const GOOGLE_OPENAI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai";
+
+// ─── Helper: merge forward headers into upstream headers ───
+
+function mergeForwardHeaders(
+  baseHeaders: Record<string, string>,
+  forwardHeaders?: Record<string, string>,
+): Record<string, string> {
+  if (!forwardHeaders) return baseHeaders;
+  // Forward headers are merged but cannot override Content-Type or Authorization
+  const merged = { ...baseHeaders };
+  for (const [key, value] of Object.entries(forwardHeaders)) {
+    const lowerKey = key.toLowerCase();
+    if (lowerKey === "content-type" || lowerKey === "authorization") continue;
+    merged[key] = value;
+  }
+  return merged;
+}
 
 // ─── Helper: extract common trace metadata from request ───
 
@@ -164,23 +197,23 @@ async function handleChatNonStreaming(req: Request, res: Response, auth: AuthRes
       const anthropicReq = translateRequestToAnthropic({ ...body, stream: false });
       const baseUrl = getAnthropicBaseUrl(auth.baseUrl !== "https://api.openai.com/v1" ? auth.baseUrl : undefined);
       upstreamUrl = `${baseUrl}/messages`;
-      upstreamHeaders = getAnthropicHeaders(auth.upstreamApiKey);
+      upstreamHeaders = mergeForwardHeaders(getAnthropicHeaders(auth.upstreamApiKey), auth.forwardHeaders);
       upstreamBody = JSON.stringify(anthropicReq);
     } else if (isGoogle(auth.provider)) {
       // Google Gemini: uses OpenAI-compatible endpoint with API key as Bearer token
       upstreamUrl = `${auth.baseUrl}/chat/completions`;
-      upstreamHeaders = {
+      upstreamHeaders = mergeForwardHeaders({
         "Content-Type": "application/json",
         "Authorization": `Bearer ${auth.upstreamApiKey}`,
-      };
+      }, auth.forwardHeaders);
       upstreamBody = JSON.stringify({ ...body, stream: false });
     } else {
       // OpenAI / OpenAI-compatible (vLLM, Ollama, TGI)
       upstreamUrl = `${auth.baseUrl}/chat/completions`;
-      upstreamHeaders = {
+      upstreamHeaders = mergeForwardHeaders({
         "Content-Type": "application/json",
         "Authorization": `Bearer ${auth.upstreamApiKey}`,
-      };
+      }, auth.forwardHeaders);
       upstreamBody = JSON.stringify({ ...body, stream: false });
     }
 
@@ -365,10 +398,10 @@ async function handleChatStreamingOpenAI(req: Request, res: Response, auth: Auth
     const upstreamUrl = `${auth.baseUrl}/chat/completions`;
     const upstreamResponse = await fetch(upstreamUrl, {
       method: "POST",
-      headers: {
+      headers: mergeForwardHeaders({
         "Content-Type": "application/json",
         "Authorization": `Bearer ${auth.upstreamApiKey}`,
-      },
+      }, auth.forwardHeaders),
       body: JSON.stringify({ ...body, stream: true, stream_options: { include_usage: true } }),
     });
 
@@ -559,7 +592,7 @@ async function handleChatStreamingAnthropic(req: Request, res: Response, auth: A
 
     const upstreamResponse = await fetch(upstreamUrl, {
       method: "POST",
-      headers: getAnthropicHeaders(auth.upstreamApiKey),
+      headers: mergeForwardHeaders(getAnthropicHeaders(auth.upstreamApiKey), auth.forwardHeaders),
       body: JSON.stringify({ ...anthropicReq, stream: true }),
     });
 
@@ -759,10 +792,10 @@ async function handleCompletions(req: Request, res: Response, auth: AuthResult) 
     const upstreamUrl = `${auth.baseUrl}/completions`;
     const upstreamResponse = await fetch(upstreamUrl, {
       method: "POST",
-      headers: {
+      headers: mergeForwardHeaders({
         "Content-Type": "application/json",
         "Authorization": `Bearer ${auth.upstreamApiKey}`,
-      },
+      }, auth.forwardHeaders),
       body: JSON.stringify(body),
     });
 
@@ -860,10 +893,10 @@ async function handleEmbeddings(req: Request, res: Response, auth: AuthResult) {
     const upstreamUrl = `${auth.baseUrl}/embeddings`;
     const upstreamResponse = await fetch(upstreamUrl, {
       method: "POST",
-      headers: {
+      headers: mergeForwardHeaders({
         "Content-Type": "application/json",
         "Authorization": `Bearer ${auth.upstreamApiKey}`,
-      },
+      }, auth.forwardHeaders),
       body: JSON.stringify(body),
     });
 
@@ -1042,7 +1075,7 @@ proxyRouter.get("/health", (_req: Request, res: Response) => {
   res.json({
     status: "ok",
     service: "prysm-proxy",
-    version: "0.3.0",
+    version: "0.3.1",
     endpoints: ["/chat/completions", "/completions", "/embeddings"],
     providers: ["openai", "anthropic", "google", "vllm", "ollama", "tgi"],
   });

@@ -396,3 +396,12 @@
 - [x] 13. All 345 tests passing (16 test files)
 - [x] 14. Update QA testing guide v2.1 with output scanning (Y1-Y10) + threat timeline chart (Z1-Z3) — 165 total tests
 - [x] 15. Final full test suite pass — 345 tests, 16 files, all green
+
+## GitLab AI Gateway Integration
+- [x] 1. Dynamic upstream API key — accept X-Prysm-Upstream-Key header, use instead of stored key
+- [x] 2. Custom header forwarding — accept X-Prysm-Forward-Headers, merge into upstream request (all 5 handlers)
+- [x] 3. Write vitest tests for dynamic key and header forwarding (20 tests)
+- [x] 4. Update Python SDK with upstream_api_key + forward_headers params, publish v0.3.1 to PyPI
+- [x] 5. Update /docs page with CI/CD Integration section (4 subsections, GitLab example)
+- [ ] 6. Push SDK changes to GitHub (gh auth expired — needs manual push)
+- [x] 7. Full test suite green — 365 tests, 17 files, all passing
