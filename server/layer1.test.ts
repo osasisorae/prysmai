@@ -73,11 +73,53 @@ describe("Layer 1 — Proxy & Observability", () => {
       expect(pricing!.output).toBe(0.01);
     });
 
-    it("returns pricing for claude-3-5-sonnet", () => {
+    it("returns pricing for claude-3-5-sonnet (legacy)", () => {
       const pricing = getDefaultPricing("claude-3-5-sonnet-20241022");
       expect(pricing).toBeDefined();
       expect(pricing!.input).toBe(0.003);
       expect(pricing!.output).toBe(0.015);
+    });
+
+    it("returns pricing for claude-sonnet-4 (current)", () => {
+      const pricing = getDefaultPricing("claude-sonnet-4-20250514");
+      expect(pricing).toBeDefined();
+      expect(pricing!.input).toBe(0.003);
+      expect(pricing!.output).toBe(0.015);
+    });
+
+    it("returns pricing for claude-haiku-4.5 (current)", () => {
+      const pricing = getDefaultPricing("claude-haiku-4.5-20251001");
+      expect(pricing).toBeDefined();
+      expect(pricing!.input).toBe(0.001);
+      expect(pricing!.output).toBe(0.005);
+    });
+
+    it("returns pricing for claude-opus-4.5", () => {
+      const pricing = getDefaultPricing("claude-opus-4.5-20251124");
+      expect(pricing).toBeDefined();
+      expect(pricing!.input).toBe(0.005);
+      expect(pricing!.output).toBe(0.025);
+    });
+
+    it("returns pricing for claude-sonnet-4.5", () => {
+      const pricing = getDefaultPricing("claude-sonnet-4.5-20250929");
+      expect(pricing).toBeDefined();
+      expect(pricing!.input).toBe(0.003);
+      expect(pricing!.output).toBe(0.015);
+    });
+
+    it("returns pricing for claude-sonnet-4.6", () => {
+      const pricing = getDefaultPricing("claude-sonnet-4.6-20260218");
+      expect(pricing).toBeDefined();
+      expect(pricing!.input).toBe(0.003);
+      expect(pricing!.output).toBe(0.015);
+    });
+
+    it("returns pricing for claude-opus-4.6", () => {
+      const pricing = getDefaultPricing("claude-opus-4.6-20260218");
+      expect(pricing).toBeDefined();
+      expect(pricing!.input).toBe(0.005);
+      expect(pricing!.output).toBe(0.025);
     });
 
     it("returns pricing for gemini-2.0-flash", () => {
@@ -93,18 +135,58 @@ describe("Layer 1 — Proxy & Observability", () => {
     });
 
     it("matches models by prefix when exact match fails", () => {
-      // "claude-3-5-sonnet-20241022-v2" should match "claude-3-5-sonnet-20241022" by prefix
-      const pricing = getDefaultPricing("claude-3-5-sonnet-20241022-v2");
+      // "claude-sonnet-4-20250514" should match "claude-sonnet-4" by prefix
+      const pricing = getDefaultPricing("claude-sonnet-4-20250514");
       expect(pricing).toBeDefined();
       expect(pricing!.input).toBe(0.003);
       expect(pricing!.output).toBe(0.015);
     });
 
-    it("covers all 10 default pricing entries", () => {
+    it("matches dated Anthropic model variants by prefix", () => {
+      // All these dated variants should resolve via prefix matching
+      const cases = [
+        { model: "claude-sonnet-4-20250514", expectedInput: 0.003, expectedOutput: 0.015 },
+        { model: "claude-haiku-4.5-20251001", expectedInput: 0.001, expectedOutput: 0.005 },
+        { model: "claude-opus-4.5-20251124", expectedInput: 0.005, expectedOutput: 0.025 },
+        { model: "claude-opus-4.1-20250414", expectedInput: 0.015, expectedOutput: 0.075 },
+        { model: "claude-opus-4-20250414", expectedInput: 0.015, expectedOutput: 0.075 },
+        { model: "claude-sonnet-4.5-20250929", expectedInput: 0.003, expectedOutput: 0.015 },
+        { model: "claude-sonnet-4.6-20260218", expectedInput: 0.003, expectedOutput: 0.015 },
+        { model: "claude-opus-4.6-20260218", expectedInput: 0.005, expectedOutput: 0.025 },
+      ];
+      for (const { model, expectedInput, expectedOutput } of cases) {
+        const pricing = getDefaultPricing(model);
+        expect(pricing, `Missing pricing for ${model}`).toBeDefined();
+        expect(pricing!.input).toBe(expectedInput);
+        expect(pricing!.output).toBe(expectedOutput);
+      }
+    });
+
+    it("calculates cost correctly for claude-sonnet-4 (1K input + 500 output)", () => {
+      const pricing = getDefaultPricing("claude-sonnet-4-20250514")!;
+      const cost = calculateCost(1000, 500, pricing.input, pricing.output);
+      // (1000/1000) * 0.003 + (500/1000) * 0.015 = 0.003 + 0.0075 = 0.0105
+      expect(cost).toBeCloseTo(0.0105, 6);
+    });
+
+    it("calculates cost correctly for claude-haiku-4.5 (10K input + 2K output)", () => {
+      const pricing = getDefaultPricing("claude-haiku-4.5-20251001")!;
+      const cost = calculateCost(10000, 2000, pricing.input, pricing.output);
+      // (10000/1000) * 0.001 + (2000/1000) * 0.005 = 0.01 + 0.01 = 0.02
+      expect(cost).toBeCloseTo(0.02, 6);
+    });
+
+    it("covers all default pricing entries", () => {
       const models = [
+        // OpenAI
         "gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "gpt-4", "gpt-3.5-turbo",
-        "claude-3-5-sonnet-20241022", "claude-3-5-haiku-20241022", "claude-3-opus-20240229",
-        "gemini-2.0-flash", "gemini-1.5-pro",
+        // Anthropic Claude 4.x
+        "claude-opus-4.6", "claude-opus-4.5", "claude-opus-4.1", "claude-opus-4",
+        "claude-sonnet-4.6", "claude-sonnet-4.5", "claude-sonnet-4", "claude-haiku-4.5",
+        // Anthropic Claude 3.x (legacy)
+        "claude-3.7-sonnet", "claude-3-5-sonnet", "claude-3-5-haiku", "claude-3-opus", "claude-3-haiku",
+        // Google Gemini
+        "gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-pro",
       ];
       for (const model of models) {
         const pricing = getDefaultPricing(model);

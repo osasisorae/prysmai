@@ -85,7 +85,8 @@ describe("getDefaultPricing — edge cases", () => {
   it("returns pricing where output >= input for all known models", () => {
     const models = [
       "gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "gpt-4", "gpt-3.5-turbo",
-      "claude-3-5-sonnet-20241022", "claude-3-5-haiku-20241022", "claude-3-opus-20240229",
+      "claude-sonnet-4", "claude-haiku-4.5", "claude-opus-4.5",
+      "claude-3-5-sonnet", "claude-3-5-haiku", "claude-3-opus",
       "gemini-2.0-flash", "gemini-1.5-pro",
     ];
     for (const model of models) {
@@ -99,7 +100,8 @@ describe("getDefaultPricing — edge cases", () => {
   it("returns pricing with positive values for all known models", () => {
     const models = [
       "gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "gpt-4", "gpt-3.5-turbo",
-      "claude-3-5-sonnet-20241022", "claude-3-5-haiku-20241022", "claude-3-opus-20240229",
+      "claude-sonnet-4", "claude-haiku-4.5", "claude-opus-4.5",
+      "claude-3-5-sonnet", "claude-3-5-haiku", "claude-3-opus",
       "gemini-2.0-flash", "gemini-1.5-pro",
     ];
     for (const model of models) {
@@ -111,9 +113,11 @@ describe("getDefaultPricing — edge cases", () => {
   });
 
   it("prefix matching works for versioned model names", () => {
-    // claude-3-5-sonnet-20241022-v2 should match claude-3-5-sonnet-20241022
-    const pricing = getDefaultPricing("claude-3-5-sonnet-20241022-v2");
+    // claude-sonnet-4-20250514 should match claude-sonnet-4 by prefix
+    const pricing = getDefaultPricing("claude-sonnet-4-20250514");
     expect(pricing).toBeDefined();
+    expect(pricing!.input).toBe(0.003);
+    expect(pricing!.output).toBe(0.015);
   });
 
   it("prefix matching does not false-positive on partial names", () => {

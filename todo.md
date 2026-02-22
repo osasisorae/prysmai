@@ -403,5 +403,10 @@
 - [x] 3. Write vitest tests for dynamic key and header forwarding (20 tests)
 - [x] 4. Update Python SDK with upstream_api_key + forward_headers params, publish v0.3.1 to PyPI
 - [x] 5. Update /docs page with CI/CD Integration section (4 subsections, GitLab example)
-- [ ] 6. Push SDK changes to GitHub (gh auth expired — needs manual push)
+- [x] 6. Push SDK changes to GitHub (pushed via SSH)
 - [x] 7. Full test suite green — 365 tests, 17 files, all passing
+
+## Bug Fix: Anthropic Model Cost Calculation
+- [x] 1. Add Claude 4.x model pricing (opus 4/4.1/4.5/4.6, sonnet 4/4.5/4.6, haiku 4.5) + legacy 3.x models
+- [x] 2. Write tests for Anthropic cost calculation (13 new tests: exact match, prefix match, cost calc)
+- [x] 3. Full test suite green — 374 tests, 17 files, all passing

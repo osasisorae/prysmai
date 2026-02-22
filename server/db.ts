@@ -411,9 +411,22 @@ const DEFAULT_PRICING: Record<string, { input: number; output: number }> = {
   "gpt-4-turbo": { input: 0.01, output: 0.03 },
   "gpt-4": { input: 0.03, output: 0.06 },
   "gpt-3.5-turbo": { input: 0.0005, output: 0.0015 },
-  "claude-3-5-sonnet-20241022": { input: 0.003, output: 0.015 },
-  "claude-3-5-haiku-20241022": { input: 0.0008, output: 0.004 },
-  "claude-3-opus-20240229": { input: 0.015, output: 0.075 },
+  // Anthropic Claude models (per 1K tokens, converted from per 1M)
+  // Claude 4.x series
+  "claude-opus-4.6": { input: 0.005, output: 0.025 },
+  "claude-opus-4.5": { input: 0.005, output: 0.025 },
+  "claude-opus-4.1": { input: 0.015, output: 0.075 },
+  "claude-opus-4": { input: 0.015, output: 0.075 },
+  "claude-sonnet-4.6": { input: 0.003, output: 0.015 },
+  "claude-sonnet-4.5": { input: 0.003, output: 0.015 },
+  "claude-sonnet-4": { input: 0.003, output: 0.015 },
+  "claude-haiku-4.5": { input: 0.001, output: 0.005 },
+  // Claude 3.x series (legacy / deprecated)
+  "claude-3.7-sonnet": { input: 0.003, output: 0.015 },
+  "claude-3-5-sonnet": { input: 0.003, output: 0.015 },
+  "claude-3-5-haiku": { input: 0.0008, output: 0.004 },
+  "claude-3-opus": { input: 0.015, output: 0.075 },
+  "claude-3-haiku": { input: 0.00025, output: 0.00125 },
   // Google Gemini models (per 1K tokens, converted from per 1M)
   "gemini-2.5-pro": { input: 0.00125, output: 0.01 },
   "gemini-2.5-flash": { input: 0.0003, output: 0.0025 },
