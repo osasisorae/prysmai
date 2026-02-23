@@ -81,6 +81,10 @@ export const projects = mysqlTable(
       defaultModel?: string;
       apiKeyEncrypted?: string;
     }>(),
+    // Explainability (Layer 3a)
+    explainabilityEnabled: boolean("explainabilityEnabled").default(true),
+    logprobsInjection: mysqlEnum("logprobsInjection", ["always", "never", "sample"]).default("always"),
+    logprobsSampleRate: decimal("logprobsSampleRate", { precision: 3, scale: 2 }).default("1.00"),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
@@ -149,6 +153,8 @@ export const traces = mysqlTable(
     // Tool calls and logprobs
     toolCalls: json("toolCalls").$type<Array<{ id: string; type: string; function: { name: string; arguments: string } }>>(),
     logprobs: json("logprobs").$type<Record<string, unknown>>(),
+    // Explainability (Layer 3a)
+    confidenceAnalysis: json("confidenceAnalysis").$type<Record<string, unknown>>(),
     // User-provided metadata
     endUserId: varchar("endUserId", { length: 255 }),
     sessionId: varchar("sessionId", { length: 255 }),
@@ -370,3 +376,28 @@ export const securityConfigs = mysqlTable(
 
 export type SecurityConfig = typeof securityConfigs.$inferSelect;
 export type InsertSecurityConfig = typeof securityConfigs.$inferInsert;
+
+// ─── Explainability Reports (Layer 3a) ───
+
+export const explainabilityReports = mysqlTable(
+  "explainability_reports",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    traceId: int("traceId").notNull(),
+    projectId: int("projectId").notNull(),
+    reportType: mysqlEnum("reportType", ["logprobs", "estimated", "sae"]).notNull(),
+    explanation: text("explanation").notNull(),
+    highlights: json("highlights").$type<Array<{ tokenIdx: number; annotation: string; color: string }>>(),
+    modelUsed: varchar("modelUsed", { length: 128 }),
+    tokensUsed: int("tokensUsed"),
+    cost: decimal("cost", { precision: 10, scale: 6 }),
+    generatedAt: timestamp("generatedAt").defaultNow().notNull(),
+  },
+  (table) => [
+    index("expl_project_idx").on(table.projectId),
+    uniqueIndex("expl_trace_idx").on(table.traceId),
+  ]
+);
+
+export type ExplainabilityReport = typeof explainabilityReports.$inferSelect;
+export type InsertExplainabilityReport = typeof explainabilityReports.$inferInsert;

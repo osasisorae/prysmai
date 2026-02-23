@@ -57,6 +57,13 @@
       "when": 1771687500233,
       "tag": "0007_brief_joshua_kane",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "5",
+      "when": 1771829017730,
+      "tag": "0008_friendly_nitro",
+      "breakpoints": true
     }
   ]
 }

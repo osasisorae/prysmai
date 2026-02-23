@@ -1,10 +1,11 @@
 /**
- * Docs — Full platform documentation for Prysm AI (Layer 1 + Layer 2)
+ * Docs — Full platform documentation for Prysm AI (Layer 1 + Layer 2 + Layer 3a)
  * Design: Matches V5 landing page (Inter, 2-color, generous whitespace)
  * Layout: Sidebar navigation + content area
  * Sections: Overview, Getting Started, Python SDK, REST API, Providers,
  *           Dashboard, API Keys, Alerts, Team, Cost Tracking,
  *           Security (Injection, PII, Policies, Threat Scoring),
+ *           Explainability (Confidence, Hallucination, Decision Points),
  *           Embeddings & Completions, Tool Calling & Logprobs,
  *           Self-Hosted, Error Handling
  */
@@ -40,6 +41,7 @@ import {
   Eye,
   FileWarning,
   Plug,
+  Sparkles,
 } from "lucide-react";
 
 const LOGO_URL = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663306080277/pKkWElgCpRmlNvjQ.png";
@@ -177,6 +179,7 @@ const NAV_SECTIONS = [
   { id: "team", label: "Team Management", icon: Users },
   { id: "cost-tracking", label: "Cost Tracking", icon: DollarSign },
   { id: "security", label: "Security", icon: ShieldAlert },
+  { id: "explainability", label: "Explainability", icon: Sparkles },
   { id: "cicd", label: "CI/CD Integration", icon: Plug },
   { id: "endpoints", label: "All Endpoints", icon: Blocks },
   { id: "advanced", label: "Advanced Features", icon: Wrench },
@@ -411,6 +414,11 @@ export default function Docs() {
                     ["PII detection & redaction", "8 data types (email, phone, SSN, credit cards, API keys, IPs) with mask/hash/block modes"],
                     ["Content policy enforcement", "5 built-in policies + custom keywords, composite threat scoring (0–100)"],
                     ["Security dashboard", "Real-time threat log, stats overview, and configuration management"],
+                    ["Token confidence heatmap", "Per-token confidence visualization with OKLCH color gradient (OpenAI, Gemini native logprobs; Anthropic estimated)"],
+                    ["Hallucination detection", "Automatic identification of low-confidence segments with risk scoring"],
+                    ["\"Why did it say that?\"", "LLM-powered explanations for any completion with decision analysis"],
+                    ["Decision points timeline", "Visual timeline of high-entropy tokens where the model considered alternatives"],
+                    ["Model comparison", "Side-by-side confidence and hallucination risk comparison across traces"],
                   ].map(([feature, desc]) => (
                     <tr key={feature} className="border-b border-border/50">
                       <td className="py-2.5 pr-4 font-medium text-foreground whitespace-nowrap">{feature}</td>
@@ -1538,6 +1546,160 @@ trpc.security.updateConfig.useMutation({
               language="typescript"
               filename="security-api-examples.ts"
             />
+
+            {/* ═══════════════════════════════════════════════════════════ */}
+            {/* EXPLAINABILITY */}
+            {/* ═══════════════════════════════════════════════════════════ */}
+            <SectionHeading id="explainability">Explainability</SectionHeading>
+            <p className="text-muted-foreground leading-relaxed mb-4">
+              Prysm&rsquo;s explainability layer lets you see <strong className="text-foreground">why</strong> your
+              model said what it said &mdash; not just what it said. It automatically captures logprobs from
+              OpenAI and Google Gemini, estimates confidence for Anthropic Claude, and surfaces hallucination
+              risk, decision points, and per-token confidence in the dashboard.
+            </p>
+
+            <Callout type="info">
+              Explainability works automatically once enabled in <strong>Settings &rarr; Explainability</strong>.
+              No SDK changes required &mdash; the proxy handles logprobs injection transparently.
+            </Callout>
+
+            <SubHeading id="explainability-providers">Provider Support</SubHeading>
+            <div className="overflow-x-auto my-6">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left py-2.5 pr-4 text-muted-foreground font-medium">Provider</th>
+                    <th className="text-left py-2.5 pr-4 text-muted-foreground font-medium">Logprobs Source</th>
+                    <th className="text-left py-2.5 pr-4 text-muted-foreground font-medium">Confidence</th>
+                    <th className="text-left py-2.5 text-muted-foreground font-medium">Hallucination Detection</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    ["OpenAI", "Native (logprobs=true, top_logprobs=5)", "Per-token from logprobs", "Consecutive low-confidence segments"],
+                    ["Google Gemini", "Native (responseLogprobs via OpenAI-compat)", "Per-token from logprobs", "Consecutive low-confidence segments"],
+                    ["Anthropic", "Estimated (heuristic analysis)", "Hedging/uncertainty pattern matching", "Risk score from linguistic markers"],
+                  ].map(([provider, source, confidence, hallucination]) => (
+                    <tr key={provider} className="border-b border-border/50">
+                      <td className="py-2.5 pr-4 font-medium text-foreground">{provider}</td>
+                      <td className="py-2.5 pr-4 text-muted-foreground">{source}</td>
+                      <td className="py-2.5 pr-4 text-muted-foreground">{confidence}</td>
+                      <td className="py-2.5 text-muted-foreground">{hallucination}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <SubHeading id="explainability-confidence">Token Confidence Heatmap</SubHeading>
+            <p className="text-muted-foreground leading-relaxed mb-4">
+              The token confidence heatmap renders each token in the completion with a color
+              corresponding to its confidence level. Colors use an OKLCH gradient from
+              red (low confidence, &lt;0.3) through amber (medium, 0.3&ndash;0.7) to green
+              (high, &gt;0.7). Hover over any token to see:
+            </p>
+            <ul className="list-disc list-inside text-muted-foreground space-y-1 mb-4">
+              <li><strong className="text-foreground">Confidence score</strong> &mdash; probability the model assigned to this token (0&ndash;1)</li>
+              <li><strong className="text-foreground">Entropy</strong> &mdash; uncertainty across the probability distribution (higher = more uncertain)</li>
+              <li><strong className="text-foreground">Margin</strong> &mdash; gap between top-1 and top-2 token probabilities (lower = closer alternatives)</li>
+              <li><strong className="text-foreground">Top-5 alternatives</strong> &mdash; the other tokens the model considered, with their probabilities</li>
+            </ul>
+            <p className="text-muted-foreground leading-relaxed mb-4">
+              Click any token to expand a detail panel showing the full alternative distribution
+              and the token&rsquo;s position in the completion.
+            </p>
+
+            <SubHeading id="explainability-hallucination">Hallucination Detection</SubHeading>
+            <p className="text-muted-foreground leading-relaxed mb-4">
+              Prysm automatically identifies <strong className="text-foreground">hallucination candidates</strong> &mdash;
+              segments of 3 or more consecutive tokens where the model&rsquo;s confidence drops below 0.3.
+              These segments are flagged in the trace detail with:
+            </p>
+            <ul className="list-disc list-inside text-muted-foreground space-y-1 mb-4">
+              <li><strong className="text-foreground">Risk level</strong> &mdash; low, medium, or high based on average confidence</li>
+              <li><strong className="text-foreground">Token range</strong> &mdash; exact start/end position in the completion</li>
+              <li><strong className="text-foreground">Average confidence</strong> &mdash; mean confidence across the flagged segment</li>
+              <li><strong className="text-foreground">Extracted text</strong> &mdash; the actual tokens in the suspicious segment</li>
+            </ul>
+            <p className="text-muted-foreground leading-relaxed mb-4">
+              For <strong className="text-foreground">Anthropic</strong>, hallucination risk is estimated from
+              linguistic markers (hedging phrases like &ldquo;I think&rdquo;, &ldquo;probably&rdquo;, &ldquo;might be&rdquo;;
+              self-corrections like &ldquo;actually&rdquo;, &ldquo;let me reconsider&rdquo;; and uncertainty markers).
+              The overall <IC>hallucination_risk_score</IC> (0&ndash;1) is stored in the trace.
+            </p>
+
+            <SubHeading id="explainability-why">"Why Did It Say That?"</SubHeading>
+            <p className="text-muted-foreground leading-relaxed mb-4">
+              Click the <strong className="text-foreground">&ldquo;Why did it say that?&rdquo;</strong> button on any
+              trace to generate an LLM-powered explanation of the model&rsquo;s decision-making process.
+              The explanation analyzes:
+            </p>
+            <ul className="list-disc list-inside text-muted-foreground space-y-1 mb-4">
+              <li>The prompt context and how it influenced the completion</li>
+              <li>High-entropy decision points where the model chose between alternatives</li>
+              <li>Hallucination candidates and why confidence dropped</li>
+              <li>Overall confidence patterns and what they reveal about model certainty</li>
+            </ul>
+            <p className="text-muted-foreground leading-relaxed mb-4">
+              Explanations are cached in the <IC>explainability_reports</IC> table, so subsequent
+              views load instantly without re-generating.
+            </p>
+
+            <SubHeading id="explainability-decision-points">Decision Points Timeline</SubHeading>
+            <p className="text-muted-foreground leading-relaxed mb-4">
+              The decision points timeline shows a visual timeline of tokens where the model
+              had high entropy (uncertainty). Each point shows the chosen token, its confidence,
+              and the top alternatives the model considered. This reveals the critical moments
+              where the model&rsquo;s output could have diverged.
+            </p>
+
+            <SubHeading id="explainability-comparison">Model Comparison</SubHeading>
+            <p className="text-muted-foreground leading-relaxed mb-4">
+              Select multiple traces in the Request Explorer to compare models side-by-side.
+              The comparison view shows:
+            </p>
+            <ul className="list-disc list-inside text-muted-foreground space-y-1 mb-4">
+              <li><strong className="text-foreground">Overall confidence</strong> &mdash; which model was more certain</li>
+              <li><strong className="text-foreground">Hallucination risk</strong> &mdash; which model had more suspicious segments</li>
+              <li><strong className="text-foreground">Confidence stability</strong> &mdash; standard deviation of token confidence (lower = more consistent)</li>
+              <li><strong className="text-foreground">Total tokens</strong> &mdash; completion length comparison</li>
+              <li><strong className="text-foreground">Latency &amp; cost</strong> &mdash; performance and cost metrics</li>
+            </ul>
+
+            <SubHeading id="explainability-config">Configuration</SubHeading>
+            <p className="text-muted-foreground leading-relaxed mb-4">
+              Configure explainability in <strong className="text-foreground">Settings &rarr; Explainability</strong>:
+            </p>
+            <div className="overflow-x-auto my-6">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left py-2.5 pr-4 text-muted-foreground font-medium">Setting</th>
+                    <th className="text-left py-2.5 pr-4 text-muted-foreground font-medium">Options</th>
+                    <th className="text-left py-2.5 text-muted-foreground font-medium">Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    ["Explainability", "Enabled / Disabled", "Master toggle for all explainability features"],
+                    ["Logprobs injection", "Always / Sample / Never", "When to inject logprobs into requests (OpenAI & Gemini only)"],
+                    ["Sample rate", "0% – 100%", "Percentage of requests to analyze when injection mode is 'Sample'"],
+                  ].map(([setting, options, desc]) => (
+                    <tr key={setting} className="border-b border-border/50">
+                      <td className="py-2.5 pr-4 font-medium text-foreground whitespace-nowrap">{setting}</td>
+                      <td className="py-2.5 pr-4 font-mono text-xs text-primary">{options}</td>
+                      <td className="py-2.5 text-muted-foreground">{desc}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <Callout type="info">
+              Logprobs injection adds a small amount of data to each response. For high-volume
+              production workloads, use <strong>Sample</strong> mode to analyze a percentage of
+              requests without impacting all traffic.
+            </Callout>
 
             {/* ═══════════════════════════════════════════════════════════ */}
             {/* CI/CD INTEGRATION */}

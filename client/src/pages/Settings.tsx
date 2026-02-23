@@ -36,6 +36,7 @@ import {
   Crown,
   User,
   DollarSign,
+  Brain,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -52,6 +53,7 @@ const TABS = [
   { id: "alerts", label: "Alerts", icon: Bell },
   { id: "team", label: "Team", icon: Users },
   { id: "usage", label: "Usage", icon: BarChart3 },
+  { id: "explainability", label: "Explainability", icon: Brain },
 ];
 
 // ═══════════════════════════════════════════════════════════════
@@ -961,6 +963,164 @@ function UsageTab() {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// EXPLAINABILITY TAB
+// ═══════════════════════════════════════════════════════════════
+
+function ExplainabilityTab({ projectId }: { projectId: number }) {
+  const utils = trpc.useUtils();
+  const { data: config, isLoading } = trpc.explainability.getSettings.useQuery({ projectId });
+
+  const [enabled, setEnabled] = useState<boolean | null>(null);
+  const [injection, setInjection] = useState<string | null>(null);
+  const [sampleRate, setSampleRate] = useState<number | null>(null);
+  // Sync local state with server data
+  const effectiveEnabled = enabled ?? config?.enabled ?? true;
+  const effectiveInjection = injection ?? config?.logprobsInjection ?? "always";
+  const effectiveSampleRate = sampleRate ?? (config?.sampleRate ? config.sampleRate * 100 : 100);
+
+  const updateMutation = trpc.explainability.updateSettings.useMutation({
+    onSuccess: () => {
+      toast.success("Explainability settings saved");
+      utils.explainability.getSettings.invalidate({ projectId });
+      // Reset local overrides
+      setEnabled(null);
+      setInjection(null);
+      setSampleRate(null);
+    },
+    onError: (err) => {
+      toast.error(`Failed to save: ${err.message}`);
+    },
+  });
+
+  const handleSave = () => {
+    updateMutation.mutate({
+      projectId,
+      enabled: effectiveEnabled,
+      logprobsInjection: effectiveInjection as "always" | "never" | "sample",
+      sampleRate: effectiveSampleRate / 100,
+    });
+  };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4 py-4">
+        <div className="h-6 w-48 bg-muted rounded animate-pulse" />
+        <div className="h-32 w-full bg-muted rounded animate-pulse" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6 py-4">
+      <Card className="bg-card border-border">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Brain className="w-4 h-4 text-primary" />
+            Explainability Configuration
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Enable explainability */}
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label>Enable Explainability</Label>
+              <p className="text-xs text-muted-foreground">
+                When enabled, the proxy will capture logprobs and compute confidence analysis for traces
+              </p>
+            </div>
+            <Switch
+              checked={effectiveEnabled}
+              onCheckedChange={(v) => setEnabled(v)}
+            />
+          </div>
+
+          {effectiveEnabled && (
+            <>
+              {/* Logprobs injection mode */}
+              <div className="space-y-2">
+                <Label>Logprobs Injection</Label>
+                <p className="text-xs text-muted-foreground">
+                  Controls when the proxy injects logprobs parameters into upstream requests
+                </p>
+                <Select
+                  value={effectiveInjection}
+                  onValueChange={(v) => setInjection(v)}
+                >
+                  <SelectTrigger className="w-48 bg-background">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="always">Always</SelectItem>
+                    <SelectItem value="sample">Sample at rate</SelectItem>
+                    <SelectItem value="never">Never</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Sample rate (only visible when "sample" is selected) */}
+              {effectiveInjection === "sample" && (
+                <div className="space-y-2">
+                  <Label>Sample Rate: {effectiveSampleRate}%</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Percentage of requests that will have logprobs injected
+                  </p>
+                  <input
+                    type="range"
+                    min={1}
+                    max={100}
+                    value={effectiveSampleRate}
+                    onChange={(e) => setSampleRate(parseInt(e.target.value))}
+                    className="w-48 accent-primary"
+                  />
+                  <span className="text-xs text-muted-foreground ml-2">{effectiveSampleRate}%</span>
+                </div>
+              )}
+
+            </>
+          )}
+
+          {/* Save button */}
+          <Button
+            onClick={handleSave}
+            disabled={updateMutation.isPending}
+            className="gap-2"
+          >
+            {updateMutation.isPending ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Save className="w-4 h-4" />
+            )}
+            Save Settings
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Info card */}
+      <Card className="bg-card/50 border-border">
+        <CardContent className="py-4">
+          <div className="space-y-2 text-xs text-muted-foreground">
+            <p className="font-medium text-foreground text-sm">How Explainability Works</p>
+            <p>
+              <strong>OpenAI &amp; Gemini:</strong> The proxy injects <code className="text-primary">logprobs: true</code> and{" "}
+              <code className="text-primary">top_logprobs: 5</code> into upstream requests. This provides native token-level
+              confidence data with no additional cost.
+            </p>
+            <p>
+              <strong>Anthropic:</strong> Anthropic does not support logprobs. The system uses text-based
+              confidence estimation to provide approximate analysis. Results are labeled as "estimated."
+            </p>
+            <p>
+              <strong>Sampling:</strong> Use "Sample at rate" to reduce overhead on high-volume projects.
+              Only sampled requests will have logprobs captured and analyzed.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
 // MAIN SETTINGS PAGE
 // ═══════════════════════════════════════════════════════════════
 
@@ -1000,6 +1160,7 @@ export default function Settings({ projectId }: { projectId: number }) {
       {activeTab === "alerts" && <AlertsTab projectId={projectId} />}
       {activeTab === "team" && <TeamTab />}
       {activeTab === "usage" && <UsageTab />}
+      {activeTab === "explainability" && <ExplainabilityTab projectId={projectId} />}
     </div>
   );
 }

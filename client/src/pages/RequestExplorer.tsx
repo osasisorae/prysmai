@@ -27,10 +27,17 @@ import {
   Check,
 } from "lucide-react";
 import { toast } from "sonner";
+import TokenConfidenceHeatmap from "@/components/TokenConfidenceHeatmap";
+import HallucinationDetectorPanel from "@/components/HallucinationDetectorPanel";
+import WhyDidItSayThat from "@/components/WhyDidItSayThat";
+import DecisionPointsTimeline from "@/components/DecisionPointsTimeline";
+import ModelComparisonView from "@/components/ModelComparisonView";
+import { BarChart3 } from "lucide-react";
 
 function TraceDetail({ traceId, projectId, onClose }: { traceId: string; projectId: number; onClose: () => void }) {
   const { data: trace, isLoading } = trpc.trace.get.useQuery({ traceId, projectId });
   const [copied, setCopied] = useState<string | null>(null);
+  const [highlightedTokenIdx, setHighlightedTokenIdx] = useState<number | null>(null);
 
   const copyText = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -167,42 +174,96 @@ function TraceDetail({ traceId, projectId, onClose }: { traceId: string; project
         </div>
       )}
 
-      {/* Logprobs */}
-      {trace.logprobs && (
+      {/* ═══ Layer 3a: Explainability ═══ */}
+
+      {/* Token Confidence Heatmap */}
+      {trace.logprobs?.content && Array.isArray(trace.logprobs.content) && (
         <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <p className="text-sm font-medium">Log Probabilities</p>
-            <button
-              onClick={() => copyText(JSON.stringify(trace.logprobs, null, 2), "logprobs")}
-              className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
-            >
-              {copied === "logprobs" ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />} Copy
-            </button>
-          </div>
-          <div className="bg-background rounded-lg border border-border p-3 max-h-60 overflow-y-auto">
-            {trace.logprobs.content && Array.isArray(trace.logprobs.content) ? (
-              <div className="flex flex-wrap gap-1">
-                {(trace.logprobs.content as any[]).slice(0, 50).map((lp: any, i: number) => (
-                  <span
-                    key={i}
-                    className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs font-mono"
-                    style={{
-                      backgroundColor: `oklch(0.78 0.17 195 / ${Math.min(Math.max(Math.exp(lp.logprob) * 0.8, 0.1), 0.8)})`,
-                    }}
-                    title={`logprob: ${lp.logprob?.toFixed(4)}, prob: ${(Math.exp(lp.logprob) * 100).toFixed(1)}%`}
-                  >
-                    {lp.token}
-                  </span>
-                ))}
-                {(trace.logprobs.content as any[]).length > 50 && (
-                  <span className="text-xs text-muted-foreground">...and {(trace.logprobs.content as any[]).length - 50} more tokens</span>
-                )}
+          <p className="text-sm font-medium">Token Confidence Heatmap</p>
+          <TokenConfidenceHeatmap
+            logprobs={trace.logprobs as { content: Array<{ token: string; logprob: number; top_logprobs?: Array<{ token: string; logprob: number }> }> }}
+            perToken={(trace as any).confidenceAnalysis?.per_token}
+            hallucinationCandidates={(trace as any).confidenceAnalysis?.hallucination_candidates}
+            highlightedTokenIdx={highlightedTokenIdx}
+            onTokenClick={(idx) => setHighlightedTokenIdx(idx)}
+          />
+        </div>
+      )}
+
+      {/* Hallucination Detector */}
+      {(trace as any).confidenceAnalysis && (
+        <HallucinationDetectorPanel
+          candidates={(trace as any).confidenceAnalysis?.hallucination_candidates ?? []}
+          tokens={trace.logprobs?.content as any}
+          overallConfidence={(trace as any).confidenceAnalysis?.overall_confidence ?? 0}
+          hallucinationRiskScore={(trace as any).confidenceAnalysis?.hallucination_risk_score ?? 0}
+          onCandidateClick={(startIdx) => setHighlightedTokenIdx(startIdx)}
+        />
+      )}
+
+      {/* Decision Points Timeline */}
+      {(trace as any).confidenceAnalysis?.decision_points?.length > 0 && (
+        <DecisionPointsTimeline
+          decisionPoints={(trace as any).confidenceAnalysis.decision_points}
+          totalTokens={(trace as any).confidenceAnalysis?.total_tokens ?? (trace.logprobs?.content as any[])?.length ?? 0}
+          onPointClick={(tokenIdx) => setHighlightedTokenIdx(tokenIdx)}
+        />
+      )}
+
+      {/* "Why did it say that?" button */}
+      {trace.status === "success" && trace.completion && (
+        <WhyDidItSayThat
+          traceDbId={trace.id}
+          provider={trace.provider ?? "openai"}
+          onHighlightToken={setHighlightedTokenIdx}
+        />
+      )}
+
+      {/* Confidence Summary (for Anthropic estimated) */}
+      {(trace as any).confidenceAnalysis && !(trace.logprobs?.content) && (
+        <div className="space-y-2">
+          <p className="text-sm font-medium">Estimated Confidence Analysis</p>
+          <div className="bg-card/50 rounded-lg border border-border p-3">
+            <div className="grid grid-cols-2 gap-3 text-xs">
+              <div>
+                <span className="text-muted-foreground">Overall Confidence</span>
+                <p className="font-mono text-sm">{((trace as any).confidenceAnalysis.overall_confidence * 100).toFixed(1)}%</p>
               </div>
-            ) : (
-              <pre className="text-xs text-foreground overflow-x-auto">{JSON.stringify(trace.logprobs, null, 2)}</pre>
-            )}
+              <div>
+                <span className="text-muted-foreground">Hallucination Risk</span>
+                <p className="font-mono text-sm">{((trace as any).confidenceAnalysis.hallucination_risk_score * 100).toFixed(1)}%</p>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Source</span>
+                <p className="font-mono text-sm">{(trace as any).confidenceAnalysis.logprobs_source}</p>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Provider</span>
+                <p className="font-mono text-sm">{(trace as any).confidenceAnalysis.provider}</p>
+              </div>
+            </div>
           </div>
         </div>
+      )}
+
+      {/* Raw Logprobs (collapsible) */}
+      {trace.logprobs && (
+        <details className="group">
+          <summary className="text-sm font-medium cursor-pointer hover:text-primary transition-colors">
+            Raw Log Probabilities
+          </summary>
+          <div className="mt-2 bg-background rounded-lg border border-border p-3 max-h-60 overflow-y-auto">
+            <div className="flex items-center justify-end mb-2">
+              <button
+                onClick={() => copyText(JSON.stringify(trace.logprobs, null, 2), "logprobs")}
+                className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
+              >
+                {copied === "logprobs" ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />} Copy
+              </button>
+            </div>
+            <pre className="text-xs text-foreground overflow-x-auto">{JSON.stringify(trace.logprobs, null, 2).slice(0, 5000)}</pre>
+          </div>
+        </details>
       )}
     </div>
   );
@@ -213,6 +274,9 @@ export default function RequestExplorer({ projectId }: { projectId: number }) {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [modelFilter, setModelFilter] = useState<string>("all");
   const [selectedTraceId, setSelectedTraceId] = useState<string | null>(null);
+  const [compareMode, setCompareMode] = useState(false);
+  const [selectedForCompare, setSelectedForCompare] = useState<number[]>([]);
+  const [showComparison, setShowComparison] = useState(false);
   const limit = 25;
 
   const models = trpc.trace.models.useQuery({ projectId });
@@ -268,6 +332,30 @@ export default function RequestExplorer({ projectId }: { projectId: number }) {
             <X className="w-3 h-3 mr-1" /> Clear
           </Button>
         )}
+
+        <div className="ml-auto flex items-center gap-2">
+          <Button
+            variant={compareMode ? "default" : "outline"}
+            size="sm"
+            className="h-9 gap-1.5"
+            onClick={() => {
+              setCompareMode(!compareMode);
+              if (compareMode) setSelectedForCompare([]);
+            }}
+          >
+            <BarChart3 className="w-3.5 h-3.5" />
+            {compareMode ? "Cancel Compare" : "Compare Models"}
+          </Button>
+          {compareMode && selectedForCompare.length >= 2 && (
+            <Button
+              size="sm"
+              className="h-9"
+              onClick={() => setShowComparison(true)}
+            >
+              Compare ({selectedForCompare.length})
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Table */}
@@ -293,23 +381,42 @@ export default function RequestExplorer({ projectId }: { projectId: number }) {
               </div>
               {/* Rows */}
               {traces.data.traces.map((trace: any) => (
-                <button
+                <div
                   key={trace.id}
-                  onClick={() => setSelectedTraceId(trace.traceId)}
-                  className="grid grid-cols-[auto_1fr_120px_80px_80px_80px_80px] gap-2 py-2.5 px-4 text-sm border-b border-border/50 last:border-0 hover:bg-accent/30 transition-colors w-full text-left"
+                  className="grid grid-cols-[auto_1fr_120px_80px_80px_80px_80px] gap-2 py-2.5 px-4 text-sm border-b border-border/50 last:border-0 hover:bg-accent/30 transition-colors w-full text-left cursor-pointer"
+                  onClick={() => {
+                    if (compareMode) {
+                      setSelectedForCompare(prev =>
+                        prev.includes(trace.id)
+                          ? prev.filter(id => id !== trace.id)
+                          : prev.length < 4 ? [...prev, trace.id] : prev
+                      );
+                    } else {
+                      setSelectedTraceId(trace.traceId);
+                    }
+                  }}
                 >
-                  <span className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${
-                    trace.status === "success" ? "bg-green-400" : "bg-red-400"
-                  }`} />
+                  {compareMode ? (
+                    <input
+                      type="checkbox"
+                      checked={selectedForCompare.includes(trace.id)}
+                      readOnly
+                      className="mt-1 accent-primary"
+                    />
+                  ) : (
+                    <span className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${
+                      trace.status === "success" ? "bg-green-400" : "bg-red-400"
+                    }`} />
+                  )}
                   <span className="font-mono text-xs truncate">{trace.traceId}</span>
                   <span className="font-mono text-xs truncate">{trace.model}</span>
-                  <span className="text-xs text-right text-muted-foreground">{trace.latencyMs ?? "—"}ms</span>
+                  <span className="text-xs text-right text-muted-foreground">{trace.latencyMs ?? "\u2014"}ms</span>
                   <span className="text-xs text-right text-muted-foreground">{trace.totalTokens ?? 0}</span>
                   <span className="text-xs text-right text-muted-foreground">${parseFloat(trace.costUsd ?? "0").toFixed(4)}</span>
                   <span className={`text-xs text-right ${trace.status === "success" ? "text-green-400" : "text-red-400"}`}>
                     {trace.status}
                   </span>
-                </button>
+                </div>
               ))}
             </>
           ) : (
@@ -364,6 +471,31 @@ export default function RequestExplorer({ projectId }: { projectId: number }) {
               traceId={selectedTraceId}
               projectId={projectId}
               onClose={() => setSelectedTraceId(null)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Model Comparison Dialog */}
+      <Dialog open={showComparison} onOpenChange={(open) => {
+        if (!open) {
+          setShowComparison(false);
+          setSelectedForCompare([]);
+          setCompareMode(false);
+        }
+      }}>
+        <DialogContent className="max-w-5xl bg-card border-border">
+          <DialogHeader>
+            <DialogTitle className="text-sm">Model Comparison</DialogTitle>
+          </DialogHeader>
+          {showComparison && selectedForCompare.length >= 2 && (
+            <ModelComparisonView
+              traceIds={selectedForCompare}
+              onClose={() => {
+                setShowComparison(false);
+                setSelectedForCompare([]);
+                setCompareMode(false);
+              }}
             />
           )}
         </DialogContent>

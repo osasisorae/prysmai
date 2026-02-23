@@ -14,6 +14,10 @@ import {
   getOrgMembers, inviteOrgMember, removeOrgMember,
   acceptOrgInvite, getOrgInviteByToken,
   getCustomPricing, upsertCustomPricing, deleteCustomPricing,
+  getExplainabilityConfig, updateExplainabilityConfig,
+  getExplainabilityReport, upsertExplainabilityReport,
+  getTracesWithConfidence,
+  getTraceByDbId,
 } from "./db";
 import { z } from "zod";
 import { notifyOwner } from "./_core/notification";
@@ -26,6 +30,7 @@ import {
 } from "./security/db-helpers";
 import { generateInviteToken, approveWaitlistEntry, rejectWaitlistEntry } from "./customAuth";
 import { TRPCError } from "@trpc/server";
+import { computeConfidenceAnalysis, estimateAnthropicConfidence, type ConfidenceAnalysis } from "./confidence-analysis";
 
 // Helper: ensure user has an org, get it or throw
 async function requireOrg(userId: number) {
@@ -587,6 +592,276 @@ export const appRouter = router({
         const org = await requireOrg(ctx.user.id);
         await requireProject(input.projectId, org.id);
         return await getTopInjectionPatterns(input.projectId, input.limit);
+      }),
+  }),
+
+  // ═══════════════════════════════════════════════════════════════
+  // EXPLAINABILITY (Layer 3a)
+  // ═══════════════════════════════════════════════════════════════
+
+  explainability: router({
+    // Get confidence analysis for a specific trace
+    getConfidenceAnalysis: protectedProcedure
+      .input(z.object({ traceId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        const org = await requireOrg(ctx.user.id);
+        const trace = await getTraceByDbId(input.traceId);
+        if (!trace) throw new TRPCError({ code: "NOT_FOUND", message: "Trace not found." });
+        await requireProject(trace.projectId, org.id);
+        return {
+          logprobs: trace.logprobs ?? null,
+          confidenceAnalysis: trace.confidenceAnalysis ?? null,
+          provider: trace.provider,
+          model: trace.model,
+          completion: trace.completion,
+        };
+      }),
+
+    // Generate or retrieve "Why did it say that?" explanation
+    getExplanation: protectedProcedure
+      .input(z.object({
+        traceId: z.number(),
+        regenerate: z.boolean().optional().default(false),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const org = await requireOrg(ctx.user.id);
+        const trace = await getTraceByDbId(input.traceId);
+        if (!trace) throw new TRPCError({ code: "NOT_FOUND", message: "Trace not found." });
+        await requireProject(trace.projectId, org.id);
+
+        // Check for cached explanation
+        if (!input.regenerate) {
+          const existing = await getExplainabilityReport(trace.id);
+          if (existing) {
+            return {
+              explanation: existing.explanation,
+              highlights: existing.highlights ?? [],
+              cached: true,
+              reportType: existing.reportType,
+            };
+          }
+        }
+
+        // Build the analysis context
+        const analysis = trace.confidenceAnalysis as ConfidenceAnalysis | null;
+        const logprobs = trace.logprobs as { content?: Array<{ token: string; logprob: number; top_logprobs?: Array<{ token: string; logprob: number }> }> } | null;
+
+        // Build explanation prompt
+        const promptMessages = trace.promptMessages as Array<{ role: string; content: string }> | null;
+        const promptText = promptMessages?.map(m => `[${m.role}]: ${m.content}`).join("\n") ?? "(no prompt available)";
+        const completionText = trace.completion ?? "(no completion)";
+
+        // Format decision points for the prompt
+        const decisionPointsText = analysis?.decision_points?.map((dp: any) =>
+          `Token ${dp.token_idx}: chose "${dp.chosen}" (${(dp.chosen_confidence * 100).toFixed(1)}%) over "${dp.alternative}" (${(dp.alternative_confidence * 100).toFixed(1)}%), margin: ${(dp.margin * 100).toFixed(1)}%`
+        ).join("\n") ?? "None detected";
+
+        const hallucinationText = analysis?.hallucination_candidates?.map((hc: any) =>
+          `"${hc.text}" (tokens ${hc.start_token_idx}-${hc.end_token_idx}, avg confidence: ${(hc.avg_confidence * 100).toFixed(1)}%)`
+        ).join("\n") ?? "None detected";
+
+        const systemPrompt = `You are an AI model behavior analyst. Given the following data about an LLM completion, explain WHY the model produced this specific output. Focus on:
+
+1. Where the model was most confident and why (based on prompt context)
+2. Where the model was uncertain and what alternatives it considered
+3. Any segments that may be hallucinated (low confidence, high entropy)
+4. Key decision points where the model almost chose a different token
+
+Be specific. Reference exact tokens and their confidence scores.
+Write for a technical audience who understands LLMs but wants actionable insight.
+Keep the explanation concise (200-400 words).`;
+
+        const userPrompt = `ORIGINAL PROMPT:\n${promptText}\n\nCOMPLETION:\n${completionText}\n\nCONFIDENCE ANALYSIS:\n- Overall confidence: ${analysis?.overall_confidence ?? "N/A"}\n- Hallucination risk: ${analysis?.hallucination_risk_score ?? "N/A"}\n- Provider: ${trace.provider}\n- Logprobs source: ${analysis?.logprobs_source ?? "N/A"}\n\nLOW CONFIDENCE SEGMENTS:\n${hallucinationText}\n\nDECISION POINTS:\n${decisionPointsText}`;
+
+        // Use the built-in Forge API for explanation generation
+        try {
+          const forgeUrl = process.env.BUILT_IN_FORGE_API_URL;
+          const forgeKey = process.env.BUILT_IN_FORGE_API_KEY;
+
+          if (!forgeUrl || !forgeKey) {
+            throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "LLM API not configured for explanations." });
+          }
+
+          const llmResponse = await fetch(`${forgeUrl}/chat/completions`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${forgeKey}`,
+            },
+            body: JSON.stringify({
+              model: "gpt-4.1-mini",
+              messages: [
+                { role: "system", content: systemPrompt },
+                { role: "user", content: userPrompt },
+              ],
+              temperature: 0.3,
+              max_tokens: 1000,
+            }),
+          });
+
+          const llmData = await llmResponse.json() as any;
+          const explanation = llmData.choices?.[0]?.message?.content ?? "Unable to generate explanation.";
+          const tokensUsed = llmData.usage?.total_tokens ?? 0;
+
+          // Build highlights from decision points and hallucination candidates
+          const highlights: Array<{ tokenIdx: number; annotation: string; color: string }> = [];
+          if (analysis?.decision_points) {
+            for (const dp of analysis.decision_points as any[]) {
+              highlights.push({
+                tokenIdx: dp.token_idx,
+                annotation: `Almost chose "${dp.alternative}" (${(dp.alternative_confidence * 100).toFixed(1)}%)`,
+                color: "#f59e0b", // amber for decision points
+              });
+            }
+          }
+          if (analysis?.hallucination_candidates) {
+            for (const hc of analysis.hallucination_candidates as any[]) {
+              for (let i = hc.start_token_idx; i <= hc.end_token_idx; i++) {
+                highlights.push({
+                  tokenIdx: i,
+                  annotation: `Low confidence segment (avg: ${(hc.avg_confidence * 100).toFixed(1)}%)`,
+                  color: "#ef4444", // red for hallucination risk
+                });
+              }
+            }
+          }
+
+          // Cache the report
+          const reportType = analysis?.logprobs_source === "estimated" ? "estimated" as const : "logprobs" as const;
+          await upsertExplainabilityReport({
+            traceId: trace.id,
+            projectId: trace.projectId,
+            reportType,
+            explanation,
+            highlights,
+            modelUsed: "gpt-4.1-mini",
+            tokensUsed,
+            cost: "0.000000", // Internal API, no cost
+          });
+
+          return {
+            explanation,
+            highlights,
+            cached: false,
+            reportType,
+          };
+        } catch (err: any) {
+          if (err instanceof TRPCError) throw err;
+          console.error("[Explainability] Explanation generation failed:", err);
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to generate explanation." });
+        }
+      }),
+
+    // Compare models: get confidence analysis for multiple traces
+    compareModels: protectedProcedure
+      .input(z.object({ traceIds: z.array(z.number()).min(2).max(4) }))
+      .query(async ({ ctx, input }) => {
+        const org = await requireOrg(ctx.user.id);
+        const comparisons = [];
+        for (const tid of input.traceIds) {
+          const trace = await getTraceByDbId(tid);
+          if (!trace) continue;
+          await requireProject(trace.projectId, org.id);
+          comparisons.push({
+            traceId: trace.id,
+            model: trace.model,
+            provider: trace.provider,
+            completion: trace.completion,
+            confidenceAnalysis: trace.confidenceAnalysis,
+            logprobs: trace.logprobs,
+          });
+        }
+        return { comparisons };
+      }),
+
+    // Get explainability settings for a project
+    getSettings: protectedProcedure
+      .input(z.object({ projectId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        const org = await requireOrg(ctx.user.id);
+        await requireProject(input.projectId, org.id);
+        return await getExplainabilityConfig(input.projectId);
+      }),
+
+    // Update explainability settings
+    updateSettings: protectedProcedure
+      .input(z.object({
+        projectId: z.number(),
+        enabled: z.boolean().optional(),
+        logprobsInjection: z.enum(["always", "never", "sample"]).optional(),
+        sampleRate: z.number().min(0).max(1).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const org = await requireOrg(ctx.user.id);
+        await requireProject(input.projectId, org.id);
+        await updateExplainabilityConfig(input.projectId, {
+          enabled: input.enabled,
+          logprobsInjection: input.logprobsInjection,
+          sampleRate: input.sampleRate,
+        });
+        return { success: true };
+      }),
+
+    // Get hallucination report across a project
+    getHallucinationReport: protectedProcedure
+      .input(z.object({
+        projectId: z.number(),
+        limit: z.number().min(1).max(200).default(50),
+        minRisk: z.number().min(0).max(1).default(0),
+        from: z.date().optional(),
+        to: z.date().optional(),
+      }))
+      .query(async ({ ctx, input }) => {
+        const org = await requireOrg(ctx.user.id);
+        await requireProject(input.projectId, org.id);
+        const traces = await getTracesWithConfidence(input.projectId, {
+          limit: input.limit,
+          minRisk: input.minRisk,
+          from: input.from,
+          to: input.to,
+        });
+
+        // Build summary
+        let totalTraces = traces.length;
+        let highRiskCount = 0;
+        let totalConfidence = 0;
+        const candidates: Array<{
+          traceId: string;
+          model: string;
+          provider: string;
+          text: string;
+          avgConfidence: number;
+          timestamp: Date;
+        }> = [];
+
+        for (const t of traces) {
+          const analysis = t.confidenceAnalysis as ConfidenceAnalysis | null;
+          if (!analysis) continue;
+          totalConfidence += analysis.overall_confidence;
+          if (analysis.hallucination_risk_score > 0.3) highRiskCount++;
+          if (analysis.hallucination_candidates?.length) {
+            for (const hc of analysis.hallucination_candidates) {
+              candidates.push({
+                traceId: t.traceId,
+                model: t.model,
+                provider: t.provider,
+                text: hc.text,
+                avgConfidence: hc.avg_confidence,
+                timestamp: t.timestamp,
+              });
+            }
+          }
+        }
+
+        return {
+          candidates: candidates.sort((a, b) => a.avgConfidence - b.avgConfidence),
+          summary: {
+            totalTraces,
+            highRiskTraces: highRiskCount,
+            avgConfidence: totalTraces > 0 ? Math.round((totalConfidence / totalTraces) * 10000) / 10000 : 0,
+            totalHallucinationCandidates: candidates.length,
+          },
+        };
       }),
   }),
 });

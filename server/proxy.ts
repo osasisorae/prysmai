@@ -25,6 +25,7 @@ import {
   calculateCost,
   incrementUsage,
   checkUsageLimit,
+  getExplainabilityConfig,
 } from "./db";
 import { emitTrace } from "./trace-emitter";
 import type { InsertTrace } from "../drizzle/schema";
@@ -38,6 +39,11 @@ import {
   getAnthropicHeaders,
   getAnthropicBaseUrl,
 } from "./anthropic-translator";
+import {
+  computeConfidenceAnalysis,
+  estimateAnthropicConfidence,
+} from "./confidence-analysis";
+import { updateTraceConfidenceAnalysis } from "./db";
 
 const proxyRouter = Router();
 
@@ -187,6 +193,28 @@ async function handleChatNonStreaming(req: Request, res: Response, auth: AuthRes
   const body = req.body;
   const model = body.model ?? "unknown";
 
+  // ─── Layer 3a: Logprobs Injection ───
+  const explainabilityConfig = await getExplainabilityConfig(auth.projectId);
+  let shouldInjectLogprobs = false;
+  let useEstimatedConfidence = false;
+
+  if (explainabilityConfig.enabled && explainabilityConfig.logprobsInjection !== "never") {
+    const shouldSample = explainabilityConfig.logprobsInjection === "always"
+      || Math.random() < explainabilityConfig.sampleRate;
+
+    if (shouldSample) {
+      if (isAnthropic(auth.provider)) {
+        // Anthropic: no logprobs support — flag for estimated analysis
+        useEstimatedConfidence = true;
+      } else {
+        shouldInjectLogprobs = true;
+        // Inject logprobs if user hasn't already set them
+        if (!body.logprobs) body.logprobs = true;
+        if (!body.top_logprobs) body.top_logprobs = 5;
+      }
+    }
+  }
+
   try {
     let upstreamUrl: string;
     let upstreamHeaders: Record<string, string>;
@@ -318,6 +346,22 @@ async function handleChatNonStreaming(req: Request, res: Response, auth: AuthRes
       }
     }
 
+    // ─── Layer 3a: Confidence Analysis ───
+    let confidenceAnalysis: Record<string, unknown> | undefined;
+    if (shouldInjectLogprobs && logprobs?.content) {
+      try {
+        confidenceAnalysis = computeConfidenceAnalysis(logprobs, auth.provider) as unknown as Record<string, unknown>;
+      } catch (err) {
+        console.error("[Explainability] Confidence analysis failed:", err);
+      }
+    } else if (useEstimatedConfidence && completion) {
+      try {
+        confidenceAnalysis = estimateAnthropicConfidence(completion) as unknown as Record<string, unknown>;
+      } catch (err) {
+        console.error("[Explainability] Estimated confidence failed:", err);
+      }
+    }
+
     // Log trace
     const trace: InsertTrace = {
       projectId: auth.projectId,
@@ -329,6 +373,7 @@ async function handleChatNonStreaming(req: Request, res: Response, auth: AuthRes
       finishReason,
       toolCalls: toolCalls?.length ? toolCalls : undefined,
       logprobs: logprobs ?? undefined,
+      confidenceAnalysis,
       status: upstreamResponse.ok ? "success" : "error",
       statusCode: upstreamResponse.status,
       errorMessage: upstreamResponse.ok ? undefined : JSON.stringify(rawResponse),
@@ -393,6 +438,23 @@ async function handleChatStreamingOpenAI(req: Request, res: Response, auth: Auth
   let totalTokens = 0;
   let toolCallsAccum: Record<number, { id: string; type: string; function: { name: string; arguments: string } }> = {};
   let logprobsAccum: any[] = [];
+
+  // ─── Layer 3a: Logprobs Injection (streaming) ───
+  let shouldInjectLogprobs = false;
+  try {
+    const explainabilityConfig = await getExplainabilityConfig(auth.projectId);
+    if (explainabilityConfig.enabled && explainabilityConfig.logprobsInjection !== "never") {
+      const shouldSample = explainabilityConfig.logprobsInjection === "always"
+        || Math.random() < explainabilityConfig.sampleRate;
+      if (shouldSample && !isAnthropic(auth.provider)) {
+        shouldInjectLogprobs = true;
+        if (!body.logprobs) body.logprobs = true;
+        if (!body.top_logprobs) body.top_logprobs = 5;
+      }
+    }
+  } catch (err) {
+    console.error("[Explainability] Config fetch failed (streaming):", err);
+  }
 
   try {
     const upstreamUrl = `${auth.baseUrl}/chat/completions`;
@@ -520,6 +582,16 @@ async function handleChatStreamingOpenAI(req: Request, res: Response, auth: Auth
       }
     }
 
+    // ─── Layer 3a: Confidence Analysis (streaming) ───
+    let confidenceAnalysis: Record<string, unknown> | undefined;
+    if (shouldInjectLogprobs && logprobsFinal?.content?.length) {
+      try {
+        confidenceAnalysis = computeConfidenceAnalysis(logprobsFinal, auth.provider) as unknown as Record<string, unknown>;
+      } catch (err) {
+        console.error("[Explainability] Confidence analysis failed (streaming):", err);
+      }
+    }
+
     const trace: InsertTrace = {
       projectId: auth.projectId,
       traceId,
@@ -530,6 +602,7 @@ async function handleChatStreamingOpenAI(req: Request, res: Response, auth: Auth
       finishReason,
       toolCalls: toolCallsFinal,
       logprobs: logprobsFinal,
+      confidenceAnalysis,
       status: "success",
       statusCode: 200,
       latencyMs,
@@ -712,6 +785,19 @@ async function handleChatStreamingAnthropic(req: Request, res: Response, auth: A
       }
     }
 
+    // ─── Layer 3a: Estimated Confidence (Anthropic) ───
+    let confidenceAnalysis: Record<string, unknown> | undefined;
+    if (completion) {
+      try {
+        const explainabilityConfig = await getExplainabilityConfig(auth.projectId);
+        if (explainabilityConfig.enabled && explainabilityConfig.logprobsInjection !== "never") {
+          confidenceAnalysis = estimateAnthropicConfidence(completion) as unknown as Record<string, unknown>;
+        }
+      } catch (err) {
+        console.error("[Explainability] Estimated confidence failed (Anthropic streaming):", err);
+      }
+    }
+
     const trace: InsertTrace = {
       projectId: auth.projectId,
       traceId,
@@ -721,6 +807,7 @@ async function handleChatStreamingAnthropic(req: Request, res: Response, auth: A
       completion,
       finishReason: streamState.finishReason || "stop",
       toolCalls: toolCallsAccum.length > 0 ? toolCallsAccum : undefined,
+      confidenceAnalysis,
       status: "success",
       statusCode: 200,
       latencyMs,
@@ -1075,9 +1162,10 @@ proxyRouter.get("/health", (_req: Request, res: Response) => {
   res.json({
     status: "ok",
     service: "prysm-proxy",
-    version: "0.3.1",
+    version: "0.4.0",
     endpoints: ["/chat/completions", "/completions", "/embeddings"],
     providers: ["openai", "anthropic", "google", "vllm", "ollama", "tgi"],
+    capabilities: ["observability", "security", "explainability"],
   });
 });
 

@@ -7,6 +7,7 @@ import {
   apiKeys, InsertApiKey,
   traces, InsertTrace,
   modelPricing,
+  explainabilityReports, InsertExplainabilityReport,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 import crypto from "crypto";
@@ -1141,4 +1142,155 @@ export async function deleteCustomPricing(id: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   await db.delete(modelPricing).where(eq(modelPricing.id, id));
+}
+
+
+// ═══════════════════════════════════════════════════════════════
+// EXPLAINABILITY (Layer 3a)
+// ═══════════════════════════════════════════════════════════════
+
+export interface ExplainabilityConfig {
+  enabled: boolean;
+  logprobsInjection: "always" | "never" | "sample";
+  sampleRate: number;
+}
+
+/**
+ * Get explainability configuration for a project.
+ * Returns defaults (enabled, always inject) if project not found or DB unavailable.
+ */
+export async function getExplainabilityConfig(projectId: number): Promise<ExplainabilityConfig> {
+  const defaults: ExplainabilityConfig = {
+    enabled: true,
+    logprobsInjection: "always",
+    sampleRate: 1.0,
+  };
+  try {
+    const db = await getDb();
+    if (!db) return defaults;
+    const result = await db.select({
+      explainabilityEnabled: projects.explainabilityEnabled,
+      logprobsInjection: projects.logprobsInjection,
+      logprobsSampleRate: projects.logprobsSampleRate,
+    }).from(projects).where(eq(projects.id, projectId)).limit(1);
+    if (!result[0]) return defaults;
+    return {
+      enabled: result[0].explainabilityEnabled ?? true,
+      logprobsInjection: (result[0].logprobsInjection as "always" | "never" | "sample") ?? "always",
+      sampleRate: parseFloat(result[0].logprobsSampleRate ?? "1.00"),
+    };
+  } catch (err) {
+    console.error("[Explainability] Failed to get config:", err);
+    return defaults;
+  }
+}
+
+/**
+ * Update explainability settings for a project.
+ */
+export async function updateExplainabilityConfig(
+  projectId: number,
+  config: Partial<ExplainabilityConfig>,
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const updateData: Record<string, unknown> = {};
+  if (config.enabled !== undefined) updateData.explainabilityEnabled = config.enabled;
+  if (config.logprobsInjection !== undefined) updateData.logprobsInjection = config.logprobsInjection;
+  if (config.sampleRate !== undefined) updateData.logprobsSampleRate = config.sampleRate.toFixed(2);
+  await db.update(projects).set(updateData).where(eq(projects.id, projectId));
+}
+
+/**
+ * Get or create an explainability report for a trace.
+ */
+export async function getExplainabilityReport(traceId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(explainabilityReports).where(eq(explainabilityReports.traceId, traceId)).limit(1);
+  return result[0] ?? undefined;
+}
+
+/**
+ * Insert an explainability report (upsert — replace if exists).
+ */
+export async function upsertExplainabilityReport(data: InsertExplainabilityReport) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  // Try to insert; if trace already has a report, update it
+  const existing = await db.select({ id: explainabilityReports.id })
+    .from(explainabilityReports)
+    .where(eq(explainabilityReports.traceId, data.traceId))
+    .limit(1);
+  if (existing.length > 0) {
+    await db.update(explainabilityReports).set({
+      explanation: data.explanation,
+      highlights: data.highlights,
+      modelUsed: data.modelUsed,
+      tokensUsed: data.tokensUsed,
+      cost: data.cost,
+      generatedAt: new Date(),
+    }).where(eq(explainabilityReports.id, existing[0].id));
+    return existing[0].id;
+  } else {
+    const result = await db.insert(explainabilityReports).values(data).$returningId();
+    return result[0].id;
+  }
+}
+
+/**
+ * Update the confidenceAnalysis JSON on a trace.
+ */
+export async function updateTraceConfidenceAnalysis(traceDbId: number, analysis: Record<string, unknown>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(traces).set({ confidenceAnalysis: analysis }).where(eq(traces.id, traceDbId));
+}
+
+/**
+ * Get traces with confidence analysis for a project (for hallucination report).
+ */
+export async function getTracesWithConfidence(
+  projectId: number,
+  options: { limit?: number; minRisk?: number; from?: Date; to?: Date } = {},
+) {
+  const db = await getDb();
+  if (!db) return [];
+  const conditions = [eq(traces.projectId, projectId)];
+  if (options.from) conditions.push(gte(traces.timestamp, options.from));
+  if (options.to) conditions.push(lte(traces.timestamp, options.to));
+
+  const result = await db.select({
+    id: traces.id,
+    traceId: traces.traceId,
+    model: traces.model,
+    provider: traces.provider,
+    completion: traces.completion,
+    confidenceAnalysis: traces.confidenceAnalysis,
+    timestamp: traces.timestamp,
+  })
+    .from(traces)
+    .where(and(...conditions))
+    .orderBy(desc(traces.timestamp))
+    .limit(options.limit ?? 100);
+
+  // Filter by minRisk in application layer (JSON field)
+  if (options.minRisk !== undefined && options.minRisk > 0) {
+    return result.filter((t) => {
+      const analysis = t.confidenceAnalysis as any;
+      return analysis?.hallucination_risk_score >= options.minRisk!;
+    });
+  }
+  return result;
+}
+
+
+/**
+ * Get a trace by its numeric database ID (for explainability lookups).
+ */
+export async function getTraceByDbId(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(traces).where(eq(traces.id, id)).limit(1);
+  return result[0] ?? undefined;
 }

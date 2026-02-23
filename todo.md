@@ -418,3 +418,73 @@
 - [x] 4. Update DEFAULT_PRICING table — 48 models across 3 providers (was 23)
 - [x] 5. Update tests — 11 new model-specific tests + comprehensive coverage test updated
 - [x] 6. Full test suite green — 385 tests, 17 files, all passing
+
+## Layer 1 Extension Spec
+- [ ] Write detailed spec for Agent Behavioral Detection (early stopping, agentic laziness, tool undertriggering, edit avoidance, reward hacking, code hallucination)
+- [ ] Write detailed spec for RAG/Vector DB Interaction Analysis (chunking strategies, document retrieval patterns, embedding quality)
+
+## Layer 3a Technical Document
+- [ ] Write detailed technical document for Layer 3a (logprobs visualization, token confidence heatmap, "Why did it say that?", decision trace narrative)
+
+## Candidate Emails
+- [ ] Send tailored email to John (john@miva.university)
+- [ ] Send tailored email to Chronos (Chronos.llc@mohex.org)
+- [ ] Send tailored email to Osas (osasisorae@gmail.com)
+
+## Layer 3a Implementation — Explainability
+### Phase 1: Schema + Logprobs Injection
+- [x] Add confidence_analysis JSON column to traces table
+- [x] Add explainability_enabled, logprobs_injection, logprobs_sample_rate columns to projects table
+- [x] Create explainability_reports table
+- [x] Inject logprobs=true, top_logprobs=5 into OpenAI requests (respect user overrides)
+- [x] Inject responseLogprobs into Gemini requests
+- [x] Flag Anthropic requests for estimated confidence
+- [x] Run db:push
+
+### Phase 2: Confidence Analysis Engine
+- [x] Build per-token metrics (confidence, entropy, margin, hallucination_risk)
+- [x] Build segment-level grouping (high/low confidence segments, transition points)
+- [x] Build completion-level metrics (overall_confidence, hallucination_risk_score, confidence_stability)
+- [x] Build Anthropic estimated confidence (hedging language, uncertainty markers)
+- [x] Integrate analysis into proxy response path (store in traces.confidence_analysis)
+
+### Phase 3: Token Confidence Heatmap UI
+- [x] Build TokenHeatmap React component (colored spans, OKLCH gradient)
+- [x] Build hover tooltip (confidence, entropy, margin, top-5 alternatives)
+- [x] Build click-to-expand token detail panel
+- [x] Integrate into trace detail view
+
+### Phase 4: Hallucination Detector
+- [x] Build hallucination candidate extraction
+- [x] Build HallucinationPanel UI component
+- [x] Add hallucination risk badge to trace list
+
+### Phase 5: "Why Did It Say That?" Feature
+- [x] Build explanation generation prompt
+- [x] Build tRPC procedure (generate + cache in explainability_reports)
+- [x] Build WhyPanel UI component
+- [x] Add "Why did it say that?" button to trace detail
+
+### Phase 6: Decision Points + Model Comparison
+- [x] Build DecisionPointsTimeline component
+- [x] Build ModelComparisonView component
+- [x] Build compareModels tRPC procedure
+
+### Phase 7: Explainability Settings
+- [x] Build explainability settings UI in project settings
+- [x] Build updateSettings tRPC procedure
+- [x] Build getHallucinationReport tRPC procedure
+
+### Phase 8: Tests (all providers: OpenAI, Anthropic, Gemini)
+- [x] Tests for confidence analysis engine (OpenAI logprobs, Anthropic estimated, Gemini normalized) — 48 tests across all 3 providers
+- [x] Tests for logprobs injection (OpenAI, Anthropic, Gemini) — 22 tests across all 3 providers
+- [x] Tests for hallucination detection — 8 tests across all 3 providers
+- [x] Tests for explanation generation — 3 tests (input formatting for all providers)
+- [x] Tests for proxy integration path — 7 tests (response processing + streaming for all providers)
+- [x] Tests for explainability config — 4 tests (behavior across all providers)
+- [x] Full test suite green — 483 tests, 19 files, all passing
+
+### Phase 9: Documentation
+- [x] Update /docs page with explainability section (provider support table, heatmap, hallucination, why-did-it-say-that, decision points, comparison, config)
+- [x] Update QA testing guide with 47 Layer 3a test cases (AA-AI, grand total 212)
+- [ ] Update SDK README
