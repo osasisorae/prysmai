@@ -64,6 +64,13 @@
       "when": 1771829017730,
       "tag": "0008_friendly_nitro",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "5",
+      "when": 1771943715168,
+      "tag": "0009_military_major_mapleleaf",
+      "breakpoints": true
     }
   ]
 }

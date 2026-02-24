@@ -179,7 +179,110 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         const org = await requireOrg(ctx.user.id);
         await requireProject(input.projectId, org.id);
-        await updateProject(input.projectId, { providerConfig: input.providerConfig });
+        // Also migrate to providerKeys format
+        const project = await getProjectById(input.projectId);
+        const existingKeys = (project?.providerKeys as Record<string, { apiKey: string; baseUrl?: string }>) ?? {};
+        const provider = input.providerConfig.provider.toLowerCase();
+        if (input.providerConfig.apiKeyEncrypted) {
+          existingKeys[provider] = {
+            apiKey: input.providerConfig.apiKeyEncrypted,
+            baseUrl: input.providerConfig.baseUrl !== `https://api.openai.com/v1` ? input.providerConfig.baseUrl : undefined,
+          };
+        }
+        await updateProject(input.projectId, {
+          providerConfig: input.providerConfig,
+          providerKeys: existingKeys,
+          defaultProvider: provider,
+        });
+        return { success: true };
+      }),
+
+    // ─── Multi-Provider Key Management ───
+
+    addProviderKey: protectedProcedure
+      .input(z.object({
+        projectId: z.number(),
+        provider: z.string().min(1),
+        apiKey: z.string().min(1),
+        baseUrl: z.string().url().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const org = await requireOrg(ctx.user.id);
+        await requireProject(input.projectId, org.id);
+        const project = await getProjectById(input.projectId);
+        const existingKeys = (project?.providerKeys as Record<string, { apiKey: string; baseUrl?: string }>) ?? {};
+        const provider = input.provider.toLowerCase();
+        existingKeys[provider] = {
+          apiKey: input.apiKey,
+          ...(input.baseUrl ? { baseUrl: input.baseUrl } : {}),
+        };
+        // If this is the first provider key, also set as default
+        const isFirst = Object.keys(existingKeys).length === 1;
+        await updateProject(input.projectId, {
+          providerKeys: existingKeys,
+          ...(isFirst ? { defaultProvider: provider } : {}),
+        });
+        return { success: true, connectedProviders: Object.keys(existingKeys) };
+      }),
+
+    removeProviderKey: protectedProcedure
+      .input(z.object({
+        projectId: z.number(),
+        provider: z.string().min(1),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const org = await requireOrg(ctx.user.id);
+        await requireProject(input.projectId, org.id);
+        const project = await getProjectById(input.projectId);
+        const existingKeys = (project?.providerKeys as Record<string, { apiKey: string; baseUrl?: string }>) ?? {};
+        const provider = input.provider.toLowerCase();
+        delete existingKeys[provider];
+        // If we removed the default provider, pick a new one
+        const currentDefault = (project as any)?.defaultProvider;
+        let newDefault = currentDefault;
+        if (currentDefault === provider) {
+          const remaining = Object.keys(existingKeys);
+          newDefault = remaining.length > 0 ? remaining[0] : null;
+        }
+        await updateProject(input.projectId, {
+          providerKeys: existingKeys,
+          defaultProvider: newDefault,
+        });
+        return { success: true, connectedProviders: Object.keys(existingKeys) };
+      }),
+
+    getProviderKeys: protectedProcedure
+      .input(z.object({ projectId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        const org = await requireOrg(ctx.user.id);
+        await requireProject(input.projectId, org.id);
+        const project = await getProjectById(input.projectId);
+        const providerKeys = (project?.providerKeys as Record<string, { apiKey: string; baseUrl?: string }>) ?? {};
+        // Mask API keys for display (show first 8 chars + ...)
+        const masked: Record<string, { keyPrefix: string; baseUrl?: string }> = {};
+        for (const [provider, config] of Object.entries(providerKeys)) {
+          masked[provider] = {
+            keyPrefix: config.apiKey.length > 12 ? config.apiKey.slice(0, 12) + "..." : config.apiKey,
+            baseUrl: config.baseUrl,
+          };
+        }
+        return {
+          providers: masked,
+          defaultProvider: (project as any)?.defaultProvider ?? null,
+          // Also include legacy config for backward compat display
+          legacyConfig: project?.providerConfig ?? null,
+        };
+      }),
+
+    setDefaultProvider: protectedProcedure
+      .input(z.object({
+        projectId: z.number(),
+        provider: z.string().min(1),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const org = await requireOrg(ctx.user.id);
+        await requireProject(input.projectId, org.id);
+        await updateProject(input.projectId, { defaultProvider: input.provider.toLowerCase() });
         return { success: true };
       }),
   }),

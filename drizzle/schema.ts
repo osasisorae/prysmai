@@ -75,12 +75,18 @@ export const projects = mysqlTable(
     name: varchar("name", { length: 255 }).notNull(),
     slug: varchar("slug", { length: 100 }).notNull(),
     // Provider configuration: provider name, base URL, default model, encrypted upstream API key
+    // LEGACY — kept for backward compat. New multi-provider routing uses providerKeys.
     providerConfig: json("providerConfig").$type<{
       provider: string;
       baseUrl: string;
       defaultModel?: string;
       apiKeyEncrypted?: string;
     }>(),
+    // Multi-provider keys: one project can connect to multiple providers
+    // { openai: { apiKey, baseUrl? }, anthropic: { apiKey, baseUrl? }, google: { apiKey, baseUrl? }, ... }
+    providerKeys: json("providerKeys").$type<Record<string, { apiKey: string; baseUrl?: string }>>(),
+    // Default provider when model name is ambiguous or unknown
+    defaultProvider: varchar("defaultProvider", { length: 32 }),
     // Explainability (Layer 3a)
     explainabilityEnabled: boolean("explainabilityEnabled").default(true),
     logprobsInjection: mysqlEnum("logprobsInjection", ["always", "never", "sample"]).default("always"),

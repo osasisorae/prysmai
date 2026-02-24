@@ -162,7 +162,7 @@ export async function getProjectById(id: number) {
   return result[0] ?? undefined;
 }
 
-export async function updateProject(id: number, data: Partial<{ name: string; providerConfig: any }>) {
+export async function updateProject(id: number, data: Partial<{ name: string; providerConfig: any; providerKeys: any; defaultProvider: string | null }>) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   await db.update(projects).set(data).where(eq(projects.id, id));

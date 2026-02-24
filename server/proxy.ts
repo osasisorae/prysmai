@@ -44,6 +44,7 @@ import {
   estimateAnthropicConfidence,
 } from "./confidence-analysis";
 import { updateTraceConfidenceAnalysis } from "./db";
+import { resolveProvider, type ProjectProviderConfig } from "./provider-router";
 
 const proxyRouter = Router();
 
@@ -76,17 +77,6 @@ async function authenticateProxyRequest(req: Request): Promise<AuthResult | null
   const project = await getProjectById(apiKeyRecord.projectId);
   if (!project) return null;
 
-  const config = project.providerConfig as {
-    provider: string;
-    baseUrl: string;
-    apiKeyEncrypted?: string;
-  } | null;
-
-  // Dynamic upstream API key: X-Prysm-Upstream-Key overrides stored key
-  const dynamicKey = req.headers["x-prysm-upstream-key"] as string | undefined;
-  const effectiveApiKey = dynamicKey || config?.apiKeyEncrypted;
-  if (!effectiveApiKey) return null;
-
   // Custom header forwarding: X-Prysm-Forward-Headers (JSON object)
   let forwardHeaders: Record<string, string> | undefined;
   const forwardHeadersRaw = req.headers["x-prysm-forward-headers"] as string | undefined;
@@ -107,21 +97,35 @@ async function authenticateProxyRequest(req: Request): Promise<AuthResult | null
     }
   }
 
-  // Resolve base URL based on provider
-  let resolvedProvider = config?.provider ?? "openai";
-  let resolvedBaseUrl = config?.baseUrl ?? "https://api.openai.com/v1";
+  // ─── Multi-Provider Routing ───
+  // Extract model from request body to auto-detect provider
+  const model = req.body?.model ?? "";
+  const dynamicKey = req.headers["x-prysm-upstream-key"] as string | undefined;
+  const explicitProvider = req.headers["x-prysm-provider"] as string | undefined;
 
-  // Google/Gemini: use Google's OpenAI-compatible endpoint
-  if (isGoogle(resolvedProvider)) {
-    resolvedBaseUrl = GOOGLE_OPENAI_BASE_URL;
-  }
+  const projectConfig: ProjectProviderConfig = {
+    providerKeys: project.providerKeys as Record<string, { apiKey: string; baseUrl?: string }> | null,
+    defaultProvider: (project as any).defaultProvider as string | null,
+    providerConfig: project.providerConfig as {
+      provider: string;
+      baseUrl: string;
+      apiKeyEncrypted?: string;
+    } | null,
+  };
+
+  const resolution = resolveProvider(model, projectConfig, {
+    explicitProvider,
+    dynamicApiKey: dynamicKey,
+  });
+
+  if (!resolution) return null;
 
   return {
     projectId: project.id,
     orgId: project.orgId,
-    provider: resolvedProvider,
-    baseUrl: resolvedBaseUrl,
-    upstreamApiKey: effectiveApiKey,
+    provider: resolution.provider,
+    baseUrl: resolution.baseUrl,
+    upstreamApiKey: resolution.apiKey,
     forwardHeaders,
   };
 }

@@ -488,3 +488,75 @@
 - [x] Update /docs page with explainability section (provider support table, heatmap, hallucination, why-did-it-say-that, decision points, comparison, config)
 - [x] Update QA testing guide with 47 Layer 3a test cases (AA-AI, grand total 212)
 - [ ] Update SDK README
+
+## Real Integration Testing (All Layers, All Providers, Real API Key)
+
+### Layer 1: Proxy Routing & Basic Functionality
+- [ ] OpenAI non-streaming request (gpt-4o-mini)
+- [ ] OpenAI streaming request (gpt-4o-mini)
+- [ ] Anthropic non-streaming request (claude-3-haiku)
+- [ ] Anthropic streaming request (claude-3-haiku)
+- [ ] Google Gemini non-streaming request (gemini-1.5-flash)
+- [ ] Google Gemini streaming request (gemini-1.5-flash)
+- [ ] Verify correct response format for each provider
+
+### Layer 2: Observability & Security
+- [ ] Traces captured in DB for all 3 providers
+- [ ] Token counts accurate for all 3 providers
+- [ ] Cost tracking calculated for all 3 providers
+- [ ] Latency recorded for all 3 providers
+- [ ] Security scanning (PII detection) works on real responses
+- [ ] Security scanning (prompt injection detection) works
+- [ ] Rate limiting fires correctly
+
+### Layer 3a: Explainability
+- [ ] Logprobs injection works for OpenAI (real logprobs returned)
+- [ ] Logprobs injection works for Google Gemini (real logprobs returned)
+- [ ] Anthropic estimated confidence computed on real response
+- [ ] Confidence analysis stored in trace for OpenAI
+- [ ] Confidence analysis stored in trace for Gemini
+- [ ] Confidence analysis stored in trace for Anthropic
+- [ ] Hallucination detection runs on real model output
+- [ ] Token heatmap data is valid from real logprobs
+- [ ] Decision points extracted from real data
+
+## Multi-Provider Routing (One Prysm Key, All Providers)
+
+### Schema Changes
+- [x] Add `providerKeys` JSON column to projects table (stores multiple provider API keys)
+- [x] Add `defaultProvider` column to projects table
+- [x] Keep backward compat with existing `providerConfig` during migration
+- [x] Run db:push
+
+### Proxy Auto-Routing
+- [x] Build model-to-provider detection (claude-* → anthropic, gpt-* → openai, gemini-* → google, etc.)
+- [x] Build resolveProvider() with 5-level priority chain (explicit > model > default > legacy > dynamic)
+- [x] Update authenticateProxyRequest to resolve provider + key from model name
+- [x] Support X-Prysm-Upstream-Key as override (existing behavior preserved)
+- [x] Support X-Prysm-Provider header for explicit provider selection
+- [x] Fallback to default provider if model can't be auto-detected
+
+### Settings UI
+- [x] Update Configuration tab to support multiple provider keys
+- [x] Add/remove provider keys with provider type selector
+- [x] Show connected providers with status indicators
+- [x] Set default provider for ambiguous models
+- [x] Add tRPC procedures: addProviderKey, removeProviderKey, getProviderKeys, setDefaultProvider
+
+### Docs & Tests
+- [x] Update /docs page with multi-provider routing documentation
+- [x] Vitest tests for model-to-provider detection across all known models
+- [x] Vitest tests for multi-key resolution logic (540 tests, 20 files, all passing)
+
+### Real Integration Tests (All 3 Providers)
+- [ ] Build test app using PrysmAI Python SDK
+- [ ] Test Layer 1: Anthropic non-streaming + streaming
+- [ ] Test Layer 1: OpenAI non-streaming + streaming (needs OpenAI key)
+- [ ] Test Layer 1: Google Gemini non-streaming + streaming (needs Google key)
+- [ ] Test Layer 2: Trace capture verification for all providers
+- [ ] Test Layer 2: Security scanning across providers
+- [ ] Test Layer 2: Cost tracking accuracy
+- [ ] Test Layer 3a: Logprobs injection (OpenAI + Gemini)
+- [ ] Test Layer 3a: Estimated confidence (Anthropic)
+- [ ] Test Layer 3a: Hallucination detection on real output
+- [ ] Test Layer 3a: Confidence heatmap data verification

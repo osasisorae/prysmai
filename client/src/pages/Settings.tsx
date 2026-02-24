@@ -57,42 +57,63 @@ const TABS = [
 ];
 
 // ═══════════════════════════════════════════════════════════════
-// PROVIDER CONFIG TAB
+// PROVIDER CONFIG TAB — Multi-Provider Key Management
 // ═══════════════════════════════════════════════════════════════
 
 function ProviderTab({ projectId }: { projectId: number }) {
   const project = trpc.project.get.useQuery({ id: projectId });
-  const updateConfig = trpc.project.updateConfig.useMutation({
+  const providerKeysQuery = trpc.project.getProviderKeys.useQuery({ projectId });
+  const addKey = trpc.project.addProviderKey.useMutation({
     onSuccess: () => {
-      toast.success("Settings saved.");
-      project.refetch();
+      toast.success("Provider key added.");
+      providerKeysQuery.refetch();
+      setNewProvider("openai");
+      setNewApiKey("");
+      setNewBaseUrl("");
+      setShowAddForm(false);
+    },
+    onError: (err) => toast.error(err.message),
+  });
+  const removeKey = trpc.project.removeProviderKey.useMutation({
+    onSuccess: () => {
+      toast.success("Provider key removed.");
+      providerKeysQuery.refetch();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+  const setDefault = trpc.project.setDefaultProvider.useMutation({
+    onSuccess: () => {
+      toast.success("Default provider updated.");
+      providerKeysQuery.refetch();
     },
     onError: (err) => toast.error(err.message),
   });
 
-  const [provider, setProvider] = useState("openai");
-  const [baseUrl, setBaseUrl] = useState("https://api.openai.com/v1");
-  const [apiKey, setApiKey] = useState("");
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newProvider, setNewProvider] = useState("openai");
+  const [newApiKey, setNewApiKey] = useState("");
+  const [newBaseUrl, setNewBaseUrl] = useState("");
   const [showKey, setShowKey] = useState(false);
 
-  useEffect(() => {
-    if (project.data?.providerConfig) {
-      const config = project.data.providerConfig as any;
-      setProvider(config.provider ?? "openai");
-      setBaseUrl(config.baseUrl ?? "https://api.openai.com/v1");
-    }
-  }, [project.data]);
+  const connectedProviders = providerKeysQuery.data?.providers ?? {};
+  const defaultProvider = providerKeysQuery.data?.defaultProvider ?? null;
 
-  const handleSave = () => {
-    updateConfig.mutate({
+  const handleAddProvider = () => {
+    if (!newApiKey.trim()) {
+      toast.error("API key is required.");
+      return;
+    }
+    addKey.mutate({
       projectId,
-      providerConfig: {
-        provider,
-        baseUrl,
-        defaultModel: provider === "openai" ? "gpt-4o-mini" : provider === "google" ? "gemini-2.5-flash" : undefined,
-        ...(apiKey.trim() ? { apiKeyEncrypted: apiKey } : {}),
-      },
+      provider: newProvider,
+      apiKey: newApiKey,
+      ...(newBaseUrl.trim() ? { baseUrl: newBaseUrl } : {}),
     });
+  };
+
+  const providerLabel = (key: string) => {
+    const p = PROVIDERS.find((p) => p.value === key);
+    return p?.label ?? key.charAt(0).toUpperCase() + key.slice(1);
   };
 
   return (
@@ -115,78 +136,196 @@ function ProviderTab({ projectId }: { projectId: number }) {
         </CardContent>
       </Card>
 
+      {/* Connected Providers */}
       <Card className="bg-card border-border">
-        <CardHeader>
-          <CardTitle className="text-base">LLM Provider</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label>Provider</Label>
-            <Select
-              value={provider}
-              onValueChange={(v) => {
-                setProvider(v);
-                const p = PROVIDERS.find((p) => p.value === v);
-                if (p && p.baseUrl) setBaseUrl(p.baseUrl);
-              }}
-            >
-              <SelectTrigger className="bg-background border-border">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {PROVIDERS.map((p) => (
-                  <SelectItem key={p.value} value={p.value}>
-                    {p.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Base URL</Label>
-            <Input
-              value={baseUrl}
-              onChange={(e) => setBaseUrl(e.target.value)}
-              className="bg-background border-border font-mono text-sm"
-              disabled={provider !== "custom"}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label>API Key</Label>
-            <div className="relative">
-              <Input
-                type={showKey ? "text" : "password"}
-                placeholder="Enter new key to update (leave blank to keep current)"
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                className="bg-background border-border pr-10"
-              />
-              <button
-                type="button"
-                onClick={() => setShowKey(!showKey)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              >
-                {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Your upstream provider API key. Stored encrypted. Leave blank to keep the existing key.
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle className="text-base">Connected Providers</CardTitle>
+            <p className="text-xs text-muted-foreground mt-1">
+              Connect multiple LLM providers. Prysm auto-routes requests based on the model name.
             </p>
           </div>
-
-          <Button onClick={handleSave} disabled={updateConfig.isPending}>
-            {updateConfig.isPending ? (
-              <Loader2 className="w-4 h-4 animate-spin mr-2" />
-            ) : (
-              <Save className="w-4 h-4 mr-2" />
-            )}
-            Save Changes
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setShowAddForm(!showAddForm)}
+            className="shrink-0"
+          >
+            <Plus className="w-4 h-4 mr-1" />
+            Add Provider
           </Button>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Existing providers */}
+          {Object.keys(connectedProviders).length === 0 && !showAddForm && (
+            <div className="text-center py-8 text-muted-foreground">
+              <Settings2 className="w-8 h-8 mx-auto mb-2 opacity-50" />
+              <p className="text-sm">No providers connected yet.</p>
+              <p className="text-xs">Add your first provider to start routing requests.</p>
+            </div>
+          )}
+
+          {Object.entries(connectedProviders).map(([provider, config]) => (
+            <div
+              key={provider}
+              className="flex items-center justify-between p-3 rounded-lg border border-border bg-background"
+            >
+              <div className="flex items-center gap-3">
+                <div className={`w-2 h-2 rounded-full ${
+                  provider === defaultProvider ? "bg-primary" : "bg-muted-foreground/30"
+                }`} />
+                <div>
+                  <p className="text-sm font-medium">
+                    {providerLabel(provider)}
+                    {provider === defaultProvider && (
+                      <span className="ml-2 text-[10px] font-mono text-primary border border-primary/30 px-1.5 py-0.5 rounded">
+                        DEFAULT
+                      </span>
+                    )}
+                  </p>
+                  <p className="text-xs text-muted-foreground font-mono">
+                    {(config as any).keyPrefix}
+                    {(config as any).baseUrl && (
+                      <span className="ml-2 text-muted-foreground/50">• {(config as any).baseUrl}</span>
+                    )}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                {provider !== defaultProvider && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-xs h-7"
+                    onClick={() => setDefault.mutate({ projectId, provider })}
+                    disabled={setDefault.isPending}
+                  >
+                    Set Default
+                  </Button>
+                )}
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="text-destructive hover:text-destructive h-7"
+                  onClick={() => removeKey.mutate({ projectId, provider })}
+                  disabled={removeKey.isPending}
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </Button>
+              </div>
+            </div>
+          ))}
+
+          {/* Add new provider form */}
+          {showAddForm && (
+            <div className="p-4 rounded-lg border border-primary/30 bg-primary/[0.03] space-y-3">
+              <div className="space-y-2">
+                <Label className="text-xs">Provider</Label>
+                <Select value={newProvider} onValueChange={setNewProvider}>
+                  <SelectTrigger className="bg-background border-border">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PROVIDERS.map((p) => (
+                      <SelectItem key={p.value} value={p.value}>
+                        {p.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-xs">API Key</Label>
+                <div className="relative">
+                  <Input
+                    type={showKey ? "text" : "password"}
+                    placeholder={`Enter your ${providerLabel(newProvider)} API key`}
+                    value={newApiKey}
+                    onChange={(e) => setNewApiKey(e.target.value)}
+                    className="bg-background border-border pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowKey(!showKey)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              {newProvider === "custom" && (
+                <div className="space-y-2">
+                  <Label className="text-xs">Custom Base URL</Label>
+                  <Input
+                    placeholder="https://your-endpoint.com/v1"
+                    value={newBaseUrl}
+                    onChange={(e) => setNewBaseUrl(e.target.value)}
+                    className="bg-background border-border font-mono text-sm"
+                  />
+                </div>
+              )}
+
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  onClick={handleAddProvider}
+                  disabled={addKey.isPending}
+                >
+                  {addKey.isPending ? (
+                    <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                  ) : (
+                    <Plus className="w-4 h-4 mr-1" />
+                  )}
+                  Connect
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setShowAddForm(false)}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
+      {/* How it works */}
+      <Card className="bg-card border-border">
+        <CardHeader>
+          <CardTitle className="text-base">How Multi-Provider Routing Works</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="text-sm text-muted-foreground space-y-2">
+            <p>
+              Use <span className="font-medium text-foreground">one Prysm API key</span> for all providers.
+              Prysm automatically detects the provider from the model name:
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-3">
+              <div className="p-2 rounded border border-border bg-background">
+                <p className="text-xs font-mono text-primary">gpt-4o, o1, o3-mini</p>
+                <p className="text-[10px] text-muted-foreground">→ OpenAI</p>
+              </div>
+              <div className="p-2 rounded border border-border bg-background">
+                <p className="text-xs font-mono text-primary">claude-sonnet-4-*</p>
+                <p className="text-[10px] text-muted-foreground">→ Anthropic</p>
+              </div>
+              <div className="p-2 rounded border border-border bg-background">
+                <p className="text-xs font-mono text-primary">gemini-2.5-flash</p>
+                <p className="text-[10px] text-muted-foreground">→ Google</p>
+              </div>
+            </div>
+            <p className="text-xs mt-2">
+              You can also force a provider with the <code className="text-primary">X-Prysm-Provider</code> header.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Proxy Endpoint */}
       <Card className="bg-card border-border">
         <CardHeader>
           <CardTitle className="text-base">Proxy Endpoint</CardTitle>
@@ -200,8 +339,7 @@ function ProviderTab({ projectId }: { projectId: number }) {
           </div>
           <p className="text-xs text-muted-foreground mt-3">
             Point your application to this URL instead of your provider's API. Use your Prysm API key for authentication.
-            All requests will be forwarded to{" "}
-            {PROVIDERS.find((p) => p.value === provider)?.label ?? "your provider"} and logged for observability.
+            Requests are auto-routed to the correct provider based on the model name.
           </p>
         </CardContent>
       </Card>

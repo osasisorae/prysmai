@@ -795,8 +795,52 @@ console.log(response.choices[0].message.content);`}
             {/* ═══════════════════════════════════════════════════════════ */}
             <SectionHeading id="providers">Providers</SectionHeading>
             <p className="text-muted-foreground leading-relaxed mb-4">
-              Prysm supports multiple LLM providers. Configure your provider during project setup
-              in the onboarding wizard, or update it anytime in <strong>Settings &rarr; Configuration</strong>.
+              Prysm supports <strong>multiple LLM providers per project</strong>. Connect all your provider
+              API keys once, and Prysm auto-routes each request to the correct provider based on the model name.
+              One Prysm API key handles all providers.
+            </p>
+
+            <SubHeading id="multi-provider-routing">Multi-Provider Routing</SubHeading>
+            <p className="text-muted-foreground leading-relaxed mb-4">
+              Instead of creating separate projects per provider, connect all your API keys to a single project.
+              When you send a request, Prysm detects the provider from the model name and routes automatically:
+            </p>
+            <div className="overflow-x-auto my-6">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left py-2.5 pr-4 text-muted-foreground font-medium">Model Pattern</th>
+                    <th className="text-left py-2.5 pr-4 text-muted-foreground font-medium">Routes To</th>
+                    <th className="text-left py-2.5 text-muted-foreground font-medium">Examples</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    ["gpt-*, o1-*, o3-*", "OpenAI", "gpt-4o, gpt-4o-mini, o1-preview, o3-mini"],
+                    ["claude-*", "Anthropic", "claude-sonnet-4-20250514, claude-3-5-haiku"],
+                    ["gemini-*, gemma-*", "Google", "gemini-2.5-flash, gemini-2.5-pro"],
+                    ["llama*, mistral*, deepseek*", "OpenAI-compatible", "llama-3.1-70b, mistral-large, deepseek-chat"],
+                  ].map(([pattern, provider, examples]) => (
+                    <tr key={pattern} className="border-b border-border/50">
+                      <td className="py-2.5 pr-4 font-mono text-xs text-primary">{pattern}</td>
+                      <td className="py-2.5 pr-4 font-medium text-foreground">{provider}</td>
+                      <td className="py-2.5 text-muted-foreground text-xs">{examples}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="text-muted-foreground leading-relaxed mb-4">
+              You can also force a specific provider with the <IC>X-Prysm-Provider</IC> header:
+            </p>
+            <CodeBlock code={`curl -X POST https://your-prysm.manus.space/api/v1/chat/completions \\
+  -H "Authorization: Bearer sk-prysm-YOUR_KEY" \\
+  -H "X-Prysm-Provider: anthropic" \\
+  -H "Content-Type: application/json" \\
+  -d '{"model": "claude-sonnet-4-20250514", "messages": [{"role": "user", "content": "Hello"}]}'`} language="bash" filename="Multi-Provider Example" />
+            <p className="text-muted-foreground leading-relaxed mb-4">
+              Configure your provider keys in <strong>Settings &rarr; Provider</strong>. The first provider
+              you add becomes the default for requests with unrecognized model names.
             </p>
 
             <SubHeading id="provider-openai">OpenAI</SubHeading>
