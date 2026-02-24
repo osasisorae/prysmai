@@ -905,6 +905,164 @@ Keep the explanation concise (200-400 words).`;
         return { success: true };
       }),
 
+    // Get confidence trends over time (daily buckets)
+    getConfidenceTrends: protectedProcedure
+      .input(z.object({
+        projectId: z.number(),
+        from: z.date().optional(),
+        to: z.date().optional(),
+      }))
+      .query(async ({ ctx, input }) => {
+        const org = await requireOrg(ctx.user.id);
+        await requireProject(input.projectId, org.id);
+        const allTraces = await getTracesWithConfidence(input.projectId, {
+          limit: 200,
+          from: input.from,
+          to: input.to,
+        });
+
+        // Group by day
+        const buckets = new Map<string, { total: number; confidence: number; risk: number; hallucinations: number }>();
+        for (const t of allTraces) {
+          const analysis = t.confidenceAnalysis as ConfidenceAnalysis | null;
+          if (!analysis) continue;
+          const day = t.timestamp.toISOString().slice(0, 10);
+          const bucket = buckets.get(day) ?? { total: 0, confidence: 0, risk: 0, hallucinations: 0 };
+          bucket.total++;
+          bucket.confidence += analysis.overall_confidence;
+          bucket.risk += analysis.hallucination_risk_score;
+          bucket.hallucinations += (analysis.hallucination_candidates?.length ?? 0);
+          buckets.set(day, bucket);
+        }
+
+        const trends = Array.from(buckets.entries())
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([date, b]) => ({
+            date,
+            avgConfidence: Math.round((b.confidence / b.total) * 10000) / 10000,
+            avgRisk: Math.round((b.risk / b.total) * 10000) / 10000,
+            traceCount: b.total,
+            hallucinationCount: b.hallucinations,
+          }));
+
+        return { trends };
+      }),
+
+    // Get model-level breakdown of confidence metrics
+    getModelBreakdown: protectedProcedure
+      .input(z.object({
+        projectId: z.number(),
+        from: z.date().optional(),
+        to: z.date().optional(),
+      }))
+      .query(async ({ ctx, input }) => {
+        const org = await requireOrg(ctx.user.id);
+        await requireProject(input.projectId, org.id);
+        const allTraces = await getTracesWithConfidence(input.projectId, {
+          limit: 200,
+          from: input.from,
+          to: input.to,
+        });
+
+        // Group by model
+        const models = new Map<string, {
+          provider: string;
+          total: number;
+          confidence: number;
+          risk: number;
+          hallucinations: number;
+          highRisk: number;
+          decisionPoints: number;
+        }>();
+
+        for (const t of allTraces) {
+          const analysis = t.confidenceAnalysis as ConfidenceAnalysis | null;
+          if (!analysis) continue;
+          const key = t.model;
+          const m = models.get(key) ?? { provider: t.provider, total: 0, confidence: 0, risk: 0, hallucinations: 0, highRisk: 0, decisionPoints: 0 };
+          m.total++;
+          m.confidence += analysis.overall_confidence;
+          m.risk += analysis.hallucination_risk_score;
+          m.hallucinations += (analysis.hallucination_candidates?.length ?? 0);
+          m.decisionPoints += (analysis.decision_points?.length ?? 0);
+          if (analysis.hallucination_risk_score > 0.3) m.highRisk++;
+          models.set(key, m);
+        }
+
+        const breakdown = Array.from(models.entries())
+          .sort(([, a], [, b]) => b.total - a.total)
+          .map(([model, m]) => ({
+            model,
+            provider: m.provider,
+            traceCount: m.total,
+            avgConfidence: Math.round((m.confidence / m.total) * 10000) / 10000,
+            avgRisk: Math.round((m.risk / m.total) * 10000) / 10000,
+            hallucinationCount: m.hallucinations,
+            highRiskCount: m.highRisk,
+            avgDecisionPoints: Math.round(m.decisionPoints / m.total * 10) / 10,
+          }));
+
+        return { breakdown };
+      }),
+
+    // Get aggregated decision points across traces
+    getDecisionPointsAggregate: protectedProcedure
+      .input(z.object({
+        projectId: z.number(),
+        from: z.date().optional(),
+        to: z.date().optional(),
+        limit: z.number().min(1).max(100).default(50),
+      }))
+      .query(async ({ ctx, input }) => {
+        const org = await requireOrg(ctx.user.id);
+        await requireProject(input.projectId, org.id);
+        const allTraces = await getTracesWithConfidence(input.projectId, {
+          limit: 200,
+          from: input.from,
+          to: input.to,
+        });
+
+        const decisionPoints: Array<{
+          traceId: string;
+          dbId: number;
+          model: string;
+          provider: string;
+          chosen: string;
+          chosenConfidence: number;
+          alternative: string;
+          alternativeConfidence: number;
+          margin: number;
+          timestamp: Date;
+        }> = [];
+
+        for (const t of allTraces) {
+          const analysis = t.confidenceAnalysis as ConfidenceAnalysis | null;
+          if (!analysis?.decision_points?.length) continue;
+          for (const dp of analysis.decision_points) {
+            decisionPoints.push({
+              traceId: t.traceId,
+              dbId: t.id,
+              model: t.model,
+              provider: t.provider,
+              chosen: dp.chosen,
+              chosenConfidence: dp.chosen_confidence,
+              alternative: dp.alternative,
+              alternativeConfidence: dp.alternative_confidence,
+              margin: dp.margin,
+              timestamp: t.timestamp,
+            });
+          }
+        }
+
+        // Sort by smallest margin (closest decisions first)
+        decisionPoints.sort((a, b) => a.margin - b.margin);
+
+        return {
+          decisionPoints: decisionPoints.slice(0, input.limit),
+          totalCount: decisionPoints.length,
+        };
+      }),
+
     // Get hallucination report across a project
     getHallucinationReport: protectedProcedure
       .input(z.object({

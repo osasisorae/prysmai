@@ -566,3 +566,14 @@
 - [x] Trace explainability data flow: proxy → confidence analysis → DB → dashboard UI
 - [x] Fix any gaps in the explainability pipeline (added confidence column to trace list, Explainability Overview + Hallucination Candidates to Dashboard)
 - [x] Verify explainability data appears on dashboard after fix (all 540 tests passing, UI renders correctly)
+
+## Dedicated Explainability Tab in Sidebar
+- [x] Add Explainability nav item to DashboardShell sidebar
+- [x] Create Explainability.tsx page with full-page layout
+- [x] Confidence Trends section (time-series chart of avg confidence over time)
+- [x] Hallucination History section (table of all hallucination candidates across traces)
+- [x] Decision Points Explorer section (aggregated view of close-call decisions)
+- [x] Model Comparison section (confidence/hallucination metrics by model)
+- [x] Wire routing in App.tsx and DashboardShell
+- [x] Write vitest tests for the new tRPC procedures (55 tests, all passing)
+- [x] Verify page renders with real data (empty state verified in sandbox, real data in production)

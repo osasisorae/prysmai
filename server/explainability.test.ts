@@ -546,3 +546,320 @@ describe("Explainability Config — Behavior", () => {
     expect(anthropicResult.isAnthropicEstimated).toBe(true);
   });
 });
+
+// ═══════════════════════════════════════════════════════════════
+// CONFIDENCE TRENDS AGGREGATION TESTS
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * These tests verify the aggregation logic used in the getConfidenceTrends,
+ * getModelBreakdown, and getDecisionPointsAggregate procedures.
+ * We test the pure computation independently from the DB/tRPC layer.
+ */
+
+interface MockTrace {
+  id: number;
+  traceId: string;
+  model: string;
+  provider: string;
+  completion: string;
+  confidenceAnalysis: ConfidenceAnalysis | null;
+  timestamp: Date;
+}
+
+function buildMockTrace(overrides: Partial<MockTrace> & { confidenceAnalysis: ConfidenceAnalysis | null }): MockTrace {
+  return {
+    id: 1,
+    traceId: "trace-001",
+    model: "gpt-4.1-mini",
+    provider: "openai",
+    completion: "Test completion",
+    timestamp: new Date("2026-02-20T12:00:00Z"),
+    ...overrides,
+  };
+}
+
+function aggregateTrends(traces: MockTrace[]) {
+  const buckets = new Map<string, { total: number; confidence: number; risk: number; hallucinations: number }>();
+  for (const t of traces) {
+    const analysis = t.confidenceAnalysis;
+    if (!analysis) continue;
+    const day = t.timestamp.toISOString().slice(0, 10);
+    const bucket = buckets.get(day) ?? { total: 0, confidence: 0, risk: 0, hallucinations: 0 };
+    bucket.total++;
+    bucket.confidence += analysis.overall_confidence;
+    bucket.risk += analysis.hallucination_risk_score;
+    bucket.hallucinations += (analysis.hallucination_candidates?.length ?? 0);
+    buckets.set(day, bucket);
+  }
+  return Array.from(buckets.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, b]) => ({
+      date,
+      avgConfidence: Math.round((b.confidence / b.total) * 10000) / 10000,
+      avgRisk: Math.round((b.risk / b.total) * 10000) / 10000,
+      traceCount: b.total,
+      hallucinationCount: b.hallucinations,
+    }));
+}
+
+function aggregateModelBreakdown(traces: MockTrace[]) {
+  const models = new Map<string, {
+    provider: string;
+    total: number;
+    confidence: number;
+    risk: number;
+    hallucinations: number;
+    highRisk: number;
+    decisionPoints: number;
+  }>();
+
+  for (const t of traces) {
+    const analysis = t.confidenceAnalysis;
+    if (!analysis) continue;
+    const key = t.model;
+    const m = models.get(key) ?? { provider: t.provider, total: 0, confidence: 0, risk: 0, hallucinations: 0, highRisk: 0, decisionPoints: 0 };
+    m.total++;
+    m.confidence += analysis.overall_confidence;
+    m.risk += analysis.hallucination_risk_score;
+    m.hallucinations += (analysis.hallucination_candidates?.length ?? 0);
+    m.decisionPoints += (analysis.decision_points?.length ?? 0);
+    if (analysis.hallucination_risk_score > 0.3) m.highRisk++;
+    models.set(key, m);
+  }
+
+  return Array.from(models.entries())
+    .sort(([, a], [, b]) => b.total - a.total)
+    .map(([model, m]) => ({
+      model,
+      provider: m.provider,
+      traceCount: m.total,
+      avgConfidence: Math.round((m.confidence / m.total) * 10000) / 10000,
+      avgRisk: Math.round((m.risk / m.total) * 10000) / 10000,
+      hallucinationCount: m.hallucinations,
+      highRiskCount: m.highRisk,
+      avgDecisionPoints: Math.round(m.decisionPoints / m.total * 10) / 10,
+    }));
+}
+
+function aggregateDecisionPoints(traces: MockTrace[]) {
+  const points: Array<{
+    traceId: string;
+    dbId: number;
+    model: string;
+    provider: string;
+    chosen: string;
+    chosenConfidence: number;
+    alternative: string;
+    alternativeConfidence: number;
+    margin: number;
+    timestamp: Date;
+  }> = [];
+
+  for (const t of traces) {
+    const analysis = t.confidenceAnalysis;
+    if (!analysis?.decision_points?.length) continue;
+    for (const dp of analysis.decision_points) {
+      points.push({
+        traceId: t.traceId,
+        dbId: t.id,
+        model: t.model,
+        provider: t.provider,
+        chosen: dp.chosen,
+        chosenConfidence: dp.chosen_confidence,
+        alternative: dp.alternative,
+        alternativeConfidence: dp.alternative_confidence,
+        margin: dp.margin,
+        timestamp: t.timestamp,
+      });
+    }
+  }
+
+  points.sort((a, b) => a.margin - b.margin);
+  return points;
+}
+
+const MOCK_ANALYSIS_HIGH: ConfidenceAnalysis = {
+  overall_confidence: 0.92,
+  hallucination_risk_score: 0.08,
+  confidence_stability: 0.95,
+  low_confidence_segments: [],
+  hallucination_candidates: [],
+  decision_points: [
+    { token_idx: 5, chosen: "Paris", chosen_confidence: 0.95, alternative: "London", alternative_confidence: 0.03, margin: 0.92 },
+  ],
+  provider: "openai",
+  logprobs_source: "native",
+  token_count: 20,
+};
+
+const MOCK_ANALYSIS_LOW: ConfidenceAnalysis = {
+  overall_confidence: 0.35,
+  hallucination_risk_score: 0.65,
+  confidence_stability: 0.4,
+  low_confidence_segments: [{ start_token_idx: 3, end_token_idx: 8, avg_confidence: 0.25, text: "probably around 42" }],
+  hallucination_candidates: [
+    { start_token_idx: 3, end_token_idx: 8, avg_confidence: 0.25, text: "probably around 42" },
+    { start_token_idx: 12, end_token_idx: 15, avg_confidence: 0.3, text: "roughly 100" },
+  ],
+  decision_points: [
+    { token_idx: 3, chosen: "probably", chosen_confidence: 0.4, alternative: "definitely", alternative_confidence: 0.35, margin: 0.05 },
+    { token_idx: 10, chosen: "around", chosen_confidence: 0.45, alternative: "exactly", alternative_confidence: 0.38, margin: 0.07 },
+  ],
+  provider: "openai",
+  logprobs_source: "native",
+  token_count: 18,
+};
+
+const MOCK_ANALYSIS_ANTHROPIC: ConfidenceAnalysis = {
+  overall_confidence: 0.78,
+  hallucination_risk_score: 0.15,
+  confidence_stability: 0.8,
+  low_confidence_segments: [],
+  hallucination_candidates: [],
+  decision_points: [],
+  provider: "anthropic",
+  logprobs_source: "estimated",
+  token_count: 15,
+};
+
+describe("Confidence Trends Aggregation", () => {
+  it("groups traces by day and computes averages", () => {
+    const traces: MockTrace[] = [
+      buildMockTrace({ id: 1, traceId: "t1", timestamp: new Date("2026-02-20T10:00:00Z"), confidenceAnalysis: MOCK_ANALYSIS_HIGH }),
+      buildMockTrace({ id: 2, traceId: "t2", timestamp: new Date("2026-02-20T14:00:00Z"), confidenceAnalysis: MOCK_ANALYSIS_LOW }),
+      buildMockTrace({ id: 3, traceId: "t3", timestamp: new Date("2026-02-21T09:00:00Z"), confidenceAnalysis: MOCK_ANALYSIS_HIGH }),
+    ];
+
+    const trends = aggregateTrends(traces);
+    expect(trends).toHaveLength(2);
+
+    // Day 1: avg of 0.92 and 0.35
+    expect(trends[0].date).toBe("2026-02-20");
+    expect(trends[0].traceCount).toBe(2);
+    expect(trends[0].avgConfidence).toBeCloseTo(0.635, 2);
+    expect(trends[0].hallucinationCount).toBe(2); // from MOCK_ANALYSIS_LOW
+
+    // Day 2: just the high confidence trace
+    expect(trends[1].date).toBe("2026-02-21");
+    expect(trends[1].traceCount).toBe(1);
+    expect(trends[1].avgConfidence).toBeCloseTo(0.92, 2);
+    expect(trends[1].hallucinationCount).toBe(0);
+  });
+
+  it("skips traces without confidence analysis", () => {
+    const traces: MockTrace[] = [
+      buildMockTrace({ id: 1, traceId: "t1", confidenceAnalysis: MOCK_ANALYSIS_HIGH }),
+      buildMockTrace({ id: 2, traceId: "t2", confidenceAnalysis: null }),
+    ];
+    const trends = aggregateTrends(traces);
+    expect(trends).toHaveLength(1);
+    expect(trends[0].traceCount).toBe(1);
+  });
+
+  it("returns empty array for no traces", () => {
+    expect(aggregateTrends([])).toEqual([]);
+  });
+
+  it("sorts trends chronologically", () => {
+    const traces: MockTrace[] = [
+      buildMockTrace({ id: 1, traceId: "t1", timestamp: new Date("2026-02-22T10:00:00Z"), confidenceAnalysis: MOCK_ANALYSIS_HIGH }),
+      buildMockTrace({ id: 2, traceId: "t2", timestamp: new Date("2026-02-18T10:00:00Z"), confidenceAnalysis: MOCK_ANALYSIS_LOW }),
+      buildMockTrace({ id: 3, traceId: "t3", timestamp: new Date("2026-02-20T10:00:00Z"), confidenceAnalysis: MOCK_ANALYSIS_ANTHROPIC }),
+    ];
+    const trends = aggregateTrends(traces);
+    expect(trends[0].date).toBe("2026-02-18");
+    expect(trends[1].date).toBe("2026-02-20");
+    expect(trends[2].date).toBe("2026-02-22");
+  });
+});
+
+describe("Model Breakdown Aggregation", () => {
+  it("groups traces by model and computes per-model metrics", () => {
+    const traces: MockTrace[] = [
+      buildMockTrace({ id: 1, traceId: "t1", model: "gpt-4.1-mini", provider: "openai", confidenceAnalysis: MOCK_ANALYSIS_HIGH }),
+      buildMockTrace({ id: 2, traceId: "t2", model: "gpt-4.1-mini", provider: "openai", confidenceAnalysis: MOCK_ANALYSIS_LOW }),
+      buildMockTrace({ id: 3, traceId: "t3", model: "claude-sonnet-4", provider: "anthropic", confidenceAnalysis: MOCK_ANALYSIS_ANTHROPIC }),
+    ];
+
+    const breakdown = aggregateModelBreakdown(traces);
+    expect(breakdown).toHaveLength(2);
+
+    // gpt-4.1-mini has 2 traces (sorted first by count)
+    const gpt = breakdown.find(b => b.model === "gpt-4.1-mini")!;
+    expect(gpt.traceCount).toBe(2);
+    expect(gpt.avgConfidence).toBeCloseTo(0.635, 2);
+    expect(gpt.hallucinationCount).toBe(2); // from low confidence trace
+    expect(gpt.highRiskCount).toBe(1); // MOCK_ANALYSIS_LOW has risk > 0.3
+
+    // claude-sonnet-4 has 1 trace
+    const claude = breakdown.find(b => b.model === "claude-sonnet-4")!;
+    expect(claude.traceCount).toBe(1);
+    expect(claude.avgConfidence).toBeCloseTo(0.78, 2);
+    expect(claude.hallucinationCount).toBe(0);
+    expect(claude.highRiskCount).toBe(0);
+  });
+
+  it("counts decision points per model", () => {
+    const traces: MockTrace[] = [
+      buildMockTrace({ id: 1, traceId: "t1", model: "gpt-4.1", provider: "openai", confidenceAnalysis: MOCK_ANALYSIS_LOW }),
+    ];
+    const breakdown = aggregateModelBreakdown(traces);
+    expect(breakdown[0].avgDecisionPoints).toBe(2); // MOCK_ANALYSIS_LOW has 2 decision points
+  });
+
+  it("returns empty array for no traces", () => {
+    expect(aggregateModelBreakdown([])).toEqual([]);
+  });
+});
+
+describe("Decision Points Aggregation", () => {
+  it("extracts and sorts decision points by margin (smallest first)", () => {
+    const traces: MockTrace[] = [
+      buildMockTrace({ id: 1, traceId: "t1", model: "gpt-4.1-mini", confidenceAnalysis: MOCK_ANALYSIS_HIGH }),
+      buildMockTrace({ id: 2, traceId: "t2", model: "gpt-4.1-mini", confidenceAnalysis: MOCK_ANALYSIS_LOW }),
+    ];
+
+    const points = aggregateDecisionPoints(traces);
+    expect(points).toHaveLength(3); // 1 from HIGH + 2 from LOW
+
+    // Sorted by margin: LOW's 0.05 first, LOW's 0.07 second, HIGH's 0.92 last
+    expect(points[0].margin).toBeCloseTo(0.05, 2);
+    expect(points[0].chosen).toBe("probably");
+    expect(points[0].alternative).toBe("definitely");
+
+    expect(points[1].margin).toBeCloseTo(0.07, 2);
+    expect(points[2].margin).toBeCloseTo(0.92, 2);
+  });
+
+  it("skips traces without decision points", () => {
+    const traces: MockTrace[] = [
+      buildMockTrace({ id: 1, traceId: "t1", confidenceAnalysis: MOCK_ANALYSIS_ANTHROPIC }), // no decision points
+    ];
+    const points = aggregateDecisionPoints(traces);
+    expect(points).toHaveLength(0);
+  });
+
+  it("preserves trace metadata in decision points", () => {
+    const traces: MockTrace[] = [
+      buildMockTrace({
+        id: 42,
+        traceId: "trace-42",
+        model: "gpt-4.1",
+        provider: "openai",
+        timestamp: new Date("2026-02-20T15:30:00Z"),
+        confidenceAnalysis: MOCK_ANALYSIS_HIGH,
+      }),
+    ];
+
+    const points = aggregateDecisionPoints(traces);
+    expect(points[0].traceId).toBe("trace-42");
+    expect(points[0].dbId).toBe(42);
+    expect(points[0].model).toBe("gpt-4.1");
+    expect(points[0].provider).toBe("openai");
+  });
+
+  it("returns empty array for no traces", () => {
+    expect(aggregateDecisionPoints([])).toEqual([]);
+  });
+});
