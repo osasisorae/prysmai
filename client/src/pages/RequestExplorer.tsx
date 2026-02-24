@@ -370,20 +370,21 @@ export default function RequestExplorer({ projectId }: { projectId: number }) {
           ) : traces.data?.traces && traces.data.traces.length > 0 ? (
             <>
               {/* Header */}
-              <div className="grid grid-cols-[auto_1fr_120px_80px_80px_80px_80px] gap-2 py-2.5 px-4 text-xs text-muted-foreground border-b border-border font-medium">
+              <div className="grid grid-cols-[auto_1fr_120px_80px_80px_80px_70px_70px] gap-2 py-2.5 px-4 text-xs text-muted-foreground border-b border-border font-medium">
                 <span className="w-2" />
                 <span>Trace ID</span>
                 <span>Model</span>
                 <span className="text-right">Latency</span>
                 <span className="text-right">Tokens</span>
                 <span className="text-right">Cost</span>
+                <span className="text-right">Conf.</span>
                 <span className="text-right">Status</span>
               </div>
               {/* Rows */}
               {traces.data.traces.map((trace: any) => (
                 <div
                   key={trace.id}
-                  className="grid grid-cols-[auto_1fr_120px_80px_80px_80px_80px] gap-2 py-2.5 px-4 text-sm border-b border-border/50 last:border-0 hover:bg-accent/30 transition-colors w-full text-left cursor-pointer"
+                  className="grid grid-cols-[auto_1fr_120px_80px_80px_80px_70px_70px] gap-2 py-2.5 px-4 text-sm border-b border-border/50 last:border-0 hover:bg-accent/30 transition-colors w-full text-left cursor-pointer"
                   onClick={() => {
                     if (compareMode) {
                       setSelectedForCompare(prev =>
@@ -413,6 +414,22 @@ export default function RequestExplorer({ projectId }: { projectId: number }) {
                   <span className="text-xs text-right text-muted-foreground">{trace.latencyMs ?? "\u2014"}ms</span>
                   <span className="text-xs text-right text-muted-foreground">{trace.totalTokens ?? 0}</span>
                   <span className="text-xs text-right text-muted-foreground">${parseFloat(trace.costUsd ?? "0").toFixed(4)}</span>
+                  <span className="text-xs text-right">
+                    {trace.confidenceAnalysis ? (
+                      <span className={`font-mono ${
+                        (trace.confidenceAnalysis as any).overall_confidence >= 0.8 ? "text-green-400" :
+                        (trace.confidenceAnalysis as any).overall_confidence >= 0.5 ? "text-yellow-400" :
+                        "text-red-400"
+                      }`}>
+                        {((trace.confidenceAnalysis as any).overall_confidence * 100).toFixed(0)}%
+                        {(trace.confidenceAnalysis as any).hallucination_risk_score > 0.3 && (
+                          <span className="ml-0.5 text-red-400" title="High hallucination risk">!</span>
+                        )}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </span>
                   <span className={`text-xs text-right ${trace.status === "success" ? "text-green-400" : "text-red-400"}`}>
                     {trace.status}
                   </span>

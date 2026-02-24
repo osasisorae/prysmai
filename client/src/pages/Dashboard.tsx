@@ -12,6 +12,8 @@ import {
   TrendingUp,
   BarChart3,
   ShieldAlert,
+  Brain,
+  Eye,
 } from "lucide-react";
 import {
   Select,
@@ -153,6 +155,115 @@ function EmptyChart({ hasAnyTraces, message }: { hasAnyTraces: boolean; message?
       ) : (
         "No data yet. Send requests through the proxy to see metrics."
       )}
+    </div>
+  );
+}
+
+function ExplainabilitySummary({ projectId, from, to, hasAnyTraces }: { projectId: number; from: Date; to: Date; hasAnyTraces: boolean }) {
+  const report = trpc.explainability.getHallucinationReport.useQuery(
+    { projectId, limit: 100, minRisk: 0, from, to },
+    { refetchInterval: 30000 }
+  );
+
+  const summary = report.data?.summary;
+  const candidates = report.data?.candidates ?? [];
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      {/* Confidence & Hallucination Overview */}
+      <Card className="bg-card border-border">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+            <Brain className="w-4 h-4" /> Explainability Overview
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {report.isLoading ? (
+            <Skeleton className="h-40 w-full" />
+          ) : summary && summary.totalTraces > 0 ? (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Avg Confidence</p>
+                  <p className={`text-2xl font-mono font-semibold ${
+                    summary.avgConfidence >= 0.8 ? "text-green-400" :
+                    summary.avgConfidence >= 0.5 ? "text-yellow-400" :
+                    "text-red-400"
+                  }`}>
+                    {(summary.avgConfidence * 100).toFixed(1)}%
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">High Risk Traces</p>
+                  <p className={`text-2xl font-mono font-semibold ${
+                    summary.highRiskTraces > 0 ? "text-red-400" : "text-green-400"
+                  }`}>
+                    {summary.highRiskTraces}
+                    <span className="text-sm text-muted-foreground ml-1">/ {summary.totalTraces}</span>
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Analyzed Traces</p>
+                  <p className="text-2xl font-mono font-semibold text-foreground">
+                    {summary.totalTraces}
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Hallucination Candidates</p>
+                  <p className={`text-2xl font-mono font-semibold ${
+                    summary.totalHallucinationCandidates > 0 ? "text-amber-400" : "text-green-400"
+                  }`}>
+                    {summary.totalHallucinationCandidates}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <EmptyChart hasAnyTraces={hasAnyTraces} message="No explainability data yet. Enable logprobs injection in Settings." />
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Top Hallucination Candidates */}
+      <Card className="bg-card border-border">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+            <Eye className="w-4 h-4" /> Recent Hallucination Candidates
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {report.isLoading ? (
+            <Skeleton className="h-40 w-full" />
+          ) : candidates.length > 0 ? (
+            <div className="space-y-2 max-h-44 overflow-y-auto">
+              {candidates.slice(0, 8).map((c: any, i: number) => (
+                <div key={i} className="flex items-center gap-2 text-xs py-1.5 border-b border-border/30 last:border-0">
+                  <span className={`w-2 h-2 rounded-full shrink-0 ${
+                    c.avgConfidence < 0.3 ? "bg-red-400" : "bg-amber-400"
+                  }`} />
+                  <span className="font-mono text-red-300 truncate max-w-[200px]" title={c.text}>
+                    "{c.text}"
+                  </span>
+                  <span className="text-muted-foreground ml-auto shrink-0">
+                    {(c.avgConfidence * 100).toFixed(0)}% conf
+                  </span>
+                  <span className="text-muted-foreground shrink-0">{c.model}</span>
+                </div>
+              ))}
+            </div>
+          ) : summary && summary.totalTraces > 0 ? (
+            <div className="h-40 flex items-center justify-center text-sm text-muted-foreground">
+              <div className="text-center">
+                <Brain className="w-8 h-8 mx-auto mb-3 opacity-20" />
+                <p className="text-green-400 font-medium">No hallucinations detected</p>
+                <p className="text-xs mt-1">All analyzed traces show confident completions</p>
+              </div>
+            </div>
+          ) : (
+            <EmptyChart hasAnyTraces={hasAnyTraces} message="No hallucination data in this time range." />
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
@@ -496,6 +607,9 @@ export default function DashboardOverview({ projectId }: { projectId: number }) 
           </CardContent>
         </Card>
       </div>
+
+      {/* Explainability Summary */}
+      <ExplainabilitySummary projectId={projectId} from={from} to={to} hasAnyTraces={hasAnyTraces} />
 
       {/* Live Trace Feed */}
       <Card className="bg-card border-border">

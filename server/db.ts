@@ -286,6 +286,7 @@ export async function getTraces(projectId: number, opts: {
       costUsd: traces.costUsd,
       isStreaming: traces.isStreaming,
       endUserId: traces.endUserId,
+      confidenceAnalysis: traces.confidenceAnalysis,
     }).from(traces)
       .where(where)
       .orderBy(desc(traces.timestamp))

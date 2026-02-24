@@ -560,3 +560,9 @@
 - [ ] Test Layer 3a: Estimated confidence (Anthropic)
 - [ ] Test Layer 3a: Hallucination detection on real output
 - [ ] Test Layer 3a: Confidence heatmap data verification
+
+## Explainability Dashboard Fix
+- [x] Investigate why explainability data not showing on dashboard despite being enabled
+- [x] Trace explainability data flow: proxy → confidence analysis → DB → dashboard UI
+- [x] Fix any gaps in the explainability pipeline (added confidence column to trace list, Explainability Overview + Hallucination Candidates to Dashboard)
+- [x] Verify explainability data appears on dashboard after fix (all 540 tests passing, UI renders correctly)
