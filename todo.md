@@ -577,3 +577,9 @@
 - [x] Wire routing in App.tsx and DashboardShell
 - [x] Write vitest tests for the new tRPC procedures (55 tests, all passing)
 - [x] Verify page renders with real data (empty state verified in sandbox, real data in production)
+
+## Resend Inbound Email Forwarding
+- [x] Add webhook endpoint for Resend email.received events
+- [x] Implement forwarding logic: info@prysmai.io → osasisorae@gmail.com
+- [x] Write vitest tests for the webhook handler (10 tests, all passing)
+- [x] Provide Resend dashboard setup instructions to user

@@ -11,6 +11,7 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { proxyRouter } from "../proxy";
+import { resendWebhookRouter } from "../resendWebhook";
 import { startMetricsScheduler } from "../metrics-scheduler";
 import { initWebSocketServer } from "../ws-live-feed";
 
@@ -46,6 +47,8 @@ async function startServer() {
   registerCustomAuthRoutes(app);
   // Chat API with streaming and tool calling
   registerChatRoutes(app);
+  // Resend Inbound webhook for email forwarding
+  app.use("/api/webhooks", resendWebhookRouter);
   // Prysm AI Proxy Gateway — OpenAI-compatible reverse proxy
   // Must be under /api/* for deployment platform routing
   app.use("/api/v1", proxyRouter);
