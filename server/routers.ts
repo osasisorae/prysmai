@@ -28,6 +28,15 @@ import {
   getSecurityConfigForProject, upsertSecurityConfig,
   getSecurityEvents, getSecurityStats, getSecurityTimeline, getTopInjectionPatterns,
 } from "./security/db-helpers";
+import { generateRecommendations } from "./recommendations/engine";
+import {
+  recommendations as recommendationsTable,
+  playbooks as playbooksTable,
+  playbookSteps as playbookStepsTable,
+  recommendationSnapshots,
+} from "../drizzle/schema";
+import { getDb } from "./db";
+import { eq, and, desc } from "drizzle-orm";
 import { generateInviteToken, approveWaitlistEntry, rejectWaitlistEntry } from "./customAuth";
 import { TRPCError } from "@trpc/server";
 import { computeConfidenceAnalysis, estimateAnthropicConfidence, type ConfidenceAnalysis } from "./confidence-analysis";
@@ -1123,6 +1132,139 @@ Keep the explanation concise (200-400 words).`;
             totalHallucinationCandidates: candidates.length,
           },
         };
+      }),
+  }),
+
+  // ─── Recommendations & Playbooks Router ───
+  recommendations: router({
+    // Generate or refresh recommendations for a project
+    generate: protectedProcedure
+      .input(z.object({ projectId: z.number(), force: z.boolean().optional() }))
+      .mutation(async ({ input }) => {
+        const result = await generateRecommendations(input.projectId, input.force ?? false);
+        return {
+          issueCount: result.detectorResults.length,
+          fromCache: result.fromCache,
+          baseline: result.baseline,
+        };
+      }),
+
+    // Get active recommendations for a project
+    getActive: protectedProcedure
+      .input(z.object({ projectId: z.number() }))
+      .query(async ({ input }) => {
+        const db = (await getDb())!;
+        const recs = await db
+          .select()
+          .from(recommendationsTable)
+          .where(
+            and(
+              eq(recommendationsTable.projectId, input.projectId),
+              eq(recommendationsTable.status, "active")
+            )
+          )
+          .orderBy(desc(recommendationsTable.generatedAt));
+        return recs;
+      }),
+
+    // Dismiss a recommendation
+    dismiss: protectedProcedure
+      .input(z.object({ recommendationId: z.number() }))
+      .mutation(async ({ input }) => {
+        const db = (await getDb())!;
+        await db
+          .update(recommendationsTable)
+          .set({ status: "dismissed", dismissedAt: new Date() })
+          .where(eq(recommendationsTable.id, input.recommendationId));
+        return { success: true };
+      }),
+
+    // Get all playbooks for a project
+    getPlaybooks: protectedProcedure
+      .input(z.object({ projectId: z.number() }))
+      .query(async ({ input }) => {
+        const db = (await getDb())!;
+        const pbs = await db
+          .select()
+          .from(playbooksTable)
+          .where(eq(playbooksTable.projectId, input.projectId))
+          .orderBy(desc(playbooksTable.createdAt));
+        return pbs;
+      }),
+
+    // Get a single playbook with its steps
+    getPlaybookDetail: protectedProcedure
+      .input(z.object({ playbookId: z.number() }))
+      .query(async ({ input }) => {
+        const db = (await getDb())!;
+        const [pb] = await db
+          .select()
+          .from(playbooksTable)
+          .where(eq(playbooksTable.id, input.playbookId))
+          .limit(1);
+        if (!pb) return null;
+
+        const steps = await db
+          .select()
+          .from(playbookStepsTable)
+          .where(eq(playbookStepsTable.playbookId, input.playbookId))
+          .orderBy(playbookStepsTable.stepOrder);
+
+        return { ...pb, steps };
+      }),
+
+    // Toggle a playbook step completion
+    toggleStep: protectedProcedure
+      .input(z.object({ stepId: z.number(), completed: z.boolean() }))
+      .mutation(async ({ input }) => {
+        const db = (await getDb())!;
+        await db
+          .update(playbookStepsTable)
+          .set({
+            completed: input.completed,
+            completedAt: input.completed ? new Date() : null,
+          })
+          .where(eq(playbookStepsTable.id, input.stepId));
+
+        // Check if all steps are complete and update playbook status
+        const [step] = await db
+          .select({ playbookId: playbookStepsTable.playbookId })
+          .from(playbookStepsTable)
+          .where(eq(playbookStepsTable.id, input.stepId))
+          .limit(1);
+
+        if (step) {
+          const allSteps = await db
+            .select({ completed: playbookStepsTable.completed })
+            .from(playbookStepsTable)
+            .where(eq(playbookStepsTable.playbookId, step.playbookId));
+
+          const allComplete = allSteps.every((s) => s.completed);
+          const anyComplete = allSteps.some((s) => s.completed);
+
+          await db
+            .update(playbooksTable)
+            .set({
+              status: allComplete ? "resolved" : anyComplete ? "in_progress" : "not_started",
+            })
+            .where(eq(playbooksTable.id, step.playbookId));
+        }
+
+        return { success: true };
+      }),
+
+    // Get metric snapshots for progress tracking
+    getSnapshots: protectedProcedure
+      .input(z.object({ projectId: z.number() }))
+      .query(async ({ input }) => {
+        const db = (await getDb())!;
+        const snapshots = await db
+          .select()
+          .from(recommendationSnapshots)
+          .where(eq(recommendationSnapshots.projectId, input.projectId))
+          .orderBy(desc(recommendationSnapshots.snapshotAt))
+          .limit(20);
+        return snapshots;
       }),
   }),
 });

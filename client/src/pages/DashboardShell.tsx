@@ -12,6 +12,7 @@ import {
   Settings as SettingsIcon,
   Shield,
   Brain,
+  BookOpen,
   LogOut,
   ChevronDown,
   Loader2,
@@ -29,6 +30,7 @@ import ApiKeys from "./ApiKeys";
 import SettingsPage from "./Settings";
 import SecurityDashboard from "./SecurityDashboard";
 import ExplainabilityPage from "./Explainability";
+import Playbooks from "./Playbooks";
 
 const NAV_ITEMS = [
   { id: "overview", label: "Overview", icon: LayoutDashboard, path: "/dashboard" },
@@ -36,6 +38,7 @@ const NAV_ITEMS = [
   { id: "keys", label: "API Keys", icon: Key, path: "/dashboard/keys" },
   { id: "security", label: "Security", icon: Shield, path: "/dashboard/security" },
   { id: "explainability", label: "Explainability", icon: Brain, path: "/dashboard/explainability" },
+  { id: "playbooks", label: "Playbooks", icon: BookOpen, path: "/dashboard/playbooks" },
   { id: "settings", label: "Settings", icon: SettingsIcon, path: "/dashboard/settings" },
 ];
 
@@ -186,6 +189,7 @@ export default function DashboardShell() {
           {activeNav.id === "keys" && <ApiKeys projectId={activeProject.id} />}
           {activeNav.id === "security" && <SecurityDashboard projectId={activeProject.id} />}
           {activeNav.id === "explainability" && <ExplainabilityPage projectId={activeProject.id} />}
+          {activeNav.id === "playbooks" && <Playbooks projectId={activeProject.id} />}
           {activeNav.id === "settings" && <SettingsPage projectId={activeProject.id} />}
         </div>
       </main>

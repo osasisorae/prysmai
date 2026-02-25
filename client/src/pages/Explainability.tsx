@@ -23,6 +23,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { InsightsStrip } from "@/components/InsightsStrip";
 
 // ═══════════════════════════════════════════════════════════════
 // CONFIDENCE TRENDS CHART (Canvas-based line chart)
@@ -562,6 +563,9 @@ export default function ExplainabilityPage({ projectId }: { projectId: number })
           </SelectContent>
         </Select>
       </div>
+
+      {/* AI Insights Strip */}
+      <InsightsStrip projectId={projectId} />
 
       {/* Summary Metric Cards */}
       {report.isLoading ? (

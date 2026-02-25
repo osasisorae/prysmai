@@ -15,6 +15,7 @@ import {
   Brain,
   Eye,
 } from "lucide-react";
+import { InsightsStrip } from "@/components/InsightsStrip";
 import {
   Select,
   SelectContent,
@@ -359,6 +360,9 @@ export default function DashboardOverview({ projectId }: { projectId: number }) 
           </SelectContent>
         </Select>
       </div>
+
+      {/* AI Insights Strip */}
+      <InsightsStrip projectId={projectId} />
 
       {/* Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

@@ -583,3 +583,54 @@
 - [x] Implement forwarding logic: info@prysmai.io → osasisorae@gmail.com
 - [x] Write vitest tests for the webhook handler (10 tests, all passing)
 - [x] Provide Resend dashboard setup instructions to user
+
+## Directions 2 & 3: Automated Recommendations Engine + Improvement Playbooks
+### Database Schema
+- [x] recommendations table (id, projectId, detectorId, severity, headline, problem, rootCause, evidence, status, createdAt)
+- [x] playbooks table (id, recommendationId, projectId, title, problem, rootCause, verification, status, createdAt)
+- [x] playbook_steps table (id, playbookId, stepOrder, title, description, codeExample, expectedImpact, completed)
+- [x] recommendation_snapshots table (id, projectId, snapshotData, takenAt)
+- [x] Run db:push migration
+
+### Pattern Detectors (10 rule-based pure functions)
+- [x] LOW_CONFIDENCE detector
+- [x] HIGH_HALLUCINATION detector
+- [x] CONFIDENCE_DROPPING detector
+- [x] MODEL_UNDERPERFORMER detector
+- [x] HIGH_ENTROPY_CLUSTER detector
+- [x] TOPIC_HALLUCINATION detector
+- [x] TEMPERATURE_TOO_HIGH detector
+- [x] COST_INEFFICIENCY detector
+- [x] SECURITY_CORRELATION detector
+- [x] NO_LOGPROBS detector
+- [x] runAllDetectors orchestrator
+
+### LLM Advisor
+- [x] Forge API integration for generating human-readable recommendations
+- [x] Structured output parsing (PlaybookContent type)
+- [x] 1-hour cache to avoid redundant LLM calls
+
+### Engine Orchestrator
+- [x] runRecommendationEngine function (detectors → LLM advisor → DB persistence)
+- [x] Snapshot baseline metrics before and after
+
+### tRPC Procedures
+- [x] recommendations.generate (run detectors + LLM advisor + persist)
+- [x] recommendations.getActive (fetch active recommendations)
+- [x] recommendations.dismiss (dismiss a recommendation)
+- [x] recommendations.getPlaybooks (list all playbooks for a project)
+- [x] recommendations.getPlaybookDetail (get playbook with steps)
+- [x] recommendations.toggleStep (mark step complete/incomplete, auto-update playbook status)
+- [x] recommendations.getSnapshots (get metric snapshots for progress tracking)
+
+### Frontend
+- [x] InsightsStrip component (top 3 issues with severity, headline, link to playbook)
+- [x] InsightsStrip on Dashboard Overview
+- [x] InsightsStrip on Explainability page
+- [x] Playbooks page (two-column layout: list + detail view)
+- [x] Playbooks nav item in sidebar
+- [x] Playbook detail: Problem → Root Cause → Fix Steps → Verification → Progress
+
+### Testing
+- [x] 22 vitest tests for pattern detectors (all passing)
+- [x] All 583 tests passing (22 test files)

@@ -407,3 +407,115 @@ export const explainabilityReports = mysqlTable(
 
 export type ExplainabilityReport = typeof explainabilityReports.$inferSelect;
 export type InsertExplainabilityReport = typeof explainabilityReports.$inferInsert;
+
+// ─── Recommendations (Direction 2: Automated Recommendations Engine) ───
+
+export const recommendations = mysqlTable(
+  "recommendations",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    projectId: int("projectId").notNull(),
+    detectorId: varchar("detectorId", { length: 64 }).notNull(), // e.g., "LOW_CONFIDENCE"
+    severity: mysqlEnum("severity", ["critical", "warning", "info"]).notNull(),
+    headline: varchar("headline", { length: 512 }).notNull(),
+    problem: text("problem").notNull(), // LLM-generated problem description
+    rootCause: text("rootCause").notNull(), // LLM-generated root cause
+    evidence: json("evidence").$type<{
+      metric: string;
+      value: number;
+      threshold: number;
+      affectedTraces: number;
+      totalTraces: number;
+      sampleTraceIds: number[];
+    }>().notNull(),
+    status: mysqlEnum("status", ["active", "dismissed", "resolved"]).default("active").notNull(),
+    generatedAt: timestamp("generatedAt").defaultNow().notNull(),
+    dismissedAt: timestamp("dismissedAt"),
+    resolvedAt: timestamp("resolvedAt"),
+  },
+  (table) => [
+    index("rec_project_idx").on(table.projectId),
+    index("rec_status_idx").on(table.projectId, table.status),
+  ]
+);
+
+export type Recommendation = typeof recommendations.$inferSelect;
+export type InsertRecommendation = typeof recommendations.$inferInsert;
+
+// ─── Playbooks (Direction 3: Improvement Playbooks) ───
+
+export const playbooks = mysqlTable(
+  "playbooks",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    projectId: int("projectId").notNull(),
+    recommendationId: int("recommendationId").notNull(), // links to triggering recommendation
+    title: varchar("title", { length: 256 }).notNull(),
+    priority: mysqlEnum("priority", ["p1", "p2", "p3"]).notNull(),
+    status: mysqlEnum("status", ["not_started", "in_progress", "resolved"]).default("not_started").notNull(),
+    problem: text("problem").notNull(), // full problem statement
+    rootCause: text("rootCause").notNull(), // full root cause analysis
+    verification: text("verification").notNull(), // how to verify the fix
+    // Snapshot of metrics at creation time (for before/after comparison)
+    baselineMetrics: json("baselineMetrics").$type<{
+      avgConfidence: number;
+      hallucinationRate: number;
+      avgLatency: number;
+      traceCount: number;
+    }>().notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  (table) => [
+    index("pb_project_idx").on(table.projectId),
+    index("pb_status_idx").on(table.projectId, table.status),
+  ]
+);
+
+export type Playbook = typeof playbooks.$inferSelect;
+export type InsertPlaybook = typeof playbooks.$inferInsert;
+
+// ─── Playbook Steps ───
+
+export const playbookSteps = mysqlTable(
+  "playbook_steps",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    playbookId: int("playbookId").notNull(),
+    stepOrder: int("stepOrder").notNull(),
+    title: varchar("title", { length: 256 }).notNull(),
+    description: text("description").notNull(), // detailed instruction
+    codeExample: text("codeExample"), // optional code/config snippet
+    expectedImpact: varchar("expectedImpact", { length: 256 }), // e.g., "Should improve confidence by ~15%"
+    completed: boolean("completed").default(false).notNull(),
+    completedAt: timestamp("completedAt"),
+  },
+  (table) => [
+    index("ps_playbook_idx").on(table.playbookId),
+  ]
+);
+
+export type PlaybookStep = typeof playbookSteps.$inferSelect;
+export type InsertPlaybookStep = typeof playbookSteps.$inferInsert;
+
+// ─── Recommendation Snapshots (periodic metrics for before/after comparison) ───
+
+export const recommendationSnapshots = mysqlTable(
+  "recommendation_snapshots",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    projectId: int("projectId").notNull(),
+    playbookId: int("playbookId"), // optional link to specific playbook
+    avgConfidence: decimal("avgConfidence", { precision: 5, scale: 4 }),
+    hallucinationRate: decimal("hallucinationRate", { precision: 5, scale: 4 }),
+    avgLatency: int("avgLatency"),
+    traceCount: int("traceCount"),
+    snapshotAt: timestamp("snapshotAt").defaultNow().notNull(),
+  },
+  (table) => [
+    index("snap_project_idx").on(table.projectId, table.snapshotAt),
+  ]
+);
+
+export type RecommendationSnapshot = typeof recommendationSnapshots.$inferSelect;
+export type InsertRecommendationSnapshot = typeof recommendationSnapshots.$inferInsert;
