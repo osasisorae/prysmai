@@ -13,7 +13,7 @@ export const blogPosts: BlogPost[] = [
   {
     slug: "building-ai-debate-arena",
     title: "Building an AI Debate Arena: A Full-Stack Tutorial with PrysmAI",
-    author: "Osarenren N.",
+    author: "Osarenren I.",
     date: "February 26, 2026",
     readTime: "18 min read",
     category: "TUTORIAL",
@@ -322,7 +322,7 @@ python app.py
   {
     slug: "ai-observability-stack-2026",
     title: "The AI Observability Stack in 2026: What\'s Changed and What\'s Still Missing",
-    author: "Osarenren N.",
+    author: "Osarenren I.",
     date: "February 17, 2026",
     readTime: "14 min read",
     category: "OBSERVABILITY",
@@ -530,7 +530,7 @@ python app.py
   {
     slug: "how-interpretability-makes-ai-security-work",
     title: "The Missing Link: How Interpretability Makes AI Security Actually Work",
-    author: "Osarenren N.",
+    author: "Osarenren I.",
     date: "February 17, 2026",
     readTime: "16 min read",
     category: "INTERPRETABILITY + SECURITY",
@@ -723,7 +723,7 @@ python app.py
   {
     slug: "why-prompt-injection-still-works-2026",
     title: "Why Prompt Injection Still Works in 2026 (And What Actually Stops It)",
-    author: "Osarenren N.",
+    author: "Osarenren I.",
     date: "February 16, 2026",
     readTime: "14 min read",
     category: "AI SECURITY",
@@ -909,7 +909,7 @@ python app.py
   {
     slug: "inside-language-model-neural-network",
     title: "I Looked Inside a Language Model's Neural Network. Here's What I Found.",
-    author: "Osarenren N.",
+    author: "Osarenren I.",
     date: "February 16, 2026",
     readTime: "15 min read",
     category: "DEEP DIVE",
@@ -1068,7 +1068,7 @@ python app.py
   {
     slug: "what-is-mechanistic-interpretability",
     title: "What Is Mechanistic Interpretability? A Practical Guide for AI Engineers",
-    author: "Osarenren N.",
+    author: "Osarenren I.",
     date: "February 16, 2026",
     readTime: "12 min read",
     category: "INTERPRETABILITY",
@@ -1210,7 +1210,7 @@ python app.py
   {
     slug: "stop-flying-blind",
     title: "Stop Flying Blind: Why We Need to See Inside Our AI Agents",
-    author: "Osarenren N.",
+    author: "Osarenren I.",
     date: "February 15, 2026",
     readTime: "8 min read",
     category: "AI SECURITY",
