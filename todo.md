@@ -634,3 +634,10 @@
 ### Testing
 - [x] 22 vitest tests for pattern detectors (all passing)
 - [x] All 583 tests passing (22 test files)
+
+## Blog Post: Building an AI Debate Arena with PrysmAI
+- [x] Write Blog Post 6: "Building an AI Debate Arena with PrysmAI" (tutorial + showcase)
+- [x] Integrate Post 6 into blog-posts.ts
+- [x] Verify blog post renders correctly
+- [x] Run vitest tests (587 tests passing, 22 test files)
+- [x] Save checkpoint

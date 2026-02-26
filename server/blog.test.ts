@@ -6,7 +6,7 @@ describe("blog-posts data module", () => {
     it("returns an array of blog posts", () => {
       const posts = getAllPosts();
       expect(Array.isArray(posts)).toBe(true);
-      expect(posts.length).toBeGreaterThanOrEqual(6);
+      expect(posts.length).toBeGreaterThanOrEqual(7);
     });
 
     it("each post has required fields", () => {
@@ -31,13 +31,14 @@ describe("blog-posts data module", () => {
 
     it("posts are ordered newest first", () => {
       const posts = getAllPosts();
-      // Post 5 (observability) should be first, then Post 4, Post 3, Post 2, Post 1, Post 0
-      expect(posts[0].slug).toBe("ai-observability-stack-2026");
-      expect(posts[1].slug).toBe("how-interpretability-makes-ai-security-work");
-      expect(posts[2].slug).toBe("why-prompt-injection-still-works-2026");
-      expect(posts[3].slug).toBe("inside-language-model-neural-network");
-      expect(posts[4].slug).toBe("what-is-mechanistic-interpretability");
-      expect(posts[5].slug).toBe("stop-flying-blind");
+      // Post 6 (debate arena tutorial) should be first, then Post 5, Post 4, Post 3, Post 2, Post 1, Post 0
+      expect(posts[0].slug).toBe("building-ai-debate-arena");
+      expect(posts[1].slug).toBe("ai-observability-stack-2026");
+      expect(posts[2].slug).toBe("how-interpretability-makes-ai-security-work");
+      expect(posts[3].slug).toBe("why-prompt-injection-still-works-2026");
+      expect(posts[4].slug).toBe("inside-language-model-neural-network");
+      expect(posts[5].slug).toBe("what-is-mechanistic-interpretability");
+      expect(posts[6].slug).toBe("stop-flying-blind");
     });
   });
 
@@ -98,6 +99,46 @@ describe("blog-posts data module", () => {
       );
       expect(post!.category).toBe("OBSERVABILITY");
       expect(post!.readTime).toBe("14 min read");
+    });
+
+    it("returns Post 6 (building-ai-debate-arena) by slug", () => {
+      const post = getPostBySlug("building-ai-debate-arena");
+      expect(post).toBeDefined();
+      expect(post!.title).toBe(
+        "Building an AI Debate Arena: A Full-Stack Tutorial with PrysmAI"
+      );
+      expect(post!.category).toBe("TUTORIAL");
+      expect(post!.readTime).toBe("18 min read");
+    });
+
+    it("Post 6 content contains expected sections", () => {
+      const post = getPostBySlug("building-ai-debate-arena");
+      expect(post!.content).toContain("<h2>");
+      expect(post!.content).toContain("<p>");
+      expect(post!.content).toContain("Architecture Overview");
+      expect(post!.content).toContain("PrysmAI Client");
+      expect(post!.content).toContain("10-Round Structure");
+      expect(post!.content).toContain("Security Blocks");
+      expect(post!.content).toContain("FastAPI");
+      expect(post!.content).toContain("PrysmAI Dashboard");
+    });
+
+    it("Post 6 content has code examples and tables", () => {
+      const post = getPostBySlug("building-ai-debate-arena");
+      expect(post!.content).toContain("<pre><code>");
+      expect(post!.content).toContain("<table>");
+      expect(post!.content).toContain("PrysmClient");
+      expect(post!.content).toContain("prysm_context");
+      expect(post!.content).toContain("debate_engine.py");
+      expect(post!.content).toContain("github.com/osasisorae/debate-arena");
+    });
+
+    it("Post 6 content has references section", () => {
+      const post = getPostBySlug("building-ai-debate-arena");
+      expect(post!.content).toContain('class=\"references\"');
+      expect(post!.content).toContain("github.com/osasisorae/debate-arena");
+      expect(post!.content).toContain("pypi.org/project/prysmai");
+      expect(post!.content).toContain("owasp.org");
     });
 
     it("returns undefined for unknown slug", () => {
