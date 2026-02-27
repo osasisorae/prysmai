@@ -42,6 +42,7 @@ import {
   FileWarning,
   Plug,
   Sparkles,
+  FlaskConical,
 } from "lucide-react";
 
 const LOGO_URL = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663306080277/pKkWElgCpRmlNvjQ.png";
@@ -184,6 +185,7 @@ const NAV_SECTIONS = [
   { id: "endpoints", label: "All Endpoints", icon: Blocks },
   { id: "advanced", label: "Advanced Features", icon: Wrench },
   { id: "self-hosted", label: "Self-Hosted Proxy", icon: Shield },
+  { id: "examples", label: "Example Apps", icon: FlaskConical },
   { id: "errors", label: "Error Handling", icon: Activity },
 ];
 
@@ -2062,6 +2064,98 @@ ws.onmessage = (event) => {
   apiKey: "sk-prysm-your-key",
 });`}
             />
+
+            {/* ═══════════════════════════════════════════════════════════ */}
+            {/* EXAMPLE APPLICATIONS */}
+            {/* ═══════════════════════════════════════════════════════════ */}
+            <SectionHeading id="examples">Example Applications</SectionHeading>
+            <p className="text-muted-foreground leading-relaxed mb-6">
+              Full working applications that demonstrate Prysm AI's capabilities in production-like
+              scenarios. Each example includes source code, a walkthrough tutorial, and real
+              integration with the SDK, dashboard, and security scanning.
+            </p>
+
+            {/* ─── AI Debate Arena ─── */}
+            <div className="rounded-lg border border-border overflow-hidden my-6">
+              <div className="p-6">
+                <div className="flex items-start justify-between gap-4 mb-4">
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-primary/10 text-primary border border-primary/20 uppercase tracking-wider">Full-Stack</span>
+                      <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-secondary text-muted-foreground border border-border uppercase tracking-wider">Python + FastAPI</span>
+                    </div>
+                    <h4 className="text-lg font-semibold mb-1">AI Debate Arena</h4>
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      A real-time debate application where GPT-4o Mini and Claude Sonnet 4 argue any topic
+                      across 10 rounds — including 4 adversarial attack rounds with prompt injection, jailbreak
+                      attempts, context manipulation, and authority spoofing. Every API call is traced through
+                      Prysm, every attack is detected and blocked in real time, and every response gets
+                      confidence scoring.
+                    </p>
+                  </div>
+                </div>
+
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3 mt-6">What it demonstrates</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 mb-6">
+                  {[
+                    "Drop-in SDK integration with OpenAI + Anthropic",
+                    "Real-time prompt injection detection & blocking",
+                    "Multi-provider tracing in a single session",
+                    "Live security event streaming via SSE",
+                    "Confidence scoring on every response",
+                    "Dashboard session filtering & drill-down",
+                  ].map((item) => (
+                    <div key={item} className="flex items-start gap-2">
+                      <ChevronRight className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
+                      <span className="text-sm text-muted-foreground">{item}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Quick start</p>
+                <CodeBlock
+                  filename="terminal"
+                  language="bash"
+                  code={`git clone https://github.com/osasisorae/debate-arena.git
+cd debate-arena
+pip install -r requirements.txt
+
+# Set your keys in .env
+cp .env.example .env
+# PRYSM_API_KEY=sk-prysm-...
+# OPENAI_API_KEY=sk-...
+# ANTHROPIC_API_KEY=sk-ant-...
+
+python app.py`}
+                />
+
+                <div className="flex items-center gap-3 mt-4">
+                  <a
+                    href="https://github.com/osasisorae/debate-arena"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Button size="sm" variant="outline" className="border-border hover:border-primary/50 text-sm">
+                      View on GitHub
+                      <ExternalLink className="w-3.5 h-3.5 ml-2" />
+                    </Button>
+                  </a>
+                  <Link href="/blog/building-ai-debate-arena">
+                    <Button size="sm" variant="outline" className="border-border hover:border-primary/50 text-sm">
+                      Read Tutorial
+                      <ArrowRight className="w-3.5 h-3.5 ml-2" />
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            </div>
+
+            <Callout type="tip">
+              <strong>Building something with Prysm?</strong> We'd love to feature your project here.
+              Reach out at{" "}
+              <a href="mailto:osarenrenisaiah@gmail.com" className="text-primary hover:underline">osarenrenisaiah@gmail.com</a>{" "}
+              or open a PR on GitHub.
+            </Callout>
 
             {/* ═══════════════════════════════════════════════════════════ */}
             {/* ERROR HANDLING */}

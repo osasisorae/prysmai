@@ -644,3 +644,14 @@
 
 ## Bug Fix: Author Name
 - [x] Change author from "Osarenren N." to "Osarenren I." in all blog posts
+
+## Beta Invitation Outreach - Batch 3
+- [x] Send early builder invitation email to David (davidokunoye003@gmail.com)
+- [x] Send early builder invitation email to Jacob (jacoborode4@gmail.com)
+- [x] Send early builder invitation email to Classic (classicemmaeasy@gmail.com)
+- [x] Send early builder invitation email to Dennis (dennis.donaghy@aiml-solutions.com)
+- [x] Send early builder invitation email to Siven (Sivenverse@gmail.com)
+
+## Docs: Add Example Applications
+- [x] Add "Example Applications" section to /docs page
+- [x] Add AI Debate Arena entry with description, GitHub link, and blog tutorial link
