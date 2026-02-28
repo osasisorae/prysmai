@@ -6,7 +6,7 @@
  * Stripe: Pro and Team buttons trigger Stripe Checkout for logged-in users
  */
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Check,
@@ -23,6 +23,14 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const LOGO_URL =
   "https://files.manuscdn.com/user_upload_by_module/session_file/310519663306080277/pKkWElgCpRmlNvjQ.png";
@@ -193,8 +201,17 @@ export default function Pricing() {
   const [earlyAccessOpen, setEarlyAccessOpen] = useState(false);
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
+  const [upgradeConfirm, setUpgradeConfirm] = useState<{ from: string; to: Tier } | null>(null);
   const { user, isAuthenticated } = useAuth();
   const [, navigate] = useLocation();
+
+  // Fetch current plan if authenticated
+  const planQuery = trpc.billing.getPlan.useQuery(undefined, {
+    enabled: isAuthenticated,
+    staleTime: 60_000,
+    retry: false,
+  });
+  const currentPlan = planQuery.data?.plan || "free";
 
   const createCheckout = trpc.billing.createCheckout.useMutation({
     onSuccess: (data) => {
@@ -227,6 +244,25 @@ export default function Pricing() {
     if (!isAuthenticated) {
       toast.info("Please sign up first, then upgrade from your dashboard.");
       setEarlyAccessOpen(true);
+      return;
+    }
+
+    // Already on this plan
+    if (currentPlan === tier.planKey) {
+      toast.info(`You're already on the ${tier.name} plan.`);
+      return;
+    }
+
+    // Downgrade attempt (e.g., Team → Pro)
+    const planOrder = ["free", "pro", "team", "enterprise"];
+    if (planOrder.indexOf(tier.planKey) < planOrder.indexOf(currentPlan)) {
+      toast.info("To downgrade, go to Billing in your dashboard.");
+      return;
+    }
+
+    // Upgrading from a paid plan — show confirmation
+    if (currentPlan !== "free") {
+      setUpgradeConfirm({ from: currentPlan, to: tier });
       return;
     }
 
@@ -311,7 +347,14 @@ export default function Pricing() {
                     : "border-border/50 bg-card/30"
                 }`}
               >
-                {tier.badge && (
+                {isAuthenticated && currentPlan === tier.planKey && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-500/90 text-white">
+                      Current Plan
+                    </span>
+                  </div>
+                )}
+                {(!isAuthenticated || currentPlan !== tier.planKey) && tier.badge && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                     <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-primary text-primary-foreground">
                       {tier.badge}
@@ -364,17 +407,24 @@ export default function Pricing() {
 
                 <Button
                   className={`w-full h-11 font-medium ${
-                    tier.highlighted
-                      ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                      : "bg-secondary/50 text-foreground hover:bg-secondary/80 border border-border/50"
+                    isAuthenticated && currentPlan === tier.planKey
+                      ? "bg-green-500/10 text-green-400 border border-green-500/30 cursor-default"
+                      : tier.highlighted
+                        ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                        : "bg-secondary/50 text-foreground hover:bg-secondary/80 border border-border/50"
                   }`}
                   onClick={() => handleTierClick(tier)}
-                  disabled={checkoutLoading === tier.planKey}
+                  disabled={checkoutLoading === tier.planKey || (isAuthenticated && currentPlan === tier.planKey)}
                 >
                   {checkoutLoading === tier.planKey ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                       Redirecting...
+                    </>
+                  ) : isAuthenticated && currentPlan === tier.planKey ? (
+                    <>
+                      <Check className="w-4 h-4 mr-2" />
+                      Your Current Plan
                     </>
                   ) : (
                     <>
@@ -571,6 +621,48 @@ export default function Pricing() {
           </div>
         </div>
       </footer>
+
+      {/* ========== UPGRADE CONFIRMATION DIALOG ========== */}
+      <Dialog open={!!upgradeConfirm} onOpenChange={(open) => !open && setUpgradeConfirm(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Upgrade to {upgradeConfirm?.to.name}?</DialogTitle>
+            <DialogDescription className="space-y-3 pt-2">
+              <p>
+                You're currently on the <span className="font-medium text-foreground capitalize">{upgradeConfirm?.from}</span> plan.
+                Upgrading to <span className="font-medium text-foreground">{upgradeConfirm?.to.name}</span> ({upgradeConfirm?.to.price}{upgradeConfirm?.to.period}) takes effect immediately.
+              </p>
+              <p>
+                Stripe will automatically <span className="font-medium text-foreground">prorate</span> your existing subscription — you'll receive credit for the unused portion of your current billing period toward the new plan.
+              </p>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => setUpgradeConfirm(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+              disabled={checkoutLoading !== null}
+              onClick={() => {
+                if (!upgradeConfirm) return;
+                setCheckoutLoading(upgradeConfirm.to.planKey);
+                createCheckout.mutate({ plan: upgradeConfirm.to.planKey as "pro" | "team" });
+                setUpgradeConfirm(null);
+              }}
+            >
+              {checkoutLoading ? (
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Processing...</>
+              ) : (
+                <>Confirm Upgrade<ArrowRight className="w-4 h-4 ml-2" /></>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* ========== EARLY ACCESS MODAL ========== */}
       <EarlyAccessModal

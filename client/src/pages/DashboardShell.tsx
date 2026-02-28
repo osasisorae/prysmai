@@ -18,6 +18,7 @@ import {
   Loader2,
   Sparkles,
   ArrowUpRight,
+  CreditCard,
 } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -33,6 +34,7 @@ import SettingsPage from "./Settings";
 import SecurityDashboard from "./SecurityDashboard";
 import ExplainabilityPage from "./Explainability";
 import Playbooks from "./Playbooks";
+import Billing from "./Billing";
 
 const NAV_ITEMS = [
   { id: "overview", label: "Overview", icon: LayoutDashboard, path: "/dashboard" },
@@ -41,6 +43,7 @@ const NAV_ITEMS = [
   { id: "security", label: "Security", icon: Shield, path: "/dashboard/security" },
   { id: "explainability", label: "Explainability", icon: Brain, path: "/dashboard/explainability" },
   { id: "playbooks", label: "Playbooks", icon: BookOpen, path: "/dashboard/playbooks" },
+  { id: "billing", label: "Billing", icon: CreditCard, path: "/dashboard/billing" },
   { id: "settings", label: "Settings", icon: SettingsIcon, path: "/dashboard/settings" },
 ];
 
@@ -84,7 +87,10 @@ function PlanIndicator() {
           <ArrowUpRight className="w-3 h-3 text-primary opacity-60 group-hover:opacity-100 transition-opacity" />
         </button>
       ) : (
-        <div className={`flex items-center justify-between px-2.5 py-1.5 rounded-md ${badge.bg}`}>
+        <button
+          onClick={() => setLocation("/dashboard/billing")}
+          className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md ${badge.bg} hover:opacity-80 transition-opacity cursor-pointer`}
+        >
           <div className="flex items-center gap-2">
             <Sparkles className={`w-3.5 h-3.5 ${badge.color}`} />
             <span className={`text-xs font-medium ${badge.color}`}>{badge.label} Plan</span>
@@ -92,7 +98,7 @@ function PlanIndicator() {
           {plan.data?.subscription?.cancelAtPeriodEnd && (
             <span className="text-[10px] text-muted-foreground">Cancelling</span>
           )}
-        </div>
+        </button>
       )}
     </div>
   );
@@ -249,6 +255,7 @@ export default function DashboardShell() {
           {activeNav.id === "security" && <SecurityDashboard projectId={activeProject.id} />}
           {activeNav.id === "explainability" && <ExplainabilityPage projectId={activeProject.id} />}
           {activeNav.id === "playbooks" && <Playbooks projectId={activeProject.id} />}
+          {activeNav.id === "billing" && <Billing />}
           {activeNav.id === "settings" && <SettingsPage projectId={activeProject.id} />}
         </div>
       </main>

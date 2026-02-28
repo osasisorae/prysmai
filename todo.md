@@ -677,3 +677,12 @@
 - [x] Write vitest tests for Stripe integration (600 tests passing)
 - [x] Test end-to-end checkout flow (verified Stripe Checkout URL returned)
 - [x] Save checkpoint
+
+## Bug: Plan indicator not updating after Stripe checkout
+- [x] Investigated: webhook not firing (configured in live mode instead of test mode)
+- [ ] Manually update org to pro for immediate verification
+- [ ] Add checkout success verification fallback (verifyCheckout procedure)
+
+## Stripe UX Improvements
+- [x] Add upgrade confirmation dialog when user already has a plan (show proration info)
+- [x] Build billing/subscription management section in dashboard (view plan, cancel, manage billing portal)
