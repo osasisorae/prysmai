@@ -663,3 +663,17 @@
 - [x] Test page renders correctly
 - [x] Run vitest (587 tests passing)
 - [x] Save checkpoint
+
+## Stripe Integration
+- [x] Add Stripe feature to project (manual setup — sandbox expired)
+- [x] Configure Stripe test keys (pk_test, sk_test)
+- [x] Create Stripe products and prices (Pro $39/mo, Team $149/mo)
+- [x] Build checkout session endpoint for subscriptions
+- [x] Build Stripe webhook handler (checkout.session.completed, subscription updates)
+- [x] Add subscription status to user/org schema (stripeCustomerId, stripeSubscriptionId on orgs)
+- [x] Wire pricing page CTA buttons to Stripe Checkout
+- [x] Add subscription management (billing portal tRPC procedure)
+- [ ] Add plan indicator to dashboard (deferred — next iteration)
+- [x] Write vitest tests for Stripe integration (600 tests passing)
+- [x] Test end-to-end checkout flow (verified Stripe Checkout URL returned)
+- [x] Save checkpoint

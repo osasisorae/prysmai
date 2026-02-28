@@ -3,6 +3,7 @@
  * Design: Consistent with landing page — dark theme, cyan + neutral, Inter font
  * Tiers: Free, Pro ($39/mo), Team ($149/mo), Enterprise (custom)
  * Pattern: Shared navbar/footer with Home.tsx
+ * Stripe: Pro and Team buttons trigger Stripe Checkout for logged-in users
  */
 
 import { useState } from "react";
@@ -15,8 +16,13 @@ import {
   Users,
   Rocket,
   HelpCircle,
+  Loader2,
 } from "lucide-react";
 import { EarlyAccessModal } from "@/components/EarlyAccessModal";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { trpc } from "@/lib/trpc";
+import { toast } from "sonner";
+import { useLocation } from "wouter";
 
 const LOGO_URL =
   "https://files.manuscdn.com/user_upload_by_module/session_file/310519663306080277/pKkWElgCpRmlNvjQ.png";
@@ -25,6 +31,7 @@ const LOGO_URL =
 
 interface Tier {
   name: string;
+  planKey: string; // maps to Stripe plan key
   price: string;
   period: string;
   description: string;
@@ -38,6 +45,7 @@ interface Tier {
 const tiers: Tier[] = [
   {
     name: "Free",
+    planKey: "free",
     price: "$0",
     period: "forever",
     description:
@@ -56,6 +64,7 @@ const tiers: Tier[] = [
   },
   {
     name: "Pro",
+    planKey: "pro",
     price: "$39",
     period: "/ month",
     description:
@@ -78,6 +87,7 @@ const tiers: Tier[] = [
   },
   {
     name: "Team",
+    planKey: "team",
     price: "$149",
     period: "/ month",
     description:
@@ -99,6 +109,7 @@ const tiers: Tier[] = [
   },
   {
     name: "Enterprise",
+    planKey: "enterprise",
     price: "Custom",
     period: "",
     description:
@@ -154,11 +165,74 @@ const faqs: FAQ[] = [
   },
 ];
 
+/* ─── Comparison table ─── */
+
+interface ComparisonRow {
+  feature: string;
+  free: string;
+  pro: string;
+  team: string;
+  enterprise: string;
+}
+
+const comparisonRows: ComparisonRow[] = [
+  { feature: "Traced requests / month", free: "5,000", pro: "50,000", team: "250,000", enterprise: "Unlimited" },
+  { feature: "Data retention", free: "7 days", pro: "30 days", team: "90 days", enterprise: "Custom" },
+  { feature: "Projects", free: "1", pro: "3", team: "Unlimited", enterprise: "Unlimited" },
+  { feature: "Team members", free: "1", pro: "1", team: "10", enterprise: "Unlimited" },
+  { feature: "Security scanning", free: "Rule-based", pro: "Deep LLM", team: "Deep LLM", enterprise: "Custom" },
+  { feature: "Explainability", free: "Basic", pro: "Full", team: "Full", enterprise: "Full + Custom" },
+  { feature: "API access", free: "Read-only", pro: "Full", team: "Full + Webhooks", enterprise: "Full + Custom" },
+  { feature: "Support", free: "Community", pro: "Email", team: "Priority", enterprise: "Dedicated" },
+  { feature: "Overage rate (per 10K)", free: "—", pro: "$5", team: "$4", enterprise: "Custom" },
+];
+
 /* ─── Component ─── */
 
 export default function Pricing() {
   const [earlyAccessOpen, setEarlyAccessOpen] = useState(false);
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
+  const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
+  const { user, isAuthenticated } = useAuth();
+  const [, navigate] = useLocation();
+
+  const createCheckout = trpc.billing.createCheckout.useMutation({
+    onSuccess: (data) => {
+      toast.info("Redirecting to checkout...");
+      window.open(data.url, "_blank");
+      setCheckoutLoading(null);
+    },
+    onError: (err) => {
+      toast.error(err.message || "Failed to create checkout session");
+      setCheckoutLoading(null);
+    },
+  });
+
+  const handleTierClick = (tier: Tier) => {
+    if (tier.planKey === "enterprise") {
+      window.location.href = "mailto:hello@prysmai.io?subject=Enterprise%20Inquiry";
+      return;
+    }
+
+    if (tier.planKey === "free") {
+      if (isAuthenticated) {
+        navigate("/dashboard");
+      } else {
+        setEarlyAccessOpen(true);
+      }
+      return;
+    }
+
+    // Pro or Team — need to be logged in
+    if (!isAuthenticated) {
+      toast.info("Please sign up first, then upgrade from your dashboard.");
+      setEarlyAccessOpen(true);
+      return;
+    }
+
+    setCheckoutLoading(tier.planKey);
+    createCheckout.mutate({ plan: tier.planKey as "pro" | "team" });
+  };
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -194,9 +268,15 @@ export default function Pricing() {
           <Button
             size="sm"
             className="bg-primary text-primary-foreground hover:bg-primary/90"
-            onClick={() => setEarlyAccessOpen(true)}
+            onClick={() => {
+              if (isAuthenticated) {
+                navigate("/dashboard");
+              } else {
+                setEarlyAccessOpen(true);
+              }
+            }}
           >
-            Get Early Access
+            {isAuthenticated ? "Dashboard" : "Get Early Access"}
           </Button>
         </div>
       </nav>
@@ -288,17 +368,21 @@ export default function Pricing() {
                       ? "bg-primary text-primary-foreground hover:bg-primary/90"
                       : "bg-secondary/50 text-foreground hover:bg-secondary/80 border border-border/50"
                   }`}
-                  onClick={() => {
-                    if (tier.name === "Enterprise") {
-                      window.location.href = "mailto:hello@prysmai.io?subject=Enterprise%20Inquiry";
-                    } else {
-                      setEarlyAccessOpen(true);
-                    }
-                  }}
+                  onClick={() => handleTierClick(tier)}
+                  disabled={checkoutLoading === tier.planKey}
                 >
-                  {tier.cta}
-                  {tier.name !== "Enterprise" && (
-                    <ArrowRight className="w-4 h-4 ml-2" />
+                  {checkoutLoading === tier.planKey ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Redirecting...
+                    </>
+                  ) : (
+                    <>
+                      {tier.cta}
+                      {tier.planKey !== "enterprise" && (
+                        <ArrowRight className="w-4 h-4 ml-2" />
+                      )}
+                    </>
                   )}
                 </Button>
               </div>
@@ -322,132 +406,60 @@ export default function Pricing() {
       {/* ========== COMPARISON TABLE ========== */}
       <section className="pb-28 lg:pb-40">
         <div className="container">
-          <div className="max-w-5xl mx-auto">
-            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight mb-12 text-center">
-              Compare plans
-            </h2>
+          <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-center mb-4">
+            Compare plans
+          </h2>
+          <p className="text-muted-foreground text-center mb-12 max-w-xl mx-auto">
+            Every plan includes the core proxy, dashboard, and SDK. Here's what
+            changes as you scale.
+          </p>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border/50">
-                    <th className="text-left py-4 pr-4 font-medium text-muted-foreground w-[200px]">
-                      Feature
-                    </th>
-                    <th className="text-center py-4 px-4 font-semibold">Free</th>
-                    <th className="text-center py-4 px-4 font-semibold text-primary">
-                      Pro
-                    </th>
-                    <th className="text-center py-4 px-4 font-semibold">Team</th>
-                    <th className="text-center py-4 px-4 font-semibold">
-                      Enterprise
-                    </th>
+          <div className="max-w-5xl mx-auto overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border/40">
+                  <th className="text-left py-4 pr-6 text-muted-foreground font-medium w-[200px]">
+                    Feature
+                  </th>
+                  <th className="text-center py-4 px-4 text-muted-foreground font-medium">
+                    Free
+                  </th>
+                  <th className="text-center py-4 px-4 font-medium text-primary">
+                    Pro
+                  </th>
+                  <th className="text-center py-4 px-4 text-muted-foreground font-medium">
+                    Team
+                  </th>
+                  <th className="text-center py-4 px-4 text-muted-foreground font-medium">
+                    Enterprise
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {comparisonRows.map((row, i) => (
+                  <tr
+                    key={i}
+                    className="border-b border-border/20 last:border-0"
+                  >
+                    <td className="py-3.5 pr-6 text-muted-foreground">
+                      {row.feature}
+                    </td>
+                    <td className="py-3.5 px-4 text-center text-muted-foreground/80">
+                      {row.free}
+                    </td>
+                    <td className="py-3.5 px-4 text-center text-foreground font-medium">
+                      {row.pro}
+                    </td>
+                    <td className="py-3.5 px-4 text-center text-muted-foreground/80">
+                      {row.team}
+                    </td>
+                    <td className="py-3.5 px-4 text-center text-muted-foreground/80">
+                      {row.enterprise}
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {[
-                    {
-                      feature: "Traced requests / mo",
-                      free: "5,000",
-                      pro: "50,000",
-                      team: "250,000",
-                      enterprise: "Unlimited",
-                    },
-                    {
-                      feature: "Data retention",
-                      free: "7 days",
-                      pro: "30 days",
-                      team: "90 days",
-                      enterprise: "Custom",
-                    },
-                    {
-                      feature: "Projects",
-                      free: "1",
-                      pro: "3",
-                      team: "Unlimited",
-                      enterprise: "Unlimited",
-                    },
-                    {
-                      feature: "Team members",
-                      free: "1",
-                      pro: "1",
-                      team: "Up to 10",
-                      enterprise: "Unlimited",
-                    },
-                    {
-                      feature: "Security scanning",
-                      free: "Rule-based",
-                      pro: "Rule + LLM",
-                      team: "Rule + LLM",
-                      enterprise: "Custom policies",
-                    },
-                    {
-                      feature: "Explainability",
-                      free: "Basic scores",
-                      pro: "Full suite",
-                      team: "Full suite",
-                      enterprise: "Full suite",
-                    },
-                    {
-                      feature: "API access",
-                      free: "Read-only",
-                      pro: "Full",
-                      team: "Full + webhooks",
-                      enterprise: "Full + webhooks",
-                    },
-                    {
-                      feature: "Support",
-                      free: "Community",
-                      pro: "Email",
-                      team: "Priority email",
-                      enterprise: "Dedicated",
-                    },
-                    {
-                      feature: "SSO / SAML",
-                      free: "—",
-                      pro: "—",
-                      team: "—",
-                      enterprise: "✓",
-                    },
-                    {
-                      feature: "On-premise",
-                      free: "—",
-                      pro: "—",
-                      team: "—",
-                      enterprise: "✓",
-                    },
-                    {
-                      feature: "SLA",
-                      free: "—",
-                      pro: "—",
-                      team: "—",
-                      enterprise: "✓",
-                    },
-                  ].map((row, i) => (
-                    <tr
-                      key={i}
-                      className="border-b border-border/20 last:border-0"
-                    >
-                      <td className="py-3.5 pr-4 text-muted-foreground font-medium">
-                        {row.feature}
-                      </td>
-                      <td className="py-3.5 px-4 text-center text-muted-foreground">
-                        {row.free}
-                      </td>
-                      <td className="py-3.5 px-4 text-center text-foreground">
-                        {row.pro}
-                      </td>
-                      <td className="py-3.5 px-4 text-center text-muted-foreground">
-                        {row.team}
-                      </td>
-                      <td className="py-3.5 px-4 text-center text-muted-foreground">
-                        {row.enterprise}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       </section>
@@ -455,69 +467,73 @@ export default function Pricing() {
       {/* ========== FAQ ========== */}
       <section className="pb-28 lg:pb-40">
         <div className="container">
-          <div className="max-w-3xl mx-auto">
-            <div className="flex items-center gap-3 mb-12">
-              <HelpCircle className="w-5 h-5 text-primary" />
-              <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
-                Frequently asked questions
-              </h2>
-            </div>
+          <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-center mb-4">
+            Frequently asked questions
+          </h2>
+          <p className="text-muted-foreground text-center mb-12 max-w-xl mx-auto">
+            Everything you need to know about PrysmAI pricing.
+          </p>
 
-            <div className="space-y-0">
-              {faqs.map((faq, i) => (
-                <div key={i} className="border-b border-border/30">
-                  <button
-                    className="w-full text-left py-5 flex items-start justify-between gap-4"
-                    onClick={() =>
-                      setExpandedFaq(expandedFaq === i ? null : i)
-                    }
-                  >
-                    <span className="font-medium text-foreground">
-                      {faq.q}
-                    </span>
-                    <span
-                      className={`text-muted-foreground text-lg leading-none shrink-0 transition-transform duration-200 ${
-                        expandedFaq === i ? "rotate-45" : ""
-                      }`}
-                    >
-                      +
-                    </span>
-                  </button>
-                  {expandedFaq === i && (
-                    <p className="pb-5 text-sm text-muted-foreground leading-relaxed -mt-1">
+          <div className="max-w-2xl mx-auto space-y-2">
+            {faqs.map((faq, i) => (
+              <div
+                key={i}
+                className="border border-border/30 rounded-lg overflow-hidden"
+              >
+                <button
+                  className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-card/30 transition-colors"
+                  onClick={() =>
+                    setExpandedFaq(expandedFaq === i ? null : i)
+                  }
+                >
+                  <span className="text-sm font-medium pr-4">{faq.q}</span>
+                  <HelpCircle
+                    className={`w-4 h-4 shrink-0 text-muted-foreground transition-transform ${
+                      expandedFaq === i ? "rotate-45" : ""
+                    }`}
+                  />
+                </button>
+                {expandedFaq === i && (
+                  <div className="px-6 pb-4">
+                    <p className="text-sm text-muted-foreground leading-relaxed">
                       {faq.a}
                     </p>
-                  )}
-                </div>
-              ))}
-            </div>
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* ========== FINAL CTA ========== */}
-      <section className="py-28 lg:py-40 border-t border-border/30">
+      {/* ========== BOTTOM CTA ========== */}
+      <section className="pb-28 lg:pb-40">
         <div className="container">
           <div className="max-w-2xl mx-auto text-center">
-            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight mb-6">
-              Start seeing inside your AI.{" "}
-              <span className="text-primary">Today.</span>
+            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight mb-4">
+              Ready to see inside your AI?
             </h2>
-            <p className="text-lg text-muted-foreground mb-10">
-              5,000 free traced requests per month. No credit card required.
-              Upgrade when you're ready.
+            <p className="text-muted-foreground mb-8 max-w-lg mx-auto">
+              Start with the free plan. No credit card required. Upgrade when
+              your AI is ready for production.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Button
-                className="h-12 px-8 bg-primary text-primary-foreground hover:bg-primary/90 font-medium"
-                onClick={() => setEarlyAccessOpen(true)}
+                className="h-12 px-8 bg-primary text-primary-foreground hover:bg-primary/90 font-semibold"
+                onClick={() => {
+                  if (isAuthenticated) {
+                    navigate("/dashboard");
+                  } else {
+                    setEarlyAccessOpen(true);
+                  }
+                }}
               >
-                Get Started Free
+                {isAuthenticated ? "Go to Dashboard" : "Get Started Free"}
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
               <Button
                 variant="outline"
-                className="h-12 px-8 border-border hover:border-primary/40 hover:bg-primary/5"
+                className="h-12 px-8 border-border hover:border-primary/50 hover:bg-primary/5 font-medium"
                 onClick={() =>
                   (window.location.href =
                     "mailto:hello@prysmai.io?subject=Enterprise%20Inquiry")
@@ -531,27 +547,36 @@ export default function Pricing() {
       </section>
 
       {/* ========== FOOTER ========== */}
-      <footer className="border-t border-border py-16">
-        <div className="container">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-            <a href="/" className="flex items-center gap-2.5">
-              <img src={LOGO_URL} alt="Prysm AI" className="w-7 h-7" />
-              <span className="text-sm font-semibold">
-                Prysm<span className="text-primary">AI</span>
-              </span>
+      <footer className="border-t border-border/30 py-12">
+        <div className="container flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2.5">
+            <img src={LOGO_URL} alt="Prysm AI" className="w-6 h-6" />
+            <span className="text-sm text-muted-foreground">
+              &copy; {new Date().getFullYear()} Prysm AI. All rights reserved.
+            </span>
+          </div>
+          <div className="flex items-center gap-6 text-sm text-muted-foreground">
+            <a href="/docs" className="hover:text-foreground transition-colors">
+              Docs
             </a>
-            <p className="text-xs text-muted-foreground">
-              Built for builders who go deeper.
-            </p>
-            <p className="text-xs text-muted-foreground">
-              &copy; {new Date().getFullYear()} Prysm AI
-            </p>
+            <a href="/blog" className="hover:text-foreground transition-colors">
+              Blog
+            </a>
+            <a
+              href="mailto:hello@prysmai.io"
+              className="hover:text-foreground transition-colors"
+            >
+              Contact
+            </a>
           </div>
         </div>
       </footer>
 
-      {/* Early Access Modal */}
-      <EarlyAccessModal open={earlyAccessOpen} onOpenChange={setEarlyAccessOpen} />
+      {/* ========== EARLY ACCESS MODAL ========== */}
+      <EarlyAccessModal
+        open={earlyAccessOpen}
+        onOpenChange={setEarlyAccessOpen}
+      />
     </div>
   );
 }

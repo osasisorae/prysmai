@@ -40,6 +40,8 @@ import { eq, and, desc } from "drizzle-orm";
 import { generateInviteToken, approveWaitlistEntry, rejectWaitlistEntry } from "./customAuth";
 import { TRPCError } from "@trpc/server";
 import { computeConfidenceAnalysis, estimateAnthropicConfidence, type ConfidenceAnalysis } from "./confidence-analysis";
+import { createCheckoutSession, createBillingPortalSession, getSubscription, cancelSubscription, PLANS } from "./stripe";
+import { organizations as orgsTable } from "../drizzle/schema";
 
 // Helper: ensure user has an org, get it or throw
 async function requireOrg(userId: number) {
@@ -1266,6 +1268,98 @@ Keep the explanation concise (200-400 words).`;
           .limit(20);
         return snapshots;
       }),
+  }),
+
+  // ─── Stripe Billing ───
+  billing: router({
+    // Get current plan info for the user's org
+    getPlan: protectedProcedure.query(async ({ ctx }) => {
+      const org = await requireOrg(ctx.user.id);
+      const plan = org.plan || "free";
+      const planConfig = PLANS[plan];
+      let subscription = null;
+
+      if (org.stripeSubscriptionId) {
+        try {
+          const sub = await getSubscription(org.stripeSubscriptionId);
+          subscription = {
+            id: sub.id,
+            status: sub.status,
+            currentPeriodEnd: sub.items.data[0]?.current_period_end
+              ? new Date((sub.items.data[0].current_period_end as number) * 1000)
+              : null,
+            cancelAtPeriodEnd: sub.cancel_at_period_end,
+          };
+        } catch (err) {
+          console.error("[Billing] Failed to fetch subscription:", err);
+        }
+      }
+
+      return {
+        plan,
+        planName: planConfig?.name || "Free",
+        requestLimit: planConfig?.requestLimit || 5000,
+        dataRetentionDays: planConfig?.dataRetentionDays || 7,
+        maxProjects: planConfig?.maxProjects || 1,
+        maxTeamMembers: planConfig?.maxTeamMembers || 1,
+        stripeCustomerId: org.stripeCustomerId,
+        subscription,
+      };
+    }),
+
+    // Create a Stripe Checkout session for upgrading
+    createCheckout: protectedProcedure
+      .input(z.object({ plan: z.enum(["pro", "team"]) }))
+      .mutation(async ({ ctx, input }) => {
+        const org = await requireOrg(ctx.user.id);
+        const origin = ctx.req.headers.origin || "https://prysmai.io";
+
+        const url = await createCheckoutSession({
+          planKey: input.plan,
+          userId: ctx.user.id,
+          userEmail: ctx.user.email || "",
+          userName: ctx.user.name || undefined,
+          orgId: org.id,
+          origin,
+        });
+
+        return { url };
+      }),
+
+    // Create a Stripe Billing Portal session for managing subscription
+    createPortalSession: protectedProcedure.mutation(async ({ ctx }) => {
+      const org = await requireOrg(ctx.user.id);
+
+      if (!org.stripeCustomerId) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "No active subscription found. Please upgrade first.",
+        });
+      }
+
+      const origin = ctx.req.headers.origin || "https://prysmai.io";
+      const url = await createBillingPortalSession({
+        stripeCustomerId: org.stripeCustomerId,
+        origin,
+      });
+
+      return { url };
+    }),
+
+    // Cancel subscription at period end
+    cancelSubscription: protectedProcedure.mutation(async ({ ctx }) => {
+      const org = await requireOrg(ctx.user.id);
+
+      if (!org.stripeSubscriptionId) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "No active subscription to cancel.",
+        });
+      }
+
+      await cancelSubscription(org.stripeSubscriptionId);
+      return { success: true };
+    }),
   }),
 });
 export type AppRouter = typeof appRouter;
