@@ -16,6 +16,8 @@ import {
   LogOut,
   ChevronDown,
   Loader2,
+  Sparkles,
+  ArrowUpRight,
 } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -41,6 +43,60 @@ const NAV_ITEMS = [
   { id: "playbooks", label: "Playbooks", icon: BookOpen, path: "/dashboard/playbooks" },
   { id: "settings", label: "Settings", icon: SettingsIcon, path: "/dashboard/settings" },
 ];
+
+const PLAN_BADGES: Record<string, { label: string; color: string; bg: string }> = {
+  free: { label: "Free", color: "text-muted-foreground", bg: "bg-muted/50" },
+  pro: { label: "Pro", color: "text-primary", bg: "bg-primary/10" },
+  team: { label: "Team", color: "text-violet-400", bg: "bg-violet-500/10" },
+  enterprise: { label: "Enterprise", color: "text-amber-400", bg: "bg-amber-500/10" },
+};
+
+function PlanIndicator() {
+  const plan = trpc.billing.getPlan.useQuery(undefined, {
+    staleTime: 60_000,
+    retry: false,
+  });
+  const [, setLocation] = useLocation();
+
+  if (plan.isLoading) {
+    return (
+      <div className="px-3 py-2 border-b border-border">
+        <Skeleton className="h-7 w-full rounded-md" />
+      </div>
+    );
+  }
+
+  const currentPlan = plan.data?.plan || "free";
+  const badge = PLAN_BADGES[currentPlan] || PLAN_BADGES.free;
+  const isFree = currentPlan === "free";
+
+  return (
+    <div className="px-3 py-2 border-b border-border">
+      {isFree ? (
+        <button
+          onClick={() => setLocation("/pricing")}
+          className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-md bg-primary/5 border border-primary/20 hover:bg-primary/10 transition-colors group"
+        >
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-3.5 h-3.5 text-primary" />
+            <span className="text-xs font-medium text-primary">Upgrade Plan</span>
+          </div>
+          <ArrowUpRight className="w-3 h-3 text-primary opacity-60 group-hover:opacity-100 transition-opacity" />
+        </button>
+      ) : (
+        <div className={`flex items-center justify-between px-2.5 py-1.5 rounded-md ${badge.bg}`}>
+          <div className="flex items-center gap-2">
+            <Sparkles className={`w-3.5 h-3.5 ${badge.color}`} />
+            <span className={`text-xs font-medium ${badge.color}`}>{badge.label} Plan</span>
+          </div>
+          {plan.data?.subscription?.cancelAtPeriodEnd && (
+            <span className="text-[10px] text-muted-foreground">Cancelling</span>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function DashboardShell() {
   const { user, loading, logout } = useAuth();
@@ -137,6 +193,9 @@ export default function DashboardShell() {
             <span className="truncate text-xs font-medium">{activeProject.name}</span>
           </div>
         </div>
+
+        {/* Plan indicator */}
+        <PlanIndicator />
 
         {/* Navigation */}
         <nav className="flex-1 px-3 py-3 space-y-0.5">

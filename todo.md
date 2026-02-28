@@ -673,7 +673,7 @@
 - [x] Add subscription status to user/org schema (stripeCustomerId, stripeSubscriptionId on orgs)
 - [x] Wire pricing page CTA buttons to Stripe Checkout
 - [x] Add subscription management (billing portal tRPC procedure)
-- [ ] Add plan indicator to dashboard (deferred — next iteration)
+- [x] Add plan indicator to dashboard sidebar
 - [x] Write vitest tests for Stripe integration (600 tests passing)
 - [x] Test end-to-end checkout flow (verified Stripe Checkout URL returned)
 - [x] Save checkpoint
