@@ -655,3 +655,11 @@
 ## Docs: Add Example Applications
 - [x] Add "Example Applications" section to /docs page
 - [x] Add AI Debate Arena entry with description, GitHub link, and blog tutorial link
+
+## Pricing Page
+- [x] Create /pricing page with Free, Pro, Team, Enterprise tiers
+- [x] Register route in App.tsx
+- [x] Add pricing link to navbar
+- [x] Test page renders correctly
+- [x] Run vitest (587 tests passing)
+- [x] Save checkpoint

@@ -15,11 +15,13 @@ import SetupAccount from "./pages/SetupAccount";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import AcceptInvite from "./pages/AcceptInvite";
+import Pricing from "./pages/Pricing";
 
 function Router() {
   return (
     <Switch>
       <Route path={"/"} component={Home} />
+      <Route path={"/pricing"} component={Pricing} />
       <Route path={"/docs"} component={Docs} />
       <Route path={"/blog"} component={Blog} />
       <Route path={"/blog/:slug"} component={Blog} />
