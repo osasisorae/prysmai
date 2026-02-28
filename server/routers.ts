@@ -498,7 +498,25 @@ export const appRouter = router({
   usage: router({
     get: protectedProcedure.query(async ({ ctx }) => {
       const org = await requireOrg(ctx.user.id);
-      return await getUsageForOrg(org.id);
+      const usage = await getUsageForOrg(org.id);
+      const plan = org.plan ?? "free";
+      const limits: Record<string, number> = {
+        free: 5000,
+        pro: 50000,
+        team: 250000,
+        enterprise: Infinity,
+      };
+      const limit = limits[plan] ?? limits.free;
+      const totalRequests = usage?.totalRequests ?? 0;
+      const percentUsed = limit === Infinity ? 0 : Math.round((totalRequests / limit) * 100);
+      return {
+        ...usage,
+        plan,
+        limit,
+        totalRequests,
+        percentUsed,
+        remaining: limit === Infinity ? Infinity : Math.max(0, limit - totalRequests),
+      };
     }),
   }),
 

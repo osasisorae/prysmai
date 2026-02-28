@@ -6,6 +6,7 @@
  * - PII detection & redaction
  * - Content policy enforcement
  * - Unified threat scoring
+ * - LLM deep scanning (paid tiers)
  */
 
 export {
@@ -40,3 +41,12 @@ export {
   type ContentPolicyRule,
   type ContentPolicyMatch,
 } from "./threat-scorer";
+
+export {
+  deepScanPrompt,
+  mergeScanResults,
+  createSkippedResult,
+  isPaidPlan,
+  PAID_PLANS,
+  type LLMScanResult,
+} from "./llm-scanner";

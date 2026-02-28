@@ -50,6 +50,100 @@ const PLAN_COLORS: Record<string, { text: string; bg: string; border: string }> 
   enterprise: { text: "text-amber-400", bg: "bg-amber-500/10", border: "border-amber-500/30" },
 };
 
+function UsageMeter() {
+  const usageQuery = trpc.usage.get.useQuery(undefined, { staleTime: 30_000 });
+
+  if (usageQuery.isLoading) {
+    return (
+      <div className="rounded-xl border border-border bg-card/30 p-6">
+        <Skeleton className="h-24 w-full" />
+      </div>
+    );
+  }
+
+  const usage = usageQuery.data;
+  if (!usage) return null;
+
+  const { totalRequests, limit, percentUsed, plan, remaining } = usage;
+  const isUnlimited = limit === Infinity || limit === -1;
+  const isNearLimit = percentUsed >= 80;
+  const isOverLimit = percentUsed >= 100;
+
+  const barColor = isOverLimit
+    ? "bg-destructive"
+    : isNearLimit
+    ? "bg-amber-500"
+    : "bg-primary";
+
+  return (
+    <div className="rounded-xl border border-border bg-card/30 p-6">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+          API Usage This Month
+        </h3>
+        <span className="text-xs text-muted-foreground">
+          Resets on the 1st of each month
+        </span>
+      </div>
+
+      {isUnlimited ? (
+        <div className="flex items-center gap-3">
+          <BarChart3 className="w-5 h-5 text-primary" />
+          <div>
+            <p className="text-2xl font-bold">{totalRequests.toLocaleString()}</p>
+            <p className="text-xs text-muted-foreground">requests made · Unlimited plan</p>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="flex items-end justify-between mb-2">
+            <div>
+              <p className="text-2xl font-bold">
+                {totalRequests.toLocaleString()}
+                <span className="text-sm font-normal text-muted-foreground">
+                  {" "}/{" "}{limit.toLocaleString()}
+                </span>
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {isOverLimit
+                  ? "Limit reached — requests will be blocked"
+                  : `${typeof remaining === 'number' ? remaining.toLocaleString() : remaining} requests remaining`}
+              </p>
+            </div>
+            <span className={`text-sm font-semibold ${
+              isOverLimit ? "text-destructive" : isNearLimit ? "text-amber-400" : "text-primary"
+            }`}>
+              {percentUsed}%
+            </span>
+          </div>
+
+          {/* Progress bar */}
+          <div className="w-full h-2.5 rounded-full bg-muted/50 overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all duration-500 ${barColor}`}
+              style={{ width: `${Math.min(100, percentUsed)}%` }}
+            />
+          </div>
+
+          {isNearLimit && !isOverLimit && (
+            <p className="flex items-center gap-1.5 text-xs text-amber-400 mt-3">
+              <AlertTriangle className="w-3.5 h-3.5" />
+              Approaching your monthly limit. Consider upgrading for more requests.
+            </p>
+          )}
+
+          {isOverLimit && (
+            <p className="flex items-center gap-1.5 text-xs text-destructive mt-3">
+              <AlertTriangle className="w-3.5 h-3.5" />
+              Monthly limit reached. API requests are being blocked. Upgrade your plan to continue.
+            </p>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
 export default function Billing() {
   const [, navigate] = useLocation();
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
@@ -209,6 +303,9 @@ export default function Billing() {
           </div>
         </div>
       </div>
+
+      {/* Usage Meter */}
+      <UsageMeter />
 
       {/* Actions */}
       <div className="rounded-xl border border-border bg-card/30 p-6">

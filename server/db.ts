@@ -890,14 +890,14 @@ export async function getUsageForOrg(orgId: number) {
 }
 
 /**
- * Check if org has exceeded free tier limit (10K requests/month).
+ * Check if org has exceeded tier limit (5K free / 50K pro / 250K team / unlimited enterprise).
  * Returns { allowed: boolean, currentCount: number, limit: number }
  */
 export async function checkUsageLimit(orgId: number, plan: string = "free") {
   const limits: Record<string, number> = {
-    free: 10000,
-    pro: 100000,
-    team: 500000,
+    free: 5000,
+    pro: 50000,
+    team: 250000,
     enterprise: Infinity,
   };
 
@@ -911,6 +911,24 @@ export async function checkUsageLimit(orgId: number, plan: string = "free") {
     limit,
     plan,
   };
+}
+
+/**
+ * Get the org's plan by project ID (used by proxy for tier enforcement).
+ * Returns the plan string or 'free' as fallback.
+ */
+export async function getOrgPlanByProjectId(projectId: number): Promise<string> {
+  const db = await getDb();
+  if (!db) return "free";
+
+  const result = await db
+    .select({ plan: organizations.plan })
+    .from(projects)
+    .innerJoin(organizations, eq(projects.orgId, organizations.id))
+    .where(eq(projects.id, projectId))
+    .limit(1);
+
+  return result[0]?.plan ?? "free";
 }
 
 // ─── Alert config helpers ───

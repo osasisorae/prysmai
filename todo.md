@@ -686,3 +686,22 @@
 ## Stripe UX Improvements
 - [x] Add upgrade confirmation dialog when user already has a plan (show proration info)
 - [x] Build billing/subscription management section in dashboard (view plan, cancel, manage billing portal)
+
+## Usage Tracking (Request Counter)
+- [x] Add usage_records table to schema (orgId, projectId, periodStart/End, requestCount, totalTokens, totalCostUsd)
+- [x] Add increment logic in proxy middleware (incrementUsage per org/project per month)
+- [x] Enforce tier limits (5,000 Free / 50,000 Pro / 250,000 Team / unlimited Enterprise)
+- [x] Return 429 when limit exceeded with upgrade CTA
+- [x] Add usage stats tRPC procedure for dashboard (usage.get)
+- [x] Display usage stats in dashboard (current count vs limit, progress bar)
+- [x] Add usage stats to billing page (UsageMeter component)
+- [x] Verified: getOrgPlanByProjectId correctly joins projects → organizations for real plan lookup
+
+## Tiered Security Scanning
+- [x] Separate rule-based scanning (regex/pattern) from LLM-based scanning
+- [x] Free tier: rule-based only (fast, zero cost)
+- [x] Pro/Team/Enterprise tier: LLM-based deep analysis via Forge API (gemini-2.5-flash)
+- [x] Add tier check in security scanning middleware (isPaidPlan, assessRequest with orgPlan)
+- [x] Update security dashboard to show scan type (Rules vs Deep badge + LLM detail row)
+- [x] Write vitest tests (641 tests passing — 24 test files)
+- [ ] Save checkpoint

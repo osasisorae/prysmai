@@ -342,6 +342,17 @@ export const securityEvents = mysqlTable(
     inputPreview: text("inputPreview"), // first 200 chars of the prompt
     outputPreview: text("outputPreview"), // first 200 chars of the completion (for output events)
     processingTimeMs: int("processingTimeMs"),
+    // LLM deep scan results (paid tiers only)
+    llmScanned: boolean("llmScanned").default(false),
+    llmClassification: mysqlEnum("llmClassification", ["safe", "suspicious", "malicious"]),
+    llmConfidence: decimal("llmConfidence", { precision: 3, scale: 2 }),
+    llmThreatScore: int("llmThreatScore"),
+    llmAttackCategories: json("llmAttackCategories").$type<string[]>(),
+    llmExplanation: text("llmExplanation"),
+    llmIsJailbreak: boolean("llmIsJailbreak"),
+    llmIsObfuscatedInjection: boolean("llmIsObfuscatedInjection"),
+    llmIsDataExfiltration: boolean("llmIsDataExfiltration"),
+    scanTier: mysqlEnum("scanTier", ["free", "pro", "team", "enterprise"]).default("free"),
   },
   (table) => [
     index("secevents_project_ts_idx").on(table.projectId, table.timestamp),

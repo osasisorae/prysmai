@@ -7,7 +7,7 @@
  *   3. Configuration — toggle detection modules, set blocking, custom keywords
  */
 
-import { useState, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -342,26 +342,28 @@ function ThreatLogTab({ projectId }: { projectId: number }) {
               <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">Score</th>
               <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">Action</th>
               <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">Model</th>
+              <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">Scan</th>
               <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">Summary</th>
             </tr>
           </thead>
           <tbody>
             {events.isLoading ? (
               <tr>
-                <td colSpan={6} className="text-center py-12">
+                <td colSpan={7} className="text-center py-12">
                   <Loader2 className="w-5 h-5 animate-spin text-muted-foreground mx-auto" />
                 </td>
               </tr>
             ) : !events.data?.length ? (
               <tr>
-                <td colSpan={6} className="text-center py-12">
+                <td colSpan={7} className="text-center py-12">
                   <ShieldCheck className="w-8 h-8 text-green-400 mx-auto mb-2" />
                   <p className="text-sm text-muted-foreground">No security events found</p>
                 </td>
               </tr>
             ) : (
               events.data.map((event) => (
-                <tr key={event.id} className="border-b border-border/50 hover:bg-accent/30">
+                <React.Fragment key={event.id}>
+                <tr className="border-b border-border/50 hover:bg-accent/30">
                   <td className="px-4 py-2.5 text-xs text-muted-foreground tabular-nums whitespace-nowrap">
                     {new Date(event.timestamp).toLocaleString()}
                   </td>
@@ -377,10 +379,58 @@ function ThreatLogTab({ projectId }: { projectId: number }) {
                   <td className="px-4 py-2.5 text-xs text-muted-foreground">
                     {event.model ?? "—"}
                   </td>
+                  <td className="px-4 py-2.5">
+                    {(event as any).llmScanned ? (
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-primary/10 text-primary border border-primary/20">
+                        <Eye className="w-2.5 h-2.5" />
+                        Deep
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-muted/50 text-muted-foreground">
+                        Rules
+                      </span>
+                    )}
+                  </td>
                   <td className="px-4 py-2.5 text-xs text-muted-foreground max-w-xs truncate">
-                    {event.summary ?? "—"}
+                    {(event as any).llmScanned && (event as any).llmExplanation
+                      ? (event as any).llmExplanation
+                      : (event.summary ?? "—")}
                   </td>
                 </tr>
+                {/* LLM scan detail row */}
+                {(event as any).llmScanned && (event as any).llmClassification !== "safe" && (
+                  <tr className="bg-primary/[0.02] border-b border-border/30">
+                    <td colSpan={7} className="px-4 py-2">
+                      <div className="flex items-center gap-4 text-xs">
+                        <span className="text-muted-foreground">LLM Analysis:</span>
+                        <span className={`font-medium ${
+                          (event as any).llmClassification === "malicious" ? "text-red-400" :
+                          (event as any).llmClassification === "suspicious" ? "text-orange-400" : "text-green-400"
+                        }`}>
+                          {((event as any).llmClassification ?? "").charAt(0).toUpperCase() + ((event as any).llmClassification ?? "").slice(1)}
+                        </span>
+                        <span className="text-muted-foreground">
+                          Confidence: {((event as any).llmConfidence * 100).toFixed(0)}%
+                        </span>
+                        {(event as any).llmIsJailbreak && (
+                          <Badge variant="destructive" className="text-[10px] h-4">Jailbreak</Badge>
+                        )}
+                        {(event as any).llmIsObfuscatedInjection && (
+                          <Badge variant="destructive" className="text-[10px] h-4">Obfuscated</Badge>
+                        )}
+                        {(event as any).llmIsDataExfiltration && (
+                          <Badge variant="destructive" className="text-[10px] h-4">Data Exfil</Badge>
+                        )}
+                        {(event as any).llmAttackCategories?.length > 0 && (
+                          <span className="text-muted-foreground">
+                            Categories: {(event as any).llmAttackCategories.join(", ")}
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                )}
+                </React.Fragment>
               ))
             )}
           </tbody>

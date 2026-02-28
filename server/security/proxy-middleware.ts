@@ -7,14 +7,17 @@
  * Flow:
  * 1. Extract prompt text from request body
  * 2. Load project security config (with caching)
- * 3. Run threat assessment
- * 4. Log security event to DB
- * 5. Block if threat level is high and blocking is enabled
- * 6. Add security headers to response
+ * 3. Run rule-based threat assessment (all tiers)
+ * 4. Run LLM deep scan (paid tiers only: Pro/Team/Enterprise)
+ * 5. Merge results and determine final action
+ * 6. Log security event to DB (including LLM scan data)
+ * 7. Block if threat level is high and blocking is enabled
+ * 8. Add security headers to response
  */
 
 import { Request, Response, NextFunction } from "express";
 import { assessThreat, type SecurityConfig, type ThreatAssessment } from "./threat-scorer";
+import { deepScanPrompt, mergeScanResults, createSkippedResult, isPaidPlan, type LLMScanResult } from "./llm-scanner";
 import { getDb } from "../db";
 import { securityEvents, securityConfigs } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
@@ -119,11 +122,15 @@ async function logSecurityEvent(
   traceId: string | undefined,
   model: string,
   assessment: ThreatAssessment,
-  inputText: string
+  inputText: string,
+  llmResult?: LLMScanResult,
+  orgPlan?: string
 ): Promise<void> {
   try {
     // Only log non-clean events to save DB space
-    if (assessment.threatLevel === "clean") return;
+    // BUT always log if LLM scan found something interesting
+    const llmFoundThreat = llmResult?.scanned && llmResult.classification !== "safe";
+    if (assessment.threatLevel === "clean" && !llmFoundThreat) return;
 
     const db = await getDb();
     if (!db) return;
@@ -147,10 +154,90 @@ async function logSecurityEvent(
       model,
       inputPreview: inputText.substring(0, 200),
       processingTimeMs: assessment.processingTimeMs,
+      // LLM scan fields
+      llmScanned: llmResult?.scanned ?? false,
+      llmClassification: llmResult?.scanned ? llmResult.classification : null,
+      llmConfidence: llmResult?.scanned ? llmResult.confidence.toFixed(2) : null,
+      llmThreatScore: llmResult?.scanned ? llmResult.threatScore : null,
+      llmAttackCategories: llmResult?.scanned && llmResult.attackCategories.length > 0
+        ? llmResult.attackCategories : null,
+      llmExplanation: llmResult?.scanned ? llmResult.explanation : null,
+      llmIsJailbreak: llmResult?.scanned ? llmResult.isJailbreak : null,
+      llmIsObfuscatedInjection: llmResult?.scanned ? llmResult.isObfuscatedInjection : null,
+      llmIsDataExfiltration: llmResult?.scanned ? llmResult.isDataExfiltration : null,
+      scanTier: (orgPlan as any) ?? "free",
     });
   } catch (err) {
     console.error("[Security] Failed to log security event:", err);
   }
+}
+
+// ─── Enhanced Assessment (rule-based + optional LLM) ────────────────
+
+export interface EnhancedThreatAssessment extends ThreatAssessment {
+  llmResult?: LLMScanResult;
+  scanTier: string;
+  llmEnhanced: boolean;
+}
+
+/**
+ * Run tiered security assessment:
+ * - Free tier: rule-based only (fast, zero cost)
+ * - Paid tiers: rule-based + LLM deep scan (thorough)
+ */
+async function tieredAssessment(
+  promptText: string,
+  config: Partial<SecurityConfig>,
+  orgPlan: string
+): Promise<EnhancedThreatAssessment> {
+  // Step 1: Always run rule-based assessment (all tiers)
+  const ruleAssessment = assessThreat(promptText, config);
+
+  // Step 2: For paid tiers, also run LLM deep scan
+  let llmResult: LLMScanResult;
+  if (isPaidPlan(orgPlan)) {
+    // Run LLM scan in parallel-safe manner
+    // Don't let LLM scan failure block the request
+    llmResult = await deepScanPrompt(promptText);
+  } else {
+    llmResult = createSkippedResult();
+  }
+
+  // Step 3: Merge results if LLM scan was performed
+  const merged = mergeScanResults(ruleAssessment.threatScore, llmResult);
+
+  // If LLM enhanced the score, update the assessment
+  const finalScore = merged.finalScore;
+  const threatLevel = finalScore <= 20 ? "clean" as const
+    : finalScore <= 50 ? "low" as const
+    : finalScore <= 75 ? "medium" as const
+    : "high" as const;
+
+  // Determine action based on merged score
+  const hasBlockPolicy = ruleAssessment.policyMatches.some((m) => m.action === "block");
+  let action: "pass" | "log" | "warn" | "block" = "pass";
+  if (hasBlockPolicy) action = "block";
+  else if (threatLevel === "low") action = "log";
+  else if (threatLevel === "medium") action = "warn";
+  else if (threatLevel === "high") action = config.blockHighThreats ? "block" : "warn";
+
+  // Build enhanced summary
+  let summary = ruleAssessment.summary;
+  if (merged.llmEnhanced && llmResult.classification !== "safe") {
+    summary = `${summary}; LLM analysis: ${merged.combinedExplanation}`;
+  }
+
+  return {
+    ...ruleAssessment,
+    threatScore: finalScore,
+    threatLevel,
+    action,
+    summary,
+    processingTimeMs: ruleAssessment.processingTimeMs + (llmResult.processingTimeMs ?? 0),
+    llmResult,
+    scanTier: orgPlan,
+    llmEnhanced: merged.llmEnhanced,
+  };
 }
 
 // ─── Middleware ──────────────────────────────────────────────────────
@@ -218,24 +305,38 @@ export async function securityMiddleware(
 }
 
 /**
- * Standalone function to run security assessment on a request body.
+ * Standalone function to run tiered security assessment on a request body.
  * Used by handlers that need to assess after auth but before forwarding.
+ * 
+ * @param projectId - The project ID for config lookup
+ * @param body - The request body to analyze
+ * @param orgPlan - The org's subscription plan (determines scan tier)
+ * @param traceId - Optional trace ID for correlation
  */
 export async function assessRequest(
   projectId: number,
   body: any,
+  orgPlan: string = "free",
   traceId?: string
-): Promise<ThreatAssessment | null> {
+): Promise<EnhancedThreatAssessment | null> {
   try {
     const config = await getSecurityConfig(projectId);
     const promptText = extractPromptText(body);
     if (!promptText.trim()) return null;
 
-    const assessment = assessThreat(promptText, config);
+    const assessment = await tieredAssessment(promptText, config, orgPlan);
     const model = body?.model ?? "unknown";
 
-    // Log asynchronously
-    logSecurityEvent(projectId, traceId, model, assessment, promptText).catch(console.error);
+    // Log asynchronously (includes LLM scan data)
+    logSecurityEvent(
+      projectId,
+      traceId,
+      model,
+      assessment,
+      promptText,
+      assessment.llmResult,
+      orgPlan
+    ).catch(console.error);
 
     return assessment;
   } catch (err) {
@@ -245,4 +346,4 @@ export async function assessRequest(
 }
 
 // Export for testing
-export { extractPromptText, getSecurityConfig, logSecurityEvent, configCache };
+export { extractPromptText, getSecurityConfig, logSecurityEvent, configCache, tieredAssessment };

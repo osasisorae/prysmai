@@ -26,10 +26,11 @@ import {
   incrementUsage,
   checkUsageLimit,
   getExplainabilityConfig,
+  getOrgPlanByProjectId,
 } from "./db";
 import { emitTrace } from "./trace-emitter";
 import type { InsertTrace } from "../drizzle/schema";
-import { assessRequest } from "./security/proxy-middleware";
+import { assessRequest, type EnhancedThreatAssessment } from "./security/proxy-middleware";
 import { scanOutput, logOutputSecurityEvent, getOutputScanConfig } from "./security/output-scanner";
 import {
   translateRequestToAnthropic,
@@ -53,6 +54,7 @@ const proxyRouter = Router();
 interface AuthResult {
   projectId: number;
   orgId: number | null;
+  orgPlan: string;
   provider: string;
   baseUrl: string;
   upstreamApiKey: string;
@@ -88,10 +90,11 @@ async function authenticateProxyRequest(req: Request): Promise<AuthResult | null
     }
   }
 
-  // Check usage limits (free tier enforcement)
+  // Check usage limits (tier enforcement)
   const org = project.orgId;
+  const orgPlan = org ? await getOrgPlanByProjectId(project.id) : "free";
   if (org) {
-    const usageCheck = await checkUsageLimit(org, "free"); // TODO: look up actual plan from org
+    const usageCheck = await checkUsageLimit(org, orgPlan);
     if (!usageCheck.allowed) {
       return { rateLimited: true, currentCount: usageCheck.currentCount, limit: usageCheck.limit } as any;
     }
@@ -123,6 +126,7 @@ async function authenticateProxyRequest(req: Request): Promise<AuthResult | null
   return {
     projectId: project.id,
     orgId: project.orgId,
+    orgPlan,
     provider: resolution.provider,
     baseUrl: resolution.baseUrl,
     upstreamApiKey: resolution.apiKey,
@@ -1084,11 +1088,14 @@ proxyRouter.post("/chat/completions", async (req: Request, res: Response) => {
   // Increment usage counter
   if (auth.orgId) incrementUsage(auth.orgId, auth.projectId).catch(console.error);
 
-  // ─── Security Assessment ───
-  const securityResult = await assessRequest(auth.projectId, req.body);
+  // ─── Security Assessment (tiered: free=rule-based, paid=rule-based+LLM) ───
+  const securityResult = await assessRequest(auth.projectId, req.body, auth.orgPlan);
   if (securityResult) {
     res.set("X-Prysm-Threat-Score", securityResult.threatScore.toString());
     res.set("X-Prysm-Threat-Level", securityResult.threatLevel);
+    if (securityResult.llmEnhanced) {
+      res.set("X-Prysm-Scan-Tier", "deep");
+    }
     if (securityResult.action === "block") {
       return res.status(403).json({
         error: {
@@ -1097,6 +1104,8 @@ proxyRouter.post("/chat/completions", async (req: Request, res: Response) => {
           threat_level: securityResult.threatLevel,
           threat_score: securityResult.threatScore,
           details: securityResult.summary,
+          scan_tier: securityResult.scanTier,
+          llm_enhanced: securityResult.llmEnhanced,
         },
       });
     }
