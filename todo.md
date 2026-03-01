@@ -729,4 +729,11 @@
 - [x] Show side-by-side: Rules (free) vs LLM Deep Scan (pro) with enhancement indicator
 - [x] Add "Show raw analysis data" toggle for technical users
 - [x] Write vitest tests (672 tests passing — 25 test files)
+- [x] Save checkpoint
+
+## Post-Launch: Demo Scanner Rate Limiting
+- [x] Add IP-based rate limiting to demo.scanPrompt (3 scans/hour per IP)
+- [x] Return clear error message with retry-after time when limit exceeded
+- [x] Show rate limit feedback in SecurityScanDemo UI (remaining count + error banner)
+- [x] Write vitest tests for rate limiter (687 tests passing — 26 test files)
 - [ ] Save checkpoint

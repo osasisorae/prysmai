@@ -116,17 +116,30 @@ export default function SecurityScanDemo() {
   const [prompt, setPrompt] = useState("");
   const [result, setResult] = useState<ScanResult | null>(null);
   const [showDetails, setShowDetails] = useState(false);
+  const [rateLimitMsg, setRateLimitMsg] = useState<string | null>(null);
+  const [scansRemaining, setScansRemaining] = useState<number | null>(null);
 
   const scanMutation = trpc.demo.scanPrompt.useMutation({
-    onSuccess: (data) => {
+    onSuccess: (data: any) => {
       setResult(data as ScanResult);
       setShowDetails(false);
+      setRateLimitMsg(null);
+      if (data.rateLimit) {
+        setScansRemaining(data.rateLimit.remaining);
+      }
+    },
+    onError: (error) => {
+      if (error.message.includes("Rate limit")) {
+        setRateLimitMsg(error.message);
+        setScansRemaining(0);
+      }
     },
   });
 
   const handleScan = () => {
-    if (!prompt.trim()) return;
+    if (!prompt.trim() || scansRemaining === 0) return;
     setResult(null);
+    setRateLimitMsg(null);
     scanMutation.mutate({ prompt: prompt.trim() });
   };
 
@@ -182,12 +195,19 @@ export default function SecurityScanDemo() {
               className="w-full bg-card border border-border rounded-lg px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 resize-none focus:outline-none focus:ring-1 focus:ring-primary/50 focus:border-primary/50"
             />
             <div className="flex items-center justify-between mt-3">
-              <span className="text-xs text-muted-foreground/50">
-                {prompt.length}/2000
-              </span>
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-muted-foreground/50">
+                  {prompt.length}/2000
+                </span>
+                {scansRemaining !== null && (
+                  <span className={`text-xs font-mono ${scansRemaining === 0 ? "text-red-400" : "text-muted-foreground/50"}`}>
+                    {scansRemaining} scan{scansRemaining !== 1 ? "s" : ""} remaining
+                  </span>
+                )}
+              </div>
               <Button
                 onClick={handleScan}
-                disabled={!prompt.trim() || scanMutation.isPending}
+                disabled={!prompt.trim() || scanMutation.isPending || scansRemaining === 0}
                 className="bg-primary text-primary-foreground hover:bg-primary/90 font-medium"
                 size="sm"
               >
@@ -205,6 +225,19 @@ export default function SecurityScanDemo() {
               </Button>
             </div>
           </div>
+
+          {/* Rate limit message */}
+          {rateLimitMsg && (
+            <div className="mb-6 p-4 rounded-lg border border-red-500/30 bg-red-500/5">
+              <div className="flex items-center gap-2">
+                <ShieldAlert className="w-4 h-4 text-red-400 shrink-0" />
+                <p className="text-sm text-red-400">{rateLimitMsg}</p>
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                Sign up for a free account to get unlimited scans, or upgrade to Pro for LLM-powered deep analysis on every request.
+              </p>
+            </div>
+          )}
 
           {/* Results */}
           {result && (

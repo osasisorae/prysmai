@@ -42,6 +42,14 @@ import { TRPCError } from "@trpc/server";
 import { computeConfidenceAnalysis, estimateAnthropicConfidence, type ConfidenceAnalysis } from "./confidence-analysis";
 import { createCheckoutSession, createBillingPortalSession, getSubscription, cancelSubscription, stripe, PLANS } from "./stripe";
 import { organizations as orgsTable } from "../drizzle/schema";
+import { createRateLimiter, getClientIp } from "./rate-limiter";
+
+// Demo scanner rate limit: 3 scans per hour per IP
+const DEMO_SCAN_LIMIT = 3;
+const demoScanLimiter = createRateLimiter("demo-scan", {
+  maxRequests: DEMO_SCAN_LIMIT,
+  windowMs: 60 * 60 * 1000, // 1 hour
+});
 
 // Helper: ensure user has an org, get it or throw
 async function requireOrg(userId: number) {
@@ -74,7 +82,18 @@ export const appRouter = router({
   demo: router({
     scanPrompt: publicProcedure
       .input(z.object({ prompt: z.string().min(1).max(2000) }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
+        // Rate limit: 3 scans per hour per IP
+        const ip = getClientIp(ctx.req);
+        const { allowed, remaining, retryAfterMs } = demoScanLimiter.check(ip);
+        if (!allowed) {
+          const retryMinutes = Math.ceil(retryAfterMs / 60000);
+          throw new TRPCError({
+            code: "TOO_MANY_REQUESTS",
+            message: `Rate limit exceeded. You can scan ${DEMO_SCAN_LIMIT} prompts per hour. Try again in ${retryMinutes} minute${retryMinutes !== 1 ? "s" : ""}.`,
+          });
+        }
+
         const { assessThreat, DEFAULT_SECURITY_CONFIG } = await import("./security/threat-scorer");
         const { deepScanPrompt, createSkippedResult, mergeScanResults } = await import("./security/llm-scanner");
 
@@ -134,6 +153,10 @@ export const appRouter = router({
             explanation: merged.combinedExplanation,
           },
           totalProcessingTimeMs: Date.now() - startTime,
+          rateLimit: {
+            remaining,
+            limit: DEMO_SCAN_LIMIT,
+          },
         };
       }),
   }),
