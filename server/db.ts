@@ -582,7 +582,7 @@ export async function getLatencyDistribution(projectId: number, from: Date, to: 
 
 // ─── Pre-aggregated Metrics Pipeline ───
 
-import { metrics, InsertMetric, usageRecords, alertConfigs, InsertAlertConfig, orgMembers, InsertOrgMember } from "../drizzle/schema";
+import { metrics, InsertMetric, usageRecords, usageAlerts, alertConfigs, InsertAlertConfig, orgMembers, InsertOrgMember } from "../drizzle/schema";
 
 /**
  * Compute approximate percentile from a sorted array of numbers.
@@ -1312,4 +1312,113 @@ export async function getTraceByDbId(id: number) {
   if (!db) return undefined;
   const result = await db.select().from(traces).where(eq(traces.id, id)).limit(1);
   return result[0] ?? undefined;
+}
+
+
+// ─── Usage Alert Check ───
+
+const USAGE_ALERT_THRESHOLDS = [80, 90, 100]; // percent thresholds
+
+/**
+ * Check if usage has crossed an alert threshold and send email if needed.
+ * Called after each incrementUsage to avoid separate polling.
+ * 
+ * Returns the threshold that was triggered (or null if no alert needed).
+ */
+export async function checkAndSendUsageAlert(
+  orgId: number,
+  plan: string
+): Promise<number | null> {
+  const db = await getDb();
+  if (!db) return null;
+
+  const limits: Record<string, number> = {
+    free: 5000,
+    pro: 50000,
+    team: 250000,
+    enterprise: Infinity,
+  };
+
+  const limit = limits[plan] ?? limits.free;
+  if (limit === Infinity) return null; // Enterprise has no limit
+
+  const usage = await getUsageForOrg(orgId);
+  if (!usage) return null;
+
+  const currentCount = usage.totalRequests;
+  const percentUsed = Math.round((currentCount / limit) * 100);
+
+  // Find the highest threshold that has been crossed
+  const crossedThreshold = USAGE_ALERT_THRESHOLDS
+    .filter((t) => percentUsed >= t)
+    .sort((a, b) => b - a)[0];
+
+  if (!crossedThreshold) return null;
+
+  // Check if we already sent this threshold alert for this billing period
+  const periodStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+  const periodStartStr = periodStart.toISOString().slice(0, 19).replace("T", " ");
+
+  const existing = await db
+    .select()
+    .from(usageAlerts)
+    .where(
+      and(
+        eq(usageAlerts.orgId, orgId),
+        eq(usageAlerts.threshold, crossedThreshold),
+        gte(usageAlerts.periodStart, periodStart)
+      )
+    )
+    .limit(1);
+
+  if (existing.length > 0) return null; // Already sent
+
+  // Get org details and owner email
+  const org = await getOrganizationById(orgId);
+  if (!org) return null;
+
+  const owner = await db
+    .select({ email: users.email, name: users.name })
+    .from(users)
+    .where(eq(users.id, org.ownerId))
+    .limit(1);
+
+  const ownerEmail = owner[0]?.email;
+  if (!ownerEmail) return null;
+
+  // Record that we're sending this alert (prevent duplicates)
+  try {
+    await db.insert(usageAlerts).values({
+      orgId,
+      periodStart,
+      threshold: crossedThreshold,
+      emailTo: ownerEmail,
+    });
+  } catch (err: any) {
+    // Duplicate key = already sent (race condition protection)
+    if (err?.code === "ER_DUP_ENTRY") return null;
+    throw err;
+  }
+
+  // Send the email (async, don't block the request)
+  const { sendUsageAlertEmail } = await import("./usageAlertEmail");
+  const siteUrl = process.env.SITE_URL || "https://prysmai.io";
+
+  sendUsageAlertEmail({
+    email: ownerEmail,
+    orgName: org.name,
+    currentPlan: plan,
+    currentUsage: currentCount,
+    limit,
+    percentUsed,
+    siteUrl,
+  }).catch((err) => {
+    console.error("[UsageAlert] Failed to send email:", err);
+  });
+
+  console.log(
+    `[UsageAlert] Sent ${crossedThreshold}% alert to ${ownerEmail} for org ${org.name} (${currentCount}/${limit})`
+  );
+
+  return crossedThreshold;
 }

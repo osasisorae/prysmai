@@ -704,4 +704,29 @@
 - [x] Add tier check in security scanning middleware (isPaidPlan, assessRequest with orgPlan)
 - [x] Update security dashboard to show scan type (Rules vs Deep badge + LLM detail row)
 - [x] Write vitest tests (641 tests passing — 24 test files)
+- [x] Save checkpoint
+
+## Final Launch Features
+
+### Feature 1: verifyCheckout Fallback (Plan Indicator Bug Fix)
+- [x] Build verifyCheckout tRPC procedure (queries Stripe API for session status)
+- [x] Call verifyCheckout on checkout success page redirect (DashboardShell useEffect)
+- [x] Update org plan in DB if checkout completed but webhook missed
+- [x] Update plan indicator in dashboard sidebar immediately (invalidates billing queries)
+- [x] Write vitest tests
+
+### Feature 2: Usage Alerts at 80% Tier Limit
+- [x] Add usage_alerts table to schema (orgId, threshold, sentAt)
+- [x] Add checkAndSendUsageAlert in db.ts (fires at 80%, 90%, 100%)
+- [x] Wire into proxy after incrementUsage calls (chat/completions/embeddings)
+- [x] Send dark-themed email with usage bar, remaining count, upgrade CTA
+- [x] Track per-threshold per-period to avoid duplicate emails
+- [x] Write vitest tests
+
+### Feature 3: Security Scan Demo on Landing Page
+- [x] Build demo.scanPrompt public tRPC procedure (rule-based + LLM side-by-side)
+- [x] Build SecurityScanDemo component (textarea, 4 example prompts, results display)
+- [x] Show side-by-side: Rules (free) vs LLM Deep Scan (pro) with enhancement indicator
+- [x] Add "Show raw analysis data" toggle for technical users
+- [x] Write vitest tests (672 tests passing — 25 test files)
 - [ ] Save checkpoint

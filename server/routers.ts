@@ -40,7 +40,7 @@ import { eq, and, desc } from "drizzle-orm";
 import { generateInviteToken, approveWaitlistEntry, rejectWaitlistEntry } from "./customAuth";
 import { TRPCError } from "@trpc/server";
 import { computeConfidenceAnalysis, estimateAnthropicConfidence, type ConfidenceAnalysis } from "./confidence-analysis";
-import { createCheckoutSession, createBillingPortalSession, getSubscription, cancelSubscription, PLANS } from "./stripe";
+import { createCheckoutSession, createBillingPortalSession, getSubscription, cancelSubscription, stripe, PLANS } from "./stripe";
 import { organizations as orgsTable } from "../drizzle/schema";
 
 // Helper: ensure user has an org, get it or throw
@@ -68,6 +68,74 @@ export const appRouter = router({
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
       return { success: true } as const;
     }),
+  }),
+
+  // Public demo scan — lets prospects test security scanning on the landing page
+  demo: router({
+    scanPrompt: publicProcedure
+      .input(z.object({ prompt: z.string().min(1).max(2000) }))
+      .mutation(async ({ input }) => {
+        const { assessThreat, DEFAULT_SECURITY_CONFIG } = await import("./security/threat-scorer");
+        const { deepScanPrompt, createSkippedResult, mergeScanResults } = await import("./security/llm-scanner");
+
+        const startTime = Date.now();
+
+        // Rule-based scan (always runs)
+        const ruleResult = assessThreat(input.prompt);
+
+        // LLM deep scan (show the value of paid tier)
+        let llmResult;
+        try {
+          llmResult = await deepScanPrompt(input.prompt);
+        } catch {
+          llmResult = createSkippedResult();
+          llmResult.error = "LLM scan unavailable in demo";
+        }
+
+        const merged = mergeScanResults(ruleResult.threatScore, llmResult);
+
+        return {
+          // Rule-based results
+          ruleBasedScan: {
+            threatScore: ruleResult.threatScore,
+            threatLevel: ruleResult.threatLevel,
+            action: ruleResult.action,
+            summary: ruleResult.summary,
+            injectionScore: ruleResult.injectionScore,
+            piiScore: ruleResult.piiScore,
+            policyScore: ruleResult.policyScore,
+            injectionMatches: ruleResult.injectionResult?.matches?.map(m => ({
+              patternName: m.patternName,
+              category: m.category,
+              severity: m.severity,
+            })) ?? [],
+            piiTypes: ruleResult.piiResult?.types ?? [],
+            policyViolations: ruleResult.policyMatches.map(m => m.ruleName),
+            processingTimeMs: ruleResult.processingTimeMs,
+          },
+          // LLM deep scan results
+          llmDeepScan: {
+            scanned: llmResult.scanned,
+            classification: llmResult.classification,
+            confidence: llmResult.confidence,
+            threatScore: llmResult.threatScore,
+            attackCategories: llmResult.attackCategories,
+            explanation: llmResult.explanation,
+            isJailbreak: llmResult.isJailbreak,
+            isObfuscatedInjection: llmResult.isObfuscatedInjection,
+            isDataExfiltration: llmResult.isDataExfiltration,
+            processingTimeMs: llmResult.processingTimeMs,
+            error: llmResult.error,
+          },
+          // Merged final verdict
+          merged: {
+            finalScore: merged.finalScore,
+            llmEnhanced: merged.llmEnhanced,
+            explanation: merged.combinedExplanation,
+          },
+          totalProcessingTimeMs: Date.now() - startTime,
+        };
+      }),
   }),
 
   waitlist: router({
@@ -1378,6 +1446,64 @@ Keep the explanation concise (200-400 words).`;
       await cancelSubscription(org.stripeSubscriptionId);
       return { success: true };
     }),
+
+    /**
+     * verifyCheckout — Fallback for when the Stripe webhook hasn't fired yet.
+     * After checkout completes, the user returns to /dashboard?checkout=success&plan=pro.
+     * The frontend calls this procedure to poll Stripe directly and update the org plan
+     * if the webhook hasn't processed yet.
+     */
+    verifyCheckout: protectedProcedure
+      .input(z.object({ plan: z.enum(["pro", "team"]) }))
+      .mutation(async ({ ctx, input }) => {
+        const org = await requireOrg(ctx.user.id);
+
+        // If the org already has the correct plan, no need to verify
+        if (org.plan === input.plan && org.stripeSubscriptionId) {
+          return { success: true, plan: org.plan, alreadyUpdated: true };
+        }
+
+        // Search for recent completed checkout sessions for this org
+        try {
+          const sessions = await stripe.checkout.sessions.list({
+            limit: 5,
+          });
+
+          // Find a completed session matching this org
+          const matchingSession = sessions.data.find(
+            (s) =>
+              s.status === "complete" &&
+              s.metadata?.org_id === org.id.toString() &&
+              s.metadata?.plan === input.plan &&
+              s.customer &&
+              s.subscription
+          );
+
+          if (matchingSession) {
+            const db = (await getDb())!;
+            await db
+              .update(orgsTable)
+              .set({
+                plan: input.plan,
+                stripeCustomerId: matchingSession.customer as string,
+                stripeSubscriptionId: matchingSession.subscription as string,
+              })
+              .where(eq(orgsTable.id, org.id));
+
+            console.log(
+              `[Billing] verifyCheckout: Org ${org.id} upgraded to ${input.plan} (fallback)`
+            );
+            return { success: true, plan: input.plan, alreadyUpdated: false };
+          }
+
+          // No matching session found — webhook may still be pending
+          return { success: false, plan: org.plan, alreadyUpdated: false };
+        } catch (err: any) {
+          console.error("[Billing] verifyCheckout error:", err.message);
+          // Don't throw — the webhook will eventually process
+          return { success: false, plan: org.plan, alreadyUpdated: false };
+        }
+      }),
   }),
 });
 export type AppRouter = typeof appRouter;

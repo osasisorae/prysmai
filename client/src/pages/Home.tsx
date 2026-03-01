@@ -27,6 +27,7 @@ import {
 import { toast } from "sonner";
 import { StackLogo, ResearchLogo } from "@/components/BrandLogos";
 import { EarlyAccessModal } from "@/components/EarlyAccessModal";
+import SecurityScanDemo from "@/components/SecurityScanDemo";
 
 const LOGO_URL = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663306080277/pKkWElgCpRmlNvjQ.png";
 
@@ -381,6 +382,9 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {/* ========== SECURITY SCAN DEMO ========== */}
+      <SecurityScanDemo />
 
       {/* ========== FINAL CTA ========== */}
       <section id="waitlist" className="py-28 lg:py-40">

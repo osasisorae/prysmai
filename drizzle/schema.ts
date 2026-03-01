@@ -285,6 +285,27 @@ export const usageRecords = mysqlTable(
 export type UsageRecord = typeof usageRecords.$inferSelect;
 export type InsertUsageRecord = typeof usageRecords.$inferInsert;
 
+// ─── Usage Alerts ───
+// Tracks which alert thresholds have been sent to avoid duplicate emails.
+
+export const usageAlerts = mysqlTable(
+  "usage_alerts",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    orgId: int("orgId").notNull(),
+    periodStart: timestamp("periodStart").notNull(), // billing period this alert belongs to
+    threshold: int("threshold").notNull(), // e.g. 80 for 80%
+    sentAt: timestamp("sentAt").defaultNow().notNull(),
+    emailTo: varchar("emailTo", { length: 320 }).notNull(),
+  },
+  (table) => [
+    uniqueIndex("usage_alerts_org_period_threshold_idx").on(table.orgId, table.periodStart, table.threshold),
+  ]
+);
+
+export type UsageAlert = typeof usageAlerts.$inferSelect;
+export type InsertUsageAlert = typeof usageAlerts.$inferInsert;
+
 // ─── Organization Members ───
 
 export const orgMembers = mysqlTable(

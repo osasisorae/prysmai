@@ -1,4 +1,5 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
+import { toast } from "sonner";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { useLocation, useRoute } from "wouter";
@@ -110,6 +111,52 @@ export default function DashboardShell() {
 
   const org = trpc.org.get.useQuery(undefined, { enabled: !!user });
   const projects = trpc.project.list.useQuery(undefined, { enabled: !!user && !!org.data });
+
+  // ─── Checkout verification fallback ───
+  // When user returns from Stripe checkout, the webhook may not have fired yet.
+  // Detect ?checkout=success&plan=X and call verifyCheckout to update the plan immediately.
+  const verifyCheckout = trpc.billing.verifyCheckout.useMutation();
+  const trpcUtils = trpc.useUtils();
+  const checkoutVerified = useRef(false);
+
+  useEffect(() => {
+    if (checkoutVerified.current) return;
+    const params = new URLSearchParams(window.location.search);
+    const checkoutStatus = params.get("checkout");
+    const checkoutPlan = params.get("plan") as "pro" | "team" | null;
+
+    if (checkoutStatus === "success" && checkoutPlan) {
+      checkoutVerified.current = true;
+      // Clean URL
+      const url = new URL(window.location.href);
+      url.searchParams.delete("checkout");
+      url.searchParams.delete("plan");
+      window.history.replaceState({}, "", url.pathname);
+
+      // Show immediate success toast
+      toast.success(`Welcome to ${checkoutPlan === "pro" ? "Pro" : "Team"}! Activating your plan...`);
+
+      // Poll verify endpoint with retry
+      const verify = async (attempt = 0) => {
+        try {
+          const result = await verifyCheckout.mutateAsync({ plan: checkoutPlan });
+          if (result.success) {
+            toast.success(`${checkoutPlan === "pro" ? "Pro" : "Team"} plan is now active!`);
+            // Invalidate plan query to refresh the sidebar badge
+            trpcUtils.billing.getPlan.invalidate();
+          } else if (attempt < 3) {
+            // Webhook may still be processing, retry after delay
+            setTimeout(() => verify(attempt + 1), 2000 * (attempt + 1));
+          }
+        } catch {
+          if (attempt < 3) {
+            setTimeout(() => verify(attempt + 1), 2000 * (attempt + 1));
+          }
+        }
+      };
+      verify();
+    }
+  }, []);
 
   // Determine if we need to redirect to onboarding
   const needsOnboarding = org.isSuccess && !org.data;

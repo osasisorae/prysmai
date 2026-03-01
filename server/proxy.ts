@@ -25,6 +25,7 @@ import {
   calculateCost,
   incrementUsage,
   checkUsageLimit,
+  checkAndSendUsageAlert,
   getExplainabilityConfig,
   getOrgPlanByProjectId,
 } from "./db";
@@ -1085,8 +1086,11 @@ proxyRouter.post("/chat/completions", async (req: Request, res: Response) => {
     });
   }
 
-  // Increment usage counter
-  if (auth.orgId) incrementUsage(auth.orgId, auth.projectId).catch(console.error);
+  // Increment usage counter + check alert thresholds
+  if (auth.orgId) {
+    incrementUsage(auth.orgId, auth.projectId).catch(console.error);
+    checkAndSendUsageAlert(auth.orgId, auth.orgPlan).catch(console.error);
+  }
 
   // ─── Security Assessment (tiered: free=rule-based, paid=rule-based+LLM) ───
   const securityResult = await assessRequest(auth.projectId, req.body, auth.orgPlan);
@@ -1143,7 +1147,10 @@ proxyRouter.post("/completions", async (req: Request, res: Response) => {
       },
     });
   }
-  if (auth.orgId) incrementUsage(auth.orgId, auth.projectId).catch(console.error);
+  if (auth.orgId) {
+    incrementUsage(auth.orgId, auth.projectId).catch(console.error);
+    checkAndSendUsageAlert(auth.orgId, auth.orgPlan).catch(console.error);
+  }
   await handleCompletions(req, res, auth);
 });
 
@@ -1166,7 +1173,10 @@ proxyRouter.post("/embeddings", async (req: Request, res: Response) => {
       },
     });
   }
-  if (auth.orgId) incrementUsage(auth.orgId, auth.projectId).catch(console.error);
+  if (auth.orgId) {
+    incrementUsage(auth.orgId, auth.projectId).catch(console.error);
+    checkAndSendUsageAlert(auth.orgId, auth.orgPlan).catch(console.error);
+  }
   await handleEmbeddings(req, res, auth);
 });
 

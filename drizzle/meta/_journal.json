@@ -92,6 +92,13 @@
       "when": 1772303849233,
       "tag": "0012_wonderful_makkari",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "5",
+      "when": 1772329609487,
+      "tag": "0013_lowly_firestar",
+      "breakpoints": true
     }
   ]
 }
