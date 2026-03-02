@@ -736,4 +736,12 @@
 - [x] Return clear error message with retry-after time when limit exceeded
 - [x] Show rate limit feedback in SecurityScanDemo UI (remaining count + error banner)
 - [x] Write vitest tests for rate limiter (687 tests passing — 26 test files)
+- [x] Save checkpoint
+
+## Documentation Update: Multi-Provider Examples & Common Mistakes
+- [x] Add warning callout after Step 2 provider table about matching keys to providers
+- [x] Add Anthropic and Gemini code examples alongside OpenAI in Step 4
+- [x] Add "One Prysm key, all providers" tip callout
+- [x] Add Common Mistakes troubleshooting table (4 common issues with symptoms/causes/fixes)
+- [x] Updated Step 4 intro text to mention multi-provider support
 - [ ] Save checkpoint

@@ -477,6 +477,12 @@ export default function Docs() {
                 </tbody>
               </table>
             </div>
+            <Callout type="warning">
+              <strong>Match each key to its provider.</strong> An Anthropic key (<IC>sk-ant-...</IC>) only works with the Anthropic provider.
+              An OpenAI key (<IC>sk-...</IC>) only works with OpenAI. If you enter a key for the wrong provider,
+              you'll get a <IC>401 AuthenticationError</IC> when making requests. Double-check that each provider
+              field has the correct key for that specific service.
+            </Callout>
 
             <SubHeading id="step-3">3. Generate an API Key</SubHeading>
             <p className="text-muted-foreground leading-relaxed mb-4">
@@ -487,8 +493,9 @@ export default function Docs() {
 
             <SubHeading id="step-4">4. Send Your First Request</SubHeading>
             <p className="text-muted-foreground leading-relaxed mb-4">
-              Install the Python SDK and make a request. Your OpenAI credentials are already
-              stored in your project — you only need your Prysm key.
+              Install the Python SDK and make a request. Your provider credentials are already
+              stored in your project — you only need your Prysm key. The same code works for
+              every provider; just change the model name.
             </p>
             <CodeBlock
               filename="Terminal"
@@ -496,18 +503,52 @@ export default function Docs() {
               code="pip install prysmai"
             />
             <CodeBlock
-              filename="app.py"
+              filename="openai_example.py"
               code={`from prysmai import PrysmClient
 
 client = PrysmClient(prysm_key="sk-prysm-...").openai()
 
+# OpenAI — uses your OpenAI provider key automatically
 response = client.chat.completions.create(
     model="gpt-4o-mini",
     messages=[{"role": "user", "content": "Explain quantum computing"}],
 )
-
 print(response.choices[0].message.content)`}
             />
+            <CodeBlock
+              filename="anthropic_example.py"
+              code={`from prysmai import PrysmClient
+
+client = PrysmClient(prysm_key="sk-prysm-...").openai()
+
+# Anthropic — same code, just change the model name
+# Prysm detects "claude-*" and routes to your Anthropic provider key
+response = client.chat.completions.create(
+    model="claude-sonnet-4-20250514",
+    messages=[{"role": "user", "content": "Explain quantum computing"}],
+)
+print(response.choices[0].message.content)`}
+            />
+            <CodeBlock
+              filename="gemini_example.py"
+              code={`from prysmai import PrysmClient
+
+client = PrysmClient(prysm_key="sk-prysm-...").openai()
+
+# Google Gemini — same code, just change the model name
+# Prysm detects "gemini-*" and routes to your Google provider key
+response = client.chat.completions.create(
+    model="gemini-2.5-flash",
+    messages=[{"role": "user", "content": "Explain quantum computing"}],
+)
+print(response.choices[0].message.content)`}
+            />
+            <Callout type="tip">
+              <strong>One Prysm key, all providers.</strong> Notice the code is identical across all three examples —
+              only the <IC>model</IC> name changes. Your Prysm key (<IC>sk-prysm-...</IC>) is the only key in your code.
+              Provider keys (<IC>sk-...</IC> for OpenAI, <IC>sk-ant-...</IC> for Anthropic) stay in your Prysm dashboard settings,
+              never in your application code.
+            </Callout>
             <p className="text-muted-foreground leading-relaxed">
               Open your Prysm dashboard. The request appears in the live feed within seconds,
               with full metrics: latency, token counts, cost, model, and the complete prompt/response.
@@ -2204,6 +2245,53 @@ except openai.APIError as e:
                       <td className="py-2.5 pr-4 font-mono text-primary text-xs">{status}</td>
                       <td className="py-2.5 pr-4 font-medium text-foreground">{error}</td>
                       <td className="py-2.5 text-muted-foreground">{cause}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* ─── COMMON MISTAKES ─── */}
+            <SubHeading id="common-mistakes">Common Mistakes</SubHeading>
+            <p className="text-muted-foreground leading-relaxed mb-4">
+              These are the most frequent issues new users run into. Check here first if something isn&apos;t working.
+            </p>
+            <div className="overflow-x-auto my-6">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left py-2.5 pr-4 text-muted-foreground font-medium">Symptom</th>
+                    <th className="text-left py-2.5 pr-4 text-muted-foreground font-medium">Cause</th>
+                    <th className="text-left py-2.5 text-muted-foreground font-medium">Fix</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    [
+                      "401 AuthenticationError: Incorrect API key",
+                      "Provider key entered in the wrong provider field (e.g., Anthropic key in OpenAI field)",
+                      "Go to Settings \u2192 Provider. Verify each key matches its provider: sk-... for OpenAI, sk-ant-... for Anthropic, AIza... for Google."
+                    ],
+                    [
+                      "401 AuthenticationError: Invalid Prysm key",
+                      "Using a raw provider key instead of your Prysm key in code",
+                      "Replace the API key in your code with your Prysm key (sk-prysm-...). Provider keys go in the dashboard, not in your code."
+                    ],
+                    [
+                      "Model not found or routing error",
+                      "Provider not configured for the model you\u2019re calling",
+                      "If using claude-* models, make sure you\u2019ve added your Anthropic key in Settings \u2192 Provider. Same for Gemini models and Google keys."
+                    ],
+                    [
+                      "Requests work but no traces in dashboard",
+                      "Hitting the LLM provider directly instead of through Prysm",
+                      "Make sure your base_url is set to prysmai.io/api/v1 (or your self-hosted proxy URL), not the provider\u2019s URL."
+                    ],
+                  ].map(([symptom, cause, fix]) => (
+                    <tr key={symptom} className="border-b border-border/50">
+                      <td className="py-2.5 pr-4 font-mono text-xs text-primary align-top">{symptom}</td>
+                      <td className="py-2.5 pr-4 text-muted-foreground align-top">{cause}</td>
+                      <td className="py-2.5 text-muted-foreground align-top">{fix}</td>
                     </tr>
                   ))}
                 </tbody>
