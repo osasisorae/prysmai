@@ -16,6 +16,8 @@
 import { detectPII, type PIIDetectionResult, type RedactionMode } from "./pii-detector";
 import { scoreToxicityML, type MLToxicityResult, type ToxicityScores } from "./toxicity-scorer";
 import { detectNER, type NERResult, type NEREntity } from "./ner-detector";
+import { evaluateOutputPolicies, type OutputPolicyResult } from "./output-policy-engine";
+import { type ContentPolicyRule } from "./threat-scorer";
 import { getDb } from "../db";
 import { securityEvents, securityConfigs } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
@@ -59,6 +61,9 @@ export interface OutputScanResult {
   // NER (paid tiers only)
   nerResult?: NERResult;
 
+  // Output Policy Compliance (paid tiers)
+  policyResult?: OutputPolicyResult;
+
   // Redacted output (if PII redaction enabled)
   redactedOutput?: string;
 
@@ -76,6 +81,7 @@ export interface OutputScanConfig {
   outputNerDetection?: boolean;
   outputPolicyCompliance?: boolean;
   outputPolicies?: string[];
+  customPolicies?: ContentPolicyRule[];
 }
 
 // ─── Toxicity Patterns (Free Tier — Keyword-Based) ──────────────────
@@ -262,14 +268,32 @@ export async function scanOutput(
     }
   }
 
-  // 5. Composite score
-  const outputThreatScore = Math.min(100, piiScore + toxicityScore);
+  // 5. Output Policy Compliance (runs for all tiers when enabled)
+  let policyResult: OutputPolicyResult | undefined;
+  let policyScore = 0;
+  if (config.outputPolicyCompliance !== false) {
+    try {
+      policyResult = evaluateOutputPolicies(
+        completionText,
+        config.customPolicies,
+        true // include default policies
+      );
+      // Scale policy score to 0-30 range (policy violations are serious but shouldn't dominate)
+      policyScore = Math.min(30, Math.round(policyResult.policyScore * 0.3));
+    } catch (err) {
+      console.error("[Security] Output policy compliance check failed:", err);
+    }
+  }
+
+  // 6. Composite score (PII + toxicity + policy)
+  const outputThreatScore = Math.min(100, piiScore + toxicityScore + policyScore);
   const outputThreatLevel = getOutputThreatLevel(outputThreatScore);
 
-  // 6. Blocking decision
-  const shouldBlock = config.outputBlockThreats && outputThreatLevel === "high";
+  // 7. Blocking decision — block if threat level is high OR if any policy rule requires blocking
+  const policyRequiresBlock = policyResult?.shouldBlock ?? false;
+  const shouldBlock = (config.outputBlockThreats && outputThreatLevel === "high") || policyRequiresBlock;
 
-  // 7. Summary
+  // 8. Summary
   const parts: string[] = [];
   if (piiResult && piiResult.hasPII) {
     parts.push(`Output PII: ${piiResult.types.join(", ")} (${piiResult.matches.length} instances)`);
@@ -282,6 +306,9 @@ export async function scanOutput(
   }
   if (mlToxicityResult?.scanned && mlToxicityResult.flaggedCategories.length > 0) {
     parts.push(`ML Toxicity: ${mlToxicityResult.flaggedCategories.join(", ")}`);
+  }
+  if (policyResult?.scanned && policyResult.violationCount > 0) {
+    parts.push(`Policy: ${policyResult.violatedPolicies.join(", ")} (${policyResult.violationCount} violations)`);
   }
   const summary = parts.length > 0 ? parts.join("; ") : "Output clean";
 
@@ -299,6 +326,7 @@ export async function scanOutput(
     toxicityCategories: toxicityResult.categories,
     mlToxicityResult,
     nerResult,
+    policyResult,
     redactedOutput: piiResult?.redactedText,
     processingTimeMs,
   };
@@ -399,7 +427,7 @@ export async function logOutputSecurityEvent(
       source: "output",
       injectionScore: 0,
       piiScore: result.piiScore,
-      policyScore: 0,
+      policyScore: result.policyResult?.policyScore ?? 0,
       toxicityScore: result.toxicityScore,
       piiTypes: result.piiResult?.types ?? null,
       toxicityCategories: result.toxicityCategories.length > 0 ? result.toxicityCategories : null,
@@ -459,6 +487,7 @@ export async function getOutputScanConfig(projectId: number): Promise<OutputScan
       outputNerDetection: (row as any).outputNerDetection ?? true,
       outputPolicyCompliance: (row as any).outputPolicyCompliance ?? false,
       outputPolicies: (row as any).outputPolicies ? JSON.parse((row as any).outputPolicies) : [],
+      customPolicies: row.customPolicies as ContentPolicyRule[] ?? [],
     };
 
     outputConfigCache.set(projectId, { config, expiry: Date.now() + CACHE_TTL_MS });

@@ -778,7 +778,7 @@
 - [x] Integrate ML toxicity scorer into output-scanner.ts
 - [x] Add scanOutputSync for backward compat + async scanOutput with ML/NER
 - [x] Add outputNerDetection and outputPolicyCompliance fields to securityConfigs schema
-- [ ] Add output policy compliance to output-scanner.ts (run content policy rules on completions)
+- [x] Add output policy compliance to output-scanner.ts (run content policy rules on completions)
 - [x] Update security dashboard to show NER, ML toxicity, and policy compliance toggles
 - [x] Write vitest tests for ner-detector (17 tests passing)
 
@@ -805,3 +805,18 @@
 - [x] Add NER detection docs to Security section
 - [x] Add ML toxicity scoring docs to Security section
 - [x] Add "What's New in v0.4.0" banner to top of docs page
+
+## Output Policy Compliance Engine
+- [x] Build output-policy-engine.ts module (rule definition, evaluation, action enforcement)
+- [x] Add output policy rules schema support (custom rules per org)
+- [x] Integrate policy engine into async output scanner pipeline
+- [x] Support actions: log, warn, block, redact
+- [x] Write vitest tests for policy engine (27 tests passing)
+
+## Pricing Page Update: Security Feature Differentiators
+- [x] Add off-topic detection to paid tier features
+- [x] Add ML toxicity scoring to paid tier features
+- [x] Add NER-based PII detection to paid tier features
+- [x] Add output policy compliance to paid tier features
+- [x] Add PagerDuty & Slack alert channels to paid tier features
+- [x] Update feature comparison table (5 new rows: off-topic, toxicity, NER, policy, alerts)
