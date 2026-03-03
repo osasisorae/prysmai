@@ -32,7 +32,7 @@ import {
 import { emitTrace } from "./trace-emitter";
 import type { InsertTrace } from "../drizzle/schema";
 import { assessRequest, type EnhancedThreatAssessment } from "./security/proxy-middleware";
-import { scanOutput, logOutputSecurityEvent, getOutputScanConfig } from "./security/output-scanner";
+import { scanOutput, scanOutputSync, logOutputSecurityEvent, getOutputScanConfig } from "./security/output-scanner";
 import {
   translateRequestToAnthropic,
   translateResponseToOpenAI,
@@ -289,7 +289,7 @@ async function handleChatNonStreaming(req: Request, res: Response, auth: AuthRes
       try {
         const outputConfig = await getOutputScanConfig(auth.projectId);
         if (outputConfig.outputScanning) {
-          const outputResult = scanOutput(completion, outputConfig);
+          const outputResult = scanOutputSync(completion, outputConfig);
 
           // Add output security headers
           res.set("X-Prysm-Output-Threat-Score", outputResult.outputThreatScore.toString());
@@ -583,7 +583,7 @@ async function handleChatStreamingOpenAI(req: Request, res: Response, auth: Auth
       try {
         const outputConfig = await getOutputScanConfig(auth.projectId);
         if (outputConfig.outputScanning) {
-          const outputResult = scanOutput(completion, outputConfig);
+          const outputResult = scanOutputSync(completion, outputConfig);
           logOutputSecurityEvent(auth.projectId, traceId, model, outputResult, completion).catch(console.error);
         }
       } catch (err) {
@@ -786,7 +786,7 @@ async function handleChatStreamingAnthropic(req: Request, res: Response, auth: A
       try {
         const outputConfig = await getOutputScanConfig(auth.projectId);
         if (outputConfig.outputScanning) {
-          const outputResult = scanOutput(completion, outputConfig);
+          const outputResult = scanOutputSync(completion, outputConfig);
           logOutputSecurityEvent(auth.projectId, traceId, model, outputResult, completion).catch(console.error);
         }
       } catch (err) {

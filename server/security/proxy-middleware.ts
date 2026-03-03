@@ -9,29 +9,54 @@
  * 2. Load project security config (with caching)
  * 3. Run rule-based threat assessment (all tiers)
  * 4. Run LLM deep scan (paid tiers only: Pro/Team/Enterprise)
- * 5. Merge results and determine final action
- * 6. Log security event to DB (including LLM scan data)
- * 7. Block if threat level is high and blocking is enabled
- * 8. Add security headers to response
+ * 5. Run off-topic detection (if enabled)
+ * 6. Merge results and determine final action
+ * 7. Log security event to DB (including LLM scan data + off-topic)
+ * 8. Block if threat level is high and blocking is enabled
+ * 9. Add security headers to response
  */
 
 import { Request, Response, NextFunction } from "express";
 import { assessThreat, type SecurityConfig, type ThreatAssessment } from "./threat-scorer";
 import { deepScanPrompt, mergeScanResults, createSkippedResult, isPaidPlan, type LLMScanResult } from "./llm-scanner";
+import { detectOffTopic, type OffTopicConfig, type OffTopicResult } from "./off-topic-detector";
 import { getDb } from "../db";
 import { securityEvents, securityConfigs } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
 
 // ─── Config Cache (5-minute TTL) ────────────────────────────────────
 
-const configCache = new Map<number, { config: Partial<SecurityConfig>; expiry: number }>();
+interface FullSecurityConfig {
+  threatConfig: Partial<SecurityConfig>;
+  offTopicConfig: OffTopicConfig;
+  rawRow: any; // raw DB row for additional fields
+}
+
+const configCache = new Map<number, { config: FullSecurityConfig; expiry: number }>();
 const CACHE_TTL_MS = 5 * 60 * 1000;
 
 async function getSecurityConfig(projectId: number): Promise<Partial<SecurityConfig>> {
+  const full = await getFullSecurityConfig(projectId);
+  return full.threatConfig;
+}
+
+async function getFullSecurityConfig(projectId: number): Promise<FullSecurityConfig> {
   const cached = configCache.get(projectId);
   if (cached && Date.now() < cached.expiry) {
     return cached.config;
   }
+
+  const defaultConfig: FullSecurityConfig = {
+    threatConfig: {},
+    offTopicConfig: {
+      enabled: false,
+      description: null,
+      keywords: [],
+      threshold: 0.70,
+      action: "log",
+    },
+    rawRow: null,
+  };
 
   try {
     const db = await getDb();
@@ -43,14 +68,12 @@ async function getSecurityConfig(projectId: number): Promise<Partial<SecurityCon
       .limit(1);
 
     if (rows.length === 0) {
-      // No config = use defaults (all detection enabled, no blocking)
-      const defaultConfig: Partial<SecurityConfig> = {};
       configCache.set(projectId, { config: defaultConfig, expiry: Date.now() + CACHE_TTL_MS });
       return defaultConfig;
     }
 
     const row = rows[0];
-    const config: Partial<SecurityConfig> = {
+    const threatConfig: Partial<SecurityConfig> = {
       injectionDetection: row.injectionDetection,
       piiDetection: row.piiDetection,
       piiRedactionMode: row.piiRedactionMode as any,
@@ -60,7 +83,7 @@ async function getSecurityConfig(projectId: number): Promise<Partial<SecurityCon
 
     // Merge custom policies if present
     if (row.customPolicies && Array.isArray(row.customPolicies)) {
-      config.contentPolicies = [
+      threatConfig.contentPolicies = [
         ...require("./threat-scorer").DEFAULT_CONTENT_POLICIES,
         ...row.customPolicies.map((p: any) => ({
           name: p.name,
@@ -73,11 +96,25 @@ async function getSecurityConfig(projectId: number): Promise<Partial<SecurityCon
       ];
     }
 
-    configCache.set(projectId, { config, expiry: Date.now() + CACHE_TTL_MS });
-    return config;
+    const offTopicConfig: OffTopicConfig = {
+      enabled: row.offTopicDetection ?? false,
+      description: row.offTopicDescription ?? null,
+      keywords: (row.offTopicKeywords as string[]) ?? [],
+      threshold: parseFloat(String(row.offTopicThreshold ?? "0.70")),
+      action: (row.offTopicAction as "log" | "warn" | "block") ?? "log",
+    };
+
+    const fullConfig: FullSecurityConfig = {
+      threatConfig,
+      offTopicConfig,
+      rawRow: row,
+    };
+
+    configCache.set(projectId, { config: fullConfig, expiry: Date.now() + CACHE_TTL_MS });
+    return fullConfig;
   } catch (err) {
     console.error("[Security] Failed to load config for project", projectId, err);
-    return {};
+    return defaultConfig;
   }
 }
 
@@ -124,13 +161,16 @@ async function logSecurityEvent(
   assessment: ThreatAssessment,
   inputText: string,
   llmResult?: LLMScanResult,
-  orgPlan?: string
+  orgPlan?: string,
+  offTopicResult?: OffTopicResult
 ): Promise<void> {
   try {
     // Only log non-clean events to save DB space
     // BUT always log if LLM scan found something interesting
+    // OR if off-topic was detected
     const llmFoundThreat = llmResult?.scanned && llmResult.classification !== "safe";
-    if (assessment.threatLevel === "clean" && !llmFoundThreat) return;
+    const isOffTopic = offTopicResult?.isOffTopic ?? false;
+    if (assessment.threatLevel === "clean" && !llmFoundThreat && !isOffTopic) return;
 
     const db = await getDb();
     if (!db) return;
@@ -144,6 +184,7 @@ async function logSecurityEvent(
       injectionScore: assessment.injectionScore,
       piiScore: assessment.piiScore,
       policyScore: assessment.policyScore,
+      offTopicScore: offTopicResult ? Math.round((1 - offTopicResult.relevanceScore) * 100) : 0,
       injectionMatches: assessment.injectionResult?.matches?.map((m) => ({
         patternName: m.patternName,
         category: m.category,
@@ -153,7 +194,7 @@ async function logSecurityEvent(
       policyViolations: assessment.policyMatches?.map((m) => m.ruleName) ?? null,
       model,
       inputPreview: inputText.substring(0, 200),
-      processingTimeMs: assessment.processingTimeMs,
+      processingTimeMs: assessment.processingTimeMs + (offTopicResult?.processingTimeMs ?? 0),
       // LLM scan fields
       llmScanned: llmResult?.scanned ?? false,
       llmClassification: llmResult?.scanned ? llmResult.classification : null,
@@ -172,10 +213,11 @@ async function logSecurityEvent(
   }
 }
 
-// ─── Enhanced Assessment (rule-based + optional LLM) ────────────────
+// ─── Enhanced Assessment (rule-based + optional LLM + off-topic) ────
 
 export interface EnhancedThreatAssessment extends ThreatAssessment {
   llmResult?: LLMScanResult;
+  offTopicResult?: OffTopicResult;
   scanTier: string;
   llmEnhanced: boolean;
 }
@@ -184,11 +226,13 @@ export interface EnhancedThreatAssessment extends ThreatAssessment {
  * Run tiered security assessment:
  * - Free tier: rule-based only (fast, zero cost)
  * - Paid tiers: rule-based + LLM deep scan (thorough)
+ * - Off-topic detection runs in parallel (keyword for free, LLM for paid)
  */
 async function tieredAssessment(
   promptText: string,
   config: Partial<SecurityConfig>,
-  orgPlan: string
+  orgPlan: string,
+  offTopicConfig?: OffTopicConfig
 ): Promise<EnhancedThreatAssessment> {
   // Step 1: Always run rule-based assessment (all tiers)
   const ruleAssessment = assessThreat(promptText, config);
@@ -203,7 +247,17 @@ async function tieredAssessment(
     llmResult = createSkippedResult();
   }
 
-  // Step 3: Merge results if LLM scan was performed
+  // Step 3: Run off-topic detection (if enabled)
+  let offTopicResult: OffTopicResult | undefined;
+  if (offTopicConfig?.enabled) {
+    try {
+      offTopicResult = await detectOffTopic(promptText, offTopicConfig, isPaidPlan(orgPlan));
+    } catch (err) {
+      console.error("[Security] Off-topic detection failed:", err);
+    }
+  }
+
+  // Step 4: Merge results if LLM scan was performed
   const merged = mergeScanResults(ruleAssessment.threatScore, llmResult);
 
   // If LLM enhanced the score, update the assessment
@@ -221,10 +275,24 @@ async function tieredAssessment(
   else if (threatLevel === "medium") action = "warn";
   else if (threatLevel === "high") action = config.blockHighThreats ? "block" : "warn";
 
+  // Off-topic can override action if configured to block/warn
+  if (offTopicResult?.isOffTopic && offTopicConfig) {
+    if (offTopicConfig.action === "block" && action !== "block") {
+      action = "block";
+    } else if (offTopicConfig.action === "warn" && action === "pass") {
+      action = "warn";
+    } else if (offTopicConfig.action === "log" && action === "pass") {
+      action = "log";
+    }
+  }
+
   // Build enhanced summary
   let summary = ruleAssessment.summary;
   if (merged.llmEnhanced && llmResult.classification !== "safe") {
     summary = `${summary}; LLM analysis: ${merged.combinedExplanation}`;
+  }
+  if (offTopicResult?.isOffTopic) {
+    summary = `${summary}; Off-topic: ${offTopicResult.reason}`;
   }
 
   return {
@@ -233,8 +301,9 @@ async function tieredAssessment(
     threatLevel,
     action,
     summary,
-    processingTimeMs: ruleAssessment.processingTimeMs + (llmResult.processingTimeMs ?? 0),
+    processingTimeMs: ruleAssessment.processingTimeMs + (llmResult.processingTimeMs ?? 0) + (offTopicResult?.processingTimeMs ?? 0),
     llmResult,
+    offTopicResult,
     scanTier: orgPlan,
     llmEnhanced: merged.llmEnhanced,
   };
@@ -320,14 +389,14 @@ export async function assessRequest(
   traceId?: string
 ): Promise<EnhancedThreatAssessment | null> {
   try {
-    const config = await getSecurityConfig(projectId);
+    const fullConfig = await getFullSecurityConfig(projectId);
     const promptText = extractPromptText(body);
     if (!promptText.trim()) return null;
 
-    const assessment = await tieredAssessment(promptText, config, orgPlan);
+    const assessment = await tieredAssessment(promptText, fullConfig.threatConfig, orgPlan, fullConfig.offTopicConfig);
     const model = body?.model ?? "unknown";
 
-    // Log asynchronously (includes LLM scan data)
+    // Log asynchronously (includes LLM scan data + off-topic)
     logSecurityEvent(
       projectId,
       traceId,
@@ -335,7 +404,8 @@ export async function assessRequest(
       assessment,
       promptText,
       assessment.llmResult,
-      orgPlan
+      orgPlan,
+      assessment.offTopicResult
     ).catch(console.error);
 
     return assessment;
@@ -346,4 +416,4 @@ export async function assessRequest(
 }
 
 // Export for testing
-export { extractPromptText, getSecurityConfig, logSecurityEvent, configCache, tieredAssessment };
+export { extractPromptText, getSecurityConfig, getFullSecurityConfig, logSecurityEvent, configCache, tieredAssessment };

@@ -35,6 +35,15 @@ export async function upsertSecurityConfig(
     outputPiiDetection?: boolean;
     outputToxicityDetection?: boolean;
     outputBlockThreats?: boolean;
+    // Off-topic detection
+    offTopicDetection?: boolean;
+    offTopicDescription?: string;
+    offTopicKeywords?: string[];
+    offTopicAction?: "log" | "warn" | "block";
+    offTopicThreshold?: number;
+    // Output NER and policy compliance
+    outputPolicyCompliance?: boolean;
+    outputNerDetection?: boolean;
   }
 ) {
   const db = await getDb();
@@ -43,10 +52,13 @@ export async function upsertSecurityConfig(
   const existing = await getSecurityConfigForProject(projectId);
 
   if (existing) {
+    // Convert offTopicThreshold from number to string for DB decimal field
+    const { offTopicThreshold, ...restConfig } = config;
     await db
       .update(securityConfigs)
       .set({
-        ...config,
+        ...restConfig,
+        ...(offTopicThreshold !== undefined ? { offTopicThreshold: offTopicThreshold.toString() } : {}),
         customKeywords: config.customKeywords !== undefined ? config.customKeywords : undefined,
         customPolicies: config.customPolicies !== undefined ? config.customPolicies : undefined,
         updatedAt: new Date(),
@@ -67,6 +79,13 @@ export async function upsertSecurityConfig(
       outputPiiDetection: config.outputPiiDetection ?? true,
       outputToxicityDetection: config.outputToxicityDetection ?? true,
       outputBlockThreats: config.outputBlockThreats ?? false,
+      offTopicDetection: config.offTopicDetection ?? false,
+      offTopicDescription: config.offTopicDescription ?? null,
+      offTopicKeywords: config.offTopicKeywords ?? [],
+      offTopicAction: config.offTopicAction ?? "log",
+      offTopicThreshold: config.offTopicThreshold?.toString() ?? "0.70",
+      outputPolicyCompliance: config.outputPolicyCompliance ?? true,
+      outputNerDetection: config.outputNerDetection ?? true,
     });
     return { id: Number((result as any)[0]?.insertId), projectId, ...config };
   }

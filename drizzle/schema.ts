@@ -353,6 +353,7 @@ export const securityEvents = mysqlTable(
     piiScore: int("piiScore").default(0),
     policyScore: int("policyScore").default(0),
     toxicityScore: int("toxicityScore").default(0),
+    offTopicScore: int("offTopicScore").default(0),
     // Details (JSON for flexibility)
     injectionMatches: json("injectionMatches").$type<Array<{ patternName: string; category: string; severity: number }>>(),
     piiTypes: json("piiTypes").$type<string[]>(),
@@ -403,6 +404,15 @@ export const securityConfigs = mysqlTable(
     outputPiiDetection: boolean("outputPiiDetection").default(true).notNull(),
     outputToxicityDetection: boolean("outputToxicityDetection").default(true).notNull(),
     outputBlockThreats: boolean("outputBlockThreats").default(false).notNull(),
+    // Off-topic detection
+    offTopicDetection: boolean("offTopicDetection").default(false).notNull(),
+    offTopicDescription: text("offTopicDescription"), // "This agent handles customer support for a SaaS product"
+    offTopicKeywords: json("offTopicKeywords").$type<string[]>(),
+    offTopicAction: mysqlEnum("offTopicAction", ["log", "warn", "block"]).default("log").notNull(),
+    offTopicThreshold: decimal("offTopicThreshold", { precision: 3, scale: 2 }).default("0.70"),
+    // Output NER and policy compliance
+    outputPolicyCompliance: boolean("outputPolicyCompliance").default(true).notNull(),
+    outputNerDetection: boolean("outputNerDetection").default(true).notNull(),
     // Per-category thresholds (JSON: { category: { threshold: number, action: "pass"|"log"|"warn"|"block" } })
     categoryThresholds: json("categoryThresholds").$type<Record<string, { threshold: number; action: string }>>(),
     // Custom rules

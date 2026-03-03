@@ -302,6 +302,30 @@ async function sendAlertNotifications(alert: AlertRow, currentValue: number): Pr
           console.log(`[Alerts] Webhook sent to ${channel.target} for "${alert.name}"`);
           break;
 
+        case "pagerduty":
+          // PagerDuty Events API v2 — trigger an incident
+          // channel.target = PagerDuty Integration Key (routing key)
+          await sendPagerDutyEvent({
+            routingKey: channel.target,
+            eventAction: "trigger",
+            dedupKey: `prysm-alert-${alert.id}`,
+            summary: `${subject}: ${metricLabel} ${conditionLabel} ${alert.threshold}${unit} (current: ${currentValue.toFixed(4)}${unit})`,
+            source: `prysm-project-${alert.projectId}`,
+            severity: getSeverityFromMetric(alert.metric, currentValue, parseFloat(alert.threshold)),
+            customDetails: {
+              alertName: alert.name,
+              metric: alert.metric,
+              condition: alert.condition,
+              threshold: parseFloat(alert.threshold),
+              currentValue,
+              unit,
+              projectId: alert.projectId,
+              dashboardUrl: `${SITE_URL}/dashboard`,
+            },
+          });
+          console.log(`[Alerts] PagerDuty event triggered for "${alert.name}"`);
+          break;
+
         default:
           console.warn(`[Alerts] Unknown channel type: ${channel.type}`);
       }
@@ -309,6 +333,116 @@ async function sendAlertNotifications(alert: AlertRow, currentValue: number): Pr
       console.error(`[Alerts] Failed to send ${channel.type} notification to ${channel.target}:`, err);
     }
   }
+}
+
+// ─── PagerDuty Events API v2 ─────────────────────────────────────────
+
+const PAGERDUTY_EVENTS_URL = "https://events.pagerduty.com/v2/enqueue";
+
+interface PagerDutyEventParams {
+  routingKey: string;
+  eventAction: "trigger" | "acknowledge" | "resolve";
+  dedupKey: string;
+  summary: string;
+  source: string;
+  severity: "critical" | "error" | "warning" | "info";
+  customDetails?: Record<string, unknown>;
+}
+
+/**
+ * Send an event to PagerDuty Events API v2.
+ * Used for triggering, acknowledging, and resolving incidents.
+ */
+export async function sendPagerDutyEvent(params: PagerDutyEventParams): Promise<{ status: string; dedupKey: string }> {
+  const payload: Record<string, unknown> = {
+    routing_key: params.routingKey,
+    event_action: params.eventAction,
+    dedup_key: params.dedupKey,
+  };
+
+  // Payload body only needed for trigger events
+  if (params.eventAction === "trigger") {
+    payload.payload = {
+      summary: params.summary,
+      source: params.source,
+      severity: params.severity,
+      timestamp: new Date().toISOString(),
+      custom_details: params.customDetails || {},
+      component: "prysm-ai-monitoring",
+      group: "ai-observability",
+      class: "metric-alert",
+    };
+    payload.links = [
+      {
+        href: `${SITE_URL}/dashboard`,
+        text: "View Prysm AI Dashboard",
+      },
+    ];
+    payload.client = "Prysm AI";
+    payload.client_url = SITE_URL;
+  }
+
+  const response = await fetch(PAGERDUTY_EVENTS_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`PagerDuty API error (${response.status}): ${errorText}`);
+  }
+
+  const result = await response.json();
+  return { status: result.status, dedupKey: result.dedup_key || params.dedupKey };
+}
+
+/**
+ * Resolve a PagerDuty incident by dedup key.
+ * Called when the alert condition normalizes (metric returns to acceptable range).
+ */
+export async function resolvePagerDutyIncident(
+  routingKey: string,
+  alertId: number
+): Promise<void> {
+  try {
+    await sendPagerDutyEvent({
+      routingKey,
+      eventAction: "resolve",
+      dedupKey: `prysm-alert-${alertId}`,
+      summary: "Alert condition resolved",
+      source: "prysm-ai",
+      severity: "info",
+    });
+    console.log(`[Alerts] PagerDuty incident resolved for alert ${alertId}`);
+  } catch (err) {
+    console.error(`[Alerts] Failed to resolve PagerDuty incident for alert ${alertId}:`, err);
+  }
+}
+
+/**
+ * Map metric values to PagerDuty severity levels.
+ * Critical: >2x threshold, Error: >1.5x, Warning: >1x, Info: at threshold
+ */
+function getSeverityFromMetric(
+  metric: string,
+  currentValue: number,
+  threshold: number
+): "critical" | "error" | "warning" | "info" {
+  const ratio = threshold > 0 ? currentValue / threshold : 1;
+
+  // For "less than" conditions (e.g., request_count dropped), invert the ratio
+  if (metric === "request_count") {
+    if (ratio <= 0.25) return "critical";
+    if (ratio <= 0.5) return "error";
+    return "warning";
+  }
+
+  // For "greater than" conditions (error_rate, latency, cost)
+  if (ratio >= 2.0) return "critical";
+  if (ratio >= 1.5) return "error";
+  if (ratio >= 1.0) return "warning";
+  return "info";
 }
 
 /**

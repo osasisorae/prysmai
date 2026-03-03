@@ -50,3 +50,27 @@ export {
   PAID_PLANS,
   type LLMScanResult,
 } from "./llm-scanner";
+
+export {
+  detectOffTopic,
+  detectOffTopicKeyword,
+  detectOffTopicLLM,
+  type OffTopicConfig,
+  type OffTopicResult,
+} from "./off-topic-detector";
+
+export {
+  scoreToxicityML,
+  getEmptyDimensions,
+  type ToxicityScores,
+  type MLToxicityResult,
+  type ToxicityDimensionScore,
+} from "./toxicity-scorer";
+
+export {
+  detectNER,
+  calculateNERRiskScore,
+  type NEREntity,
+  type NEREntityType,
+  type NERResult,
+} from "./ner-detector";

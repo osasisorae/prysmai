@@ -758,6 +758,15 @@ export const appRouter = router({
         outputPiiDetection: z.boolean().optional(),
         outputToxicityDetection: z.boolean().optional(),
         outputBlockThreats: z.boolean().optional(),
+        // Off-topic detection
+        offTopicDetection: z.boolean().optional(),
+        offTopicDescription: z.string().optional(),
+        offTopicKeywords: z.array(z.string()).optional(),
+        offTopicAction: z.enum(["log", "warn", "block"]).optional(),
+        offTopicThreshold: z.number().min(0).max(1).optional(),
+        // Output NER and policy compliance
+        outputPolicyCompliance: z.boolean().optional(),
+        outputNerDetection: z.boolean().optional(),
       }))
       .mutation(async ({ ctx, input }) => {
         const org = await requireOrg(ctx.user.id);

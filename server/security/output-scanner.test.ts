@@ -12,7 +12,7 @@
 import { describe, it, expect } from "vitest";
 import {
   detectToxicity,
-  scanOutput,
+  scanOutputSync as scanOutput,
   TOXICITY_PATTERNS,
   DEFAULT_OUTPUT_SCAN_CONFIG,
   type OutputScanConfig,

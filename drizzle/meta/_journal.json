@@ -99,6 +99,13 @@
       "when": 1772329609487,
       "tag": "0013_lowly_firestar",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "5",
+      "when": 1772544026071,
+      "tag": "0014_aspiring_kronos",
+      "breakpoints": true
     }
   ]
 }

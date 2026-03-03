@@ -37,6 +37,9 @@ import {
   User,
   DollarSign,
   Brain,
+  Siren,
+  Webhook,
+  MessageSquare,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -640,7 +643,7 @@ function AlertsTab({ projectId }: { projectId: number }) {
     metric: "error_rate",
     condition: "gt",
     threshold: "5",
-    channels: { email: true },
+    channels: { email: true, slack: false, pagerduty: false, webhook: false } as Record<string, boolean>,
   });
 
   const METRICS = [
@@ -738,7 +741,7 @@ function AlertsTab({ projectId }: { projectId: number }) {
               </div>
               <div className="space-y-2">
                 <Label>Notification Channels</Label>
-                <div className="flex items-center gap-4">
+                <div className="flex flex-wrap items-center gap-4">
                   <label className="flex items-center gap-2 text-sm">
                     <input
                       type="checkbox"
@@ -752,6 +755,48 @@ function AlertsTab({ projectId }: { projectId: number }) {
                       className="rounded"
                     />
                     <Mail className="w-4 h-4" /> Email
+                  </label>
+                  <label className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={newAlert.channels.slack ?? false}
+                      onChange={(e) =>
+                        setNewAlert({
+                          ...newAlert,
+                          channels: { ...newAlert.channels, slack: e.target.checked },
+                        })
+                      }
+                      className="rounded"
+                    />
+                    <MessageSquare className="w-4 h-4" /> Slack
+                  </label>
+                  <label className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={newAlert.channels.pagerduty ?? false}
+                      onChange={(e) =>
+                        setNewAlert({
+                          ...newAlert,
+                          channels: { ...newAlert.channels, pagerduty: e.target.checked },
+                        })
+                      }
+                      className="rounded"
+                    />
+                    <Siren className="w-4 h-4" /> PagerDuty
+                  </label>
+                  <label className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={newAlert.channels.webhook ?? false}
+                      onChange={(e) =>
+                        setNewAlert({
+                          ...newAlert,
+                          channels: { ...newAlert.channels, webhook: e.target.checked },
+                        })
+                      }
+                      className="rounded"
+                    />
+                    <Webhook className="w-4 h-4" /> Webhook
                   </label>
                 </div>
               </div>

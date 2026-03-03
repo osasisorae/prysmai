@@ -571,6 +571,83 @@ function ConfigTab({ projectId }: { projectId: number }) {
               onCheckedChange={(v) => handleToggle("contentPolicyEnabled", v)}
             />
           </div>
+          <div className="flex items-center justify-between p-4 rounded-lg border border-border bg-card/50">
+            <div>
+              <p className="text-sm font-medium">Off-Topic Detection</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Detect and block prompts unrelated to your application's purpose
+              </p>
+            </div>
+            <Switch
+              checked={(c as any).offTopicDetection ?? false}
+              onCheckedChange={(v) => handleToggle("offTopicDetection", v)}
+            />
+          </div>
+
+          {(c as any).offTopicDetection && (
+            <div className="ml-4 p-4 rounded-lg border border-primary/20 bg-primary/[0.02] space-y-4">
+              <div className="space-y-2">
+                <Label className="text-xs">Application Description</Label>
+                <Input
+                  placeholder="Describe what your AI application does..."
+                  value={(c as any).offTopicDescription ?? ""}
+                  onChange={(e) =>
+                    updateConfig.mutate({ projectId, offTopicDescription: e.target.value })
+                  }
+                  className="h-8 text-sm"
+                />
+                <p className="text-[10px] text-muted-foreground">
+                  Helps the detector understand what topics are relevant
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs">Relevant Keywords (comma-separated)</Label>
+                <Input
+                  placeholder="e.g., customer support, billing, account"
+                  value={((c as any).offTopicKeywords ?? []).join(", ")}
+                  onChange={(e) =>
+                    updateConfig.mutate({
+                      projectId,
+                      offTopicKeywords: e.target.value.split(",").map((k: string) => k.trim()).filter(Boolean),
+                    })
+                  }
+                  className="h-8 text-sm"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label className="text-xs">Action</Label>
+                  <Select
+                    value={(c as any).offTopicAction ?? "log"}
+                    onValueChange={(v) => updateConfig.mutate({ projectId, offTopicAction: v as "log" | "warn" | "block" })}
+                  >
+                    <SelectTrigger className="h-8 text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="log">Log Only</SelectItem>
+                      <SelectItem value="warn">Warn (add header)</SelectItem>
+                      <SelectItem value="block">Block Request</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs">Threshold (0.0 - 1.0)</Label>
+                  <Input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    max="1"
+                    value={(c as any).offTopicThreshold ?? 0.6}
+                    onChange={(e) =>
+                      updateConfig.mutate({ projectId, offTopicThreshold: parseFloat(e.target.value) })
+                    }
+                    className="h-8 text-sm"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -665,6 +742,48 @@ function ConfigTab({ projectId }: { projectId: number }) {
             <Switch
               checked={(c as any).outputToxicityDetection ?? true}
               onCheckedChange={(v) => handleToggle("outputToxicityDetection", v)}
+              disabled={!(c as any).outputScanning}
+            />
+          </div>
+
+          <div className="flex items-center justify-between p-4 rounded-lg border border-border bg-card/50">
+            <div>
+              <p className="text-sm font-medium">NER-Based PII Detection</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Use LLM-based Named Entity Recognition to detect PII that regex misses (paid tiers)
+              </p>
+            </div>
+            <Switch
+              checked={(c as any).outputNerDetection ?? false}
+              onCheckedChange={(v) => handleToggle("outputNerDetection", v)}
+              disabled={!(c as any).outputScanning}
+            />
+          </div>
+
+          <div className="flex items-center justify-between p-4 rounded-lg border border-border bg-card/50">
+            <div>
+              <p className="text-sm font-medium">ML Toxicity Scoring</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                6-dimension toxicity analysis: hate, harassment, self-harm, violence, sexual, dangerous content
+              </p>
+            </div>
+            <Switch
+              checked={(c as any).outputMlToxicity ?? false}
+              onCheckedChange={(v) => handleToggle("outputMlToxicity", v)}
+              disabled={!(c as any).outputScanning}
+            />
+          </div>
+
+          <div className="flex items-center justify-between p-4 rounded-lg border border-border bg-card/50">
+            <div>
+              <p className="text-sm font-medium">Output Policy Compliance</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Enforce custom content policies on LLM outputs (paid tiers)
+              </p>
+            </div>
+            <Switch
+              checked={(c as any).outputPolicyCompliance ?? false}
+              onCheckedChange={(v) => handleToggle("outputPolicyCompliance", v)}
               disabled={!(c as any).outputScanning}
             />
           </div>

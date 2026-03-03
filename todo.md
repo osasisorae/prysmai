@@ -744,4 +744,50 @@
 - [x] Add "One Prysm key, all providers" tip callout
 - [x] Add Common Mistakes troubleshooting table (4 common issues with symptoms/causes/fixes)
 - [x] Updated Step 4 intro text to mention multi-provider support
-- [ ] Save checkpoint
+- [x] Save checkpoint
+
+## Quick Win 2: Off-Topic Detection (Blueprint Section 5.2)
+- [x] Add offTopicDetection fields to securityConfigs schema (enabled, description, keywords, action, threshold)
+- [x] Run pnpm db:push for schema migration
+- [x] Build off-topic-detector.ts module (keyword-based + LLM-based for paid tiers)
+- [x] Integrate off-topic scoring into threat-scorer.ts
+- [x] Update proxy-middleware.ts to load and pass off-topic config
+- [x] Log off-topic events to security_events table
+- [x] Add off-topic config to Security dashboard settings panel
+- [x] Add off-topic events to threat timeline visualization
+- [x] Write vitest tests for off-topic-detector
+
+## Quick Win 4: PagerDuty Integration (Blueprint Section 12.4)
+- [x] Add pagerduty case to alert-engine.ts sendAlertNotifications
+- [x] Implement PagerDuty Events API v2 trigger event
+- [x] Implement PagerDuty resolve events (auto-close when condition normalizes)
+- [x] Add PagerDuty option to alert channel configuration in dashboard (+ Slack, Webhook)
+- [x] Write vitest tests for PagerDuty alert channel (9 tests passing)
+
+## Quick Win 3: ML-Based Toxicity Scoring (Blueprint Section 5.4)
+- [x] Build toxicity-scorer.ts module (LLM-based 6-dimension scoring for paid tiers)
+- [x] Integrate ML toxicity scorer into output-scanner.ts (done in QW5)
+- [x] Keep keyword-based fallback for free tier (scanOutputSync)
+- [x] Update OutputScanResult with full ToxicityScores breakdown
+- [x] Update security dashboard to display ML toxicity, NER, and policy compliance toggles
+- [x] Write vitest tests for toxicity-scorer (14 tests passing)
+
+## Quick Win 5: Enhanced Output Scanning (Blueprint Section 5.4)
+- [x] Build ner-detector.ts module (LLM-based NER for paid tiers, 17 tests)
+- [x] Integrate NER results into output-scanner.ts PII detection
+- [x] Integrate ML toxicity scorer into output-scanner.ts
+- [x] Add scanOutputSync for backward compat + async scanOutput with ML/NER
+- [x] Add outputNerDetection and outputPolicyCompliance fields to securityConfigs schema
+- [ ] Add output policy compliance to output-scanner.ts (run content policy rules on completions)
+- [x] Update security dashboard to show NER, ML toxicity, and policy compliance toggles
+- [x] Write vitest tests for ner-detector (17 tests passing)
+
+## Quick Win 1: SDK Framework Integrations (Blueprint Section 9.3)
+- [x] Create prysmai/integrations/ package directory
+- [x] Build LangChain callback handler (prysmai/integrations/langchain.py) — 14 tests
+- [x] Build CrewAI monitor (prysmai/integrations/crewai.py) — 11 tests
+- [x] Build LlamaIndex span handler (prysmai/integrations/llamaindex.py) — 7 tests
+- [ ] Add optional dependencies to pyproject.toml
+- [x] Write tests for all three framework integrations (37 tests passing)
+- [ ] Update SDK docs page in the web app
+- [ ] Publish v0.4.0 to PyPI Release SDK v0.4.0 to PyPI

@@ -2,15 +2,20 @@
  * Output Scanner — Response-Side Security
  *
  * Scans LLM completion text for:
- *   1. PII leakage (reuses pii-detector)
- *   2. Toxicity / harmful content (keyword + pattern based)
+ *   1. PII leakage (reuses pii-detector) + NER detection (paid tiers)
+ *   2. Toxicity / harmful content (keyword-based free, ML 6-dimension paid)
+ *   3. Output policy compliance (paid tiers)
  *
  * Designed to run AFTER the upstream response is received.
  * For non-streaming: scans the full completion before forwarding.
  * For streaming: scans the accumulated completion after stream ends (log-only, no blocking).
+ *
+ * Blueprint Section 5.4 — Enhanced Output Scanning
  */
 
 import { detectPII, type PIIDetectionResult, type RedactionMode } from "./pii-detector";
+import { scoreToxicityML, type MLToxicityResult, type ToxicityScores } from "./toxicity-scorer";
+import { detectNER, type NERResult, type NEREntity } from "./ner-detector";
 import { getDb } from "../db";
 import { securityEvents, securityConfigs } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
@@ -43,10 +48,16 @@ export interface OutputScanResult {
   piiResult: PIIDetectionResult | null;
   piiScore: number;
 
-  // Toxicity
+  // Toxicity (keyword-based, always available)
   toxicityMatches: ToxicityMatch[];
   toxicityScore: number;
   toxicityCategories: ToxicityCategory[];
+
+  // ML Toxicity (paid tiers only)
+  mlToxicityResult?: MLToxicityResult;
+
+  // NER (paid tiers only)
+  nerResult?: NERResult;
 
   // Redacted output (if PII redaction enabled)
   redactedOutput?: string;
@@ -61,9 +72,13 @@ export interface OutputScanConfig {
   outputToxicityDetection: boolean;
   outputBlockThreats: boolean;
   piiRedactionMode: RedactionMode;
+  // Enhanced scanning (paid tiers)
+  outputNerDetection?: boolean;
+  outputPolicyCompliance?: boolean;
+  outputPolicies?: string[];
 }
 
-// ─── Toxicity Patterns ──────────────────────────────────────────────
+// ─── Toxicity Patterns (Free Tier — Keyword-Based) ──────────────────
 
 interface ToxicityPattern {
   category: ToxicityCategory;
@@ -131,7 +146,7 @@ const TOXICITY_PATTERNS: ToxicityPattern[] = [
   },
 ];
 
-// ─── Toxicity Detection ─────────────────────────────────────────────
+// ─── Toxicity Detection (Free Tier — Keyword-Based) ─────────────────
 
 export function detectToxicity(text: string): {
   matches: ToxicityMatch[];
@@ -173,7 +188,127 @@ function getOutputThreatLevel(score: number): "clean" | "low" | "medium" | "high
 
 // ─── Main Output Scan Function ──────────────────────────────────────
 
-export function scanOutput(
+/**
+ * Scan output text for security threats.
+ * Free tier: keyword-based toxicity + regex PII
+ * Paid tier: adds ML toxicity scoring + NER detection
+ */
+export async function scanOutput(
+  completionText: string,
+  config: OutputScanConfig,
+  orgPlan?: string
+): Promise<OutputScanResult> {
+  const startTime = Date.now();
+
+  if (!config.outputScanning || !completionText.trim()) {
+    return {
+      outputThreatScore: 0,
+      outputThreatLevel: "clean",
+      shouldBlock: false,
+      summary: "Output scanning disabled or empty output",
+      piiResult: null,
+      piiScore: 0,
+      toxicityMatches: [],
+      toxicityScore: 0,
+      toxicityCategories: [],
+      processingTimeMs: Date.now() - startTime,
+    };
+  }
+
+  // 1. PII detection on output (always — regex-based)
+  let piiResult: PIIDetectionResult | null = null;
+  let piiScore = 0;
+  if (config.outputPiiDetection) {
+    piiResult = detectPII(completionText, config.piiRedactionMode);
+    // Scale to 0-50 range (output PII is more serious — model is leaking data)
+    piiScore = Math.min(50, Math.round(piiResult.score * 0.5));
+  }
+
+  // 2. Toxicity detection — keyword-based (always runs, fast)
+  let toxicityResult = { matches: [] as ToxicityMatch[], score: 0, categories: [] as ToxicityCategory[] };
+  let toxicityScore = 0;
+  if (config.outputToxicityDetection) {
+    toxicityResult = detectToxicity(completionText);
+    // Scale to 0-50 range
+    toxicityScore = Math.min(50, Math.round(toxicityResult.score * 0.5));
+  }
+
+  // 3. ML Toxicity Scoring (paid tiers only — 6-dimension LLM analysis)
+  let mlToxicityResult: MLToxicityResult | undefined;
+  if (orgPlan && config.outputToxicityDetection) {
+    try {
+      mlToxicityResult = await scoreToxicityML(completionText, orgPlan);
+      // If ML scoring found more threats, boost the toxicity score
+      if (mlToxicityResult.scanned && mlToxicityResult.overallScore > toxicityScore) {
+        toxicityScore = Math.min(50, Math.round(mlToxicityResult.overallScore * 0.5));
+      }
+    } catch (err) {
+      console.error("[Security] ML toxicity scoring failed in output scanner:", err);
+    }
+  }
+
+  // 4. NER Detection (paid tiers only — LLM-based entity recognition)
+  let nerResult: NERResult | undefined;
+  if (orgPlan && config.outputNerDetection !== false) {
+    try {
+      nerResult = await detectNER(completionText, orgPlan);
+      // If NER found sensitive entities, boost PII score
+      if (nerResult.scanned && nerResult.riskScore > 0) {
+        const nerBoost = Math.min(20, Math.round(nerResult.riskScore * 0.2));
+        piiScore = Math.min(50, piiScore + nerBoost);
+      }
+    } catch (err) {
+      console.error("[Security] NER detection failed in output scanner:", err);
+    }
+  }
+
+  // 5. Composite score
+  const outputThreatScore = Math.min(100, piiScore + toxicityScore);
+  const outputThreatLevel = getOutputThreatLevel(outputThreatScore);
+
+  // 6. Blocking decision
+  const shouldBlock = config.outputBlockThreats && outputThreatLevel === "high";
+
+  // 7. Summary
+  const parts: string[] = [];
+  if (piiResult && piiResult.hasPII) {
+    parts.push(`Output PII: ${piiResult.types.join(", ")} (${piiResult.matches.length} instances)`);
+  }
+  if (nerResult?.scanned && nerResult.sensitiveCount > 0) {
+    parts.push(`NER: ${nerResult.sensitiveCount} sensitive entities (${nerResult.entityTypes.join(", ")})`);
+  }
+  if (toxicityResult.matches.length > 0) {
+    parts.push(`Toxicity: ${toxicityResult.categories.join(", ")}`);
+  }
+  if (mlToxicityResult?.scanned && mlToxicityResult.flaggedCategories.length > 0) {
+    parts.push(`ML Toxicity: ${mlToxicityResult.flaggedCategories.join(", ")}`);
+  }
+  const summary = parts.length > 0 ? parts.join("; ") : "Output clean";
+
+  const processingTimeMs = Date.now() - startTime;
+
+  return {
+    outputThreatScore,
+    outputThreatLevel,
+    shouldBlock,
+    summary,
+    piiResult,
+    piiScore,
+    toxicityMatches: toxicityResult.matches,
+    toxicityScore,
+    toxicityCategories: toxicityResult.categories,
+    mlToxicityResult,
+    nerResult,
+    redactedOutput: piiResult?.redactedText,
+    processingTimeMs,
+  };
+}
+
+/**
+ * Synchronous scan for backward compatibility (free tier only).
+ * Does not run ML toxicity or NER — those require async.
+ */
+export function scanOutputSync(
   completionText: string,
   config: OutputScanConfig
 ): OutputScanResult {
@@ -194,32 +329,26 @@ export function scanOutput(
     };
   }
 
-  // 1. PII detection on output
+  // 1. PII detection
   let piiResult: PIIDetectionResult | null = null;
   let piiScore = 0;
   if (config.outputPiiDetection) {
     piiResult = detectPII(completionText, config.piiRedactionMode);
-    // Scale to 0-50 range (output PII is more serious — model is leaking data)
     piiScore = Math.min(50, Math.round(piiResult.score * 0.5));
   }
 
-  // 2. Toxicity detection on output
+  // 2. Keyword toxicity
   let toxicityResult = { matches: [] as ToxicityMatch[], score: 0, categories: [] as ToxicityCategory[] };
   let toxicityScore = 0;
   if (config.outputToxicityDetection) {
     toxicityResult = detectToxicity(completionText);
-    // Scale to 0-50 range
     toxicityScore = Math.min(50, Math.round(toxicityResult.score * 0.5));
   }
 
-  // 3. Composite score
   const outputThreatScore = Math.min(100, piiScore + toxicityScore);
   const outputThreatLevel = getOutputThreatLevel(outputThreatScore);
-
-  // 4. Blocking decision
   const shouldBlock = config.outputBlockThreats && outputThreatLevel === "high";
 
-  // 5. Summary
   const parts: string[] = [];
   if (piiResult && piiResult.hasPII) {
     parts.push(`Output PII: ${piiResult.types.join(", ")} (${piiResult.matches.length} instances)`);
@@ -228,8 +357,6 @@ export function scanOutput(
     parts.push(`Toxicity: ${toxicityResult.categories.join(", ")}`);
   }
   const summary = parts.length > 0 ? parts.join("; ") : "Output clean";
-
-  const processingTimeMs = Date.now() - startTime;
 
   return {
     outputThreatScore,
@@ -242,7 +369,7 @@ export function scanOutput(
     toxicityScore,
     toxicityCategories: toxicityResult.categories,
     redactedOutput: piiResult?.redactedText,
-    processingTimeMs,
+    processingTimeMs: Date.now() - startTime,
   };
 }
 
@@ -296,6 +423,9 @@ export const DEFAULT_OUTPUT_SCAN_CONFIG: OutputScanConfig = {
   outputToxicityDetection: true,
   outputBlockThreats: false,
   piiRedactionMode: "none",
+  outputNerDetection: true,
+  outputPolicyCompliance: false,
+  outputPolicies: [],
 };
 
 export async function getOutputScanConfig(projectId: number): Promise<OutputScanConfig> {
@@ -326,6 +456,9 @@ export async function getOutputScanConfig(projectId: number): Promise<OutputScan
       outputToxicityDetection: row.outputToxicityDetection ?? true,
       outputBlockThreats: row.outputBlockThreats ?? false,
       piiRedactionMode: (row.piiRedactionMode as RedactionMode) ?? "none",
+      outputNerDetection: (row as any).outputNerDetection ?? true,
+      outputPolicyCompliance: (row as any).outputPolicyCompliance ?? false,
+      outputPolicies: (row as any).outputPolicies ? JSON.parse((row as any).outputPolicies) : [],
     };
 
     outputConfigCache.set(projectId, { config, expiry: Date.now() + CACHE_TTL_MS });
