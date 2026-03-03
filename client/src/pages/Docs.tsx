@@ -344,12 +344,36 @@ export default function Docs() {
               rel="noopener noreferrer"
             >
               <span className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
-                v0.1.3 on PyPI <ExternalLink className="w-3 h-3" />
+                v0.4.0 on PyPI <ExternalLink className="w-3 h-3" />
               </span>
             </a>
           </div>
         </div>
       </section>
+
+      {/* What's New Banner */}
+      <div className="container pt-8 pb-0">
+        <div className="rounded-lg border border-primary/30 bg-primary/[0.04] p-5">
+          <div className="flex items-start gap-4">
+            <div className="shrink-0 mt-0.5">
+              <Sparkles className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-foreground mb-1.5">
+                What&apos;s New in v0.4.0
+              </h3>
+              <ul className="text-sm text-muted-foreground space-y-1">
+                <li><strong className="text-foreground">Framework Integrations</strong> &mdash; Native callbacks for <a href="#frameworks" className="text-primary hover:underline">LangChain, CrewAI, and LlamaIndex</a>. Install with <code className="text-xs bg-secondary/50 px-1.5 py-0.5 rounded">pip install prysmai[langchain]</code></li>
+                <li><strong className="text-foreground">Off-Topic Detection</strong> &mdash; <a href="#off-topic-detection" className="text-primary hover:underline">Prevent agent misuse</a> with keyword + LLM-based relevance scoring</li>
+                <li><strong className="text-foreground">ML Toxicity Scoring</strong> &mdash; <a href="#ml-toxicity" className="text-primary hover:underline">6-dimension content analysis</a> replaces keyword matching on paid tiers</li>
+                <li><strong className="text-foreground">NER-Based PII Detection</strong> &mdash; <a href="#ner-detection" className="text-primary hover:underline">LLM-powered entity recognition</a> catches names, orgs, and addresses that regex misses</li>
+                <li><strong className="text-foreground">PagerDuty Alerts</strong> &mdash; Trigger and auto-resolve incidents via Events API v2</li>
+                <li><strong className="text-foreground">CI/CD Examples</strong> &mdash; <a href="#cicd-github-actions" className="text-primary hover:underline">GitHub Actions workflows</a> for testing with Prysm observability</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* Content */}
       <div className="container py-12">
@@ -1744,6 +1768,136 @@ console.log(response.choices[0].message.content);`}
               request text and flagged with a severity of 7.
             </p>
 
+            <SubHeading id="off-topic-detection">Off-Topic Detection</SubHeading>
+            <p className="text-muted-foreground leading-relaxed mb-4">
+              Off-topic detection prevents users from misusing your AI agent for purposes outside its
+              intended scope. When enabled, every incoming request is checked against your configured
+              description and keywords to determine if it&apos;s relevant to your agent&apos;s purpose.
+            </p>
+            <p className="text-muted-foreground leading-relaxed mb-4">
+              <strong className="text-foreground">How it works:</strong> The detector uses a two-tier approach.
+              On the <strong>Free tier</strong>, keyword-based matching scores prompts against your configured
+              keywords and description terms using weighted relevance scoring. On <strong>paid tiers</strong>,
+              an LLM-based semantic analysis provides deeper understanding of whether the request is
+              genuinely relevant to your agent&apos;s purpose, catching subtle off-topic requests that
+              keyword matching would miss.
+            </p>
+            <ParamTable
+              params={[
+                { name: "offTopicDetection", type: "boolean", default: "false", desc: "Enable or disable off-topic detection" },
+                { name: "offTopicDescription", type: "string", default: "", desc: "Describe your agent's purpose (e.g., 'Customer support chatbot for an e-commerce platform')" },
+                { name: "offTopicKeywords", type: "string", default: "", desc: "Comma-separated keywords relevant to your agent (e.g., 'orders, shipping, returns, products')" },
+                { name: "offTopicAction", type: "string", default: "flag", desc: "Action when off-topic detected: flag (log only) or block (reject request)" },
+                { name: "offTopicThreshold", type: "number", default: "0.5", desc: "Confidence threshold (0-1). Lower = stricter. Requests scoring below this are flagged/blocked." },
+              ]}
+            />
+            <CodeBlock
+              code={`// Configure off-topic detection via tRPC
+trpc.security.updateConfig.useMutation({
+  offTopicDetection: true,
+  offTopicDescription: "Customer support chatbot for an e-commerce platform",
+  offTopicKeywords: "orders, shipping, returns, products, refunds, tracking",
+  offTopicAction: "flag",    // or "block"
+  offTopicThreshold: 0.5,    // 0-1, lower = stricter
+});`}
+              language="typescript"
+              filename="off-topic-config.ts"
+            />
+            <Callout type="tip">
+              <strong>Tip:</strong> Start with <IC>flag</IC> mode and a threshold of <IC>0.5</IC> to
+              monitor what gets caught. Review the security events in the dashboard, then tune the
+              threshold and switch to <IC>block</IC> once you&apos;re confident in the detection accuracy.
+            </Callout>
+
+            <SubHeading id="ner-detection">NER-Based PII Detection</SubHeading>
+            <p className="text-muted-foreground leading-relaxed mb-4">
+              On <strong>paid tiers</strong>, Prysm enhances PII detection with LLM-based Named Entity
+              Recognition (NER). While the standard regex-based PII detector catches structured patterns
+              (emails, SSNs, credit cards), NER catches <strong>unstructured PII</strong> that regex misses &mdash;
+              full names in natural language, organization names, physical addresses, medical conditions,
+              and financial information embedded in conversational text.
+            </p>
+            <div className="overflow-x-auto my-6">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left py-2.5 pr-4 text-muted-foreground font-medium">Entity Type</th>
+                    <th className="text-left py-2.5 pr-4 text-muted-foreground font-medium">Example</th>
+                    <th className="text-left py-2.5 text-muted-foreground font-medium">Detection Method</th>
+                  </tr>
+                </thead>
+                <tbody className="text-muted-foreground">
+                  {[
+                    ["PERSON", "\"John Smith mentioned in the meeting\"", "LLM NER (paid)"],
+                    ["ORGANIZATION", "\"Acme Corp's quarterly report\"", "LLM NER (paid)"],
+                    ["LOCATION", "\"Office at 742 Evergreen Terrace\"", "LLM NER (paid)"],
+                    ["MEDICAL", "\"Patient diagnosed with diabetes\"", "LLM NER (paid)"],
+                    ["FINANCIAL", "\"Account balance of $50,000\"", "LLM NER (paid)"],
+                    ["DATE_OF_BIRTH", "\"Born on January 15, 1990\"", "Regex + NER"],
+                    ["EMAIL", "\"user@example.com\"", "Regex (all tiers)"],
+                    ["SSN", "\"123-45-6789\"", "Regex (all tiers)"],
+                  ].map(([type, example, method]) => (
+                    <tr key={type} className="border-b border-border/50">
+                      <td className="py-2.5 pr-4 font-mono text-xs text-primary">{type}</td>
+                      <td className="py-2.5 pr-4 font-mono text-xs">{example}</td>
+                      <td className="py-2.5">{method}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="text-muted-foreground leading-relaxed mb-4">
+              NER detection is enabled via the <IC>outputNerDetection</IC> toggle in the Security Dashboard
+              configuration tab. When enabled, NER entities found in LLM outputs are logged alongside
+              standard PII findings and contribute to the composite threat score.
+            </p>
+
+            <SubHeading id="ml-toxicity">ML-Based Toxicity Scoring</SubHeading>
+            <p className="text-muted-foreground leading-relaxed mb-4">
+              On <strong>paid tiers</strong>, Prysm replaces keyword-based content policy checks with
+              LLM-powered toxicity analysis that scores content across 6 dimensions. This catches
+              nuanced toxic content that keyword matching misses &mdash; sarcasm, coded language,
+              context-dependent toxicity, and subtle bias.
+            </p>
+            <div className="overflow-x-auto my-6">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left py-2.5 pr-4 text-muted-foreground font-medium">Dimension</th>
+                    <th className="text-left py-2.5 pr-4 text-muted-foreground font-medium">Score Range</th>
+                    <th className="text-left py-2.5 text-muted-foreground font-medium">What It Detects</th>
+                  </tr>
+                </thead>
+                <tbody className="text-muted-foreground">
+                  {[
+                    ["toxicity", "0\u20131.0", "Overall toxic intent, hostility, or harmful language"],
+                    ["severe_toxicity", "0\u20131.0", "Extreme toxicity: threats, slurs, dehumanization"],
+                    ["identity_attack", "0\u20131.0", "Attacks based on race, gender, religion, orientation"],
+                    ["insult", "0\u20131.0", "Demeaning, belittling, or disrespectful language"],
+                    ["threat", "0\u20131.0", "Explicit or implied threats of violence or harm"],
+                    ["sexually_explicit", "0\u20131.0", "Sexual content, innuendo, or explicit material"],
+                  ].map(([dim, range, desc]) => (
+                    <tr key={dim} className="border-b border-border/50">
+                      <td className="py-2.5 pr-4 font-mono text-xs text-primary">{dim}</td>
+                      <td className="py-2.5 pr-4 font-mono text-xs">{range}</td>
+                      <td className="py-2.5">{desc}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="text-muted-foreground leading-relaxed mb-4">
+              The ML toxicity scorer returns a composite <IC>toxicityScore</IC> (0&ndash;1) along with
+              individual dimension scores. Scores above <IC>0.7</IC> are flagged as toxic. The composite
+              score is factored into the overall threat assessment. Enable via the <IC>ML Toxicity Scoring</IC> toggle
+              in the Security Dashboard configuration tab.
+            </p>
+            <Callout type="info">
+              <strong>Free tier fallback:</strong> On the free tier, content policy enforcement uses
+              keyword-based matching (5 default policies + custom keywords). Upgrade to a paid plan
+              to unlock 6-dimension ML toxicity analysis with nuanced content understanding.
+            </Callout>
+
             <SubHeading id="threat-scoring">Threat Scoring</SubHeading>
             <p className="text-muted-foreground leading-relaxed mb-4">
               Every request receives a composite threat score from 0 to 100. The score is calculated
@@ -1808,6 +1962,9 @@ threatScore    = min(100, injectionScore + piiScore + policyScore)
                 { name: "piiRedactionMode", type: "string", default: "none", desc: "How to handle detected PII: none, mask, hash, or block" },
                 { name: "blockHighThreats", type: "boolean", default: "false", desc: "Automatically block requests with threat score ≥ 70" },
                 { name: "customKeywords", type: "string[]", default: "[]", desc: "Custom keywords to flag in request content" },
+                { name: "offTopicDetection", type: "boolean", default: "false", desc: "Enable off-topic request detection (v0.4.0+)" },
+                { name: "outputNerDetection", type: "boolean", default: "false", desc: "Enable LLM-based NER for output PII detection (paid tiers, v0.4.0+)" },
+                { name: "outputMlToxicity", type: "boolean", default: "false", desc: "Enable 6-dimension ML toxicity scoring (paid tiers, v0.4.0+)" },
               ]}
             />
             <Callout type="tip">
@@ -1839,6 +1996,12 @@ trpc.security.updateConfig.useMutation({
   piiRedactionMode: "mask",
   blockHighThreats: true,
   customKeywords: ["competitor-name", "internal-project"],
+  // v0.4.0+ features
+  offTopicDetection: true,
+  offTopicDescription: "Customer support chatbot for e-commerce",
+  offTopicKeywords: "orders, shipping, returns, products",
+  outputNerDetection: true,   // LLM-based NER (paid tiers)
+  outputMlToxicity: true,     // 6-dimension toxicity (paid tiers)
 });`}
               language="typescript"
               filename="security-api-examples.ts"
@@ -2136,6 +2299,112 @@ code_review_agent:
                 </tbody>
               </table>
             </div>
+
+            <SubHeading id="cicd-github-actions">GitHub Actions with Framework Integrations</SubHeading>
+            <p className="text-muted-foreground leading-relaxed mb-4">
+              Run your LangChain, CrewAI, or LlamaIndex tests with Prysm observability in CI.
+              Every LLM call during your test suite is captured, security-scanned, and visible
+              in your Prysm dashboard &mdash; so you catch prompt injection regressions and
+              cost spikes before they hit production.
+            </p>
+
+            <CodeBlock
+              code={`# .github/workflows/ai-tests.yml
+name: AI Agent Tests with Prysm Observability
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  test-langchain:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install prysmai[langchain] pytest
+          pip install -r requirements.txt
+
+      - name: Run LangChain tests with Prysm
+        env:
+          PRYSM_API_KEY: \${{ secrets.PRYSM_API_KEY }}
+          OPENAI_API_KEY: \${{ secrets.OPENAI_API_KEY }}
+        run: pytest tests/ -v
+
+  test-crewai:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install prysmai[crewai] pytest
+          pip install -r requirements.txt
+
+      - name: Run CrewAI tests with Prysm
+        env:
+          PRYSM_API_KEY: \${{ secrets.PRYSM_API_KEY }}
+          OPENAI_API_KEY: \${{ secrets.OPENAI_API_KEY }}
+        run: pytest tests/ -v`}
+              language="yaml"
+              filename=".github/workflows/ai-tests.yml"
+            />
+
+            <p className="text-muted-foreground leading-relaxed mb-4">
+              In your test files, initialize the Prysm integration once and pass it to your chains or crews.
+              All LLM calls are automatically routed through Prysm for observability and security scanning.
+            </p>
+
+            <CodeBlock
+              code={`# tests/conftest.py — shared Prysm fixtures for pytest
+import pytest
+from prysmai.integrations.langchain import PrysmCallbackHandler
+from prysmai.integrations.crewai import PrysmCrewMonitor
+
+@pytest.fixture
+def prysm_langchain():
+    handler = PrysmCallbackHandler(
+        metadata={"env": "ci", "run": "github-actions"}
+    )
+    yield handler
+    handler.close()
+
+@pytest.fixture
+def prysm_crewai():
+    monitor = PrysmCrewMonitor(
+        metadata={"env": "ci", "run": "github-actions"}
+    )
+    yield monitor
+    monitor.close()
+
+# tests/test_agent.py — use the fixture in your tests
+def test_research_chain(prysm_langchain):
+    chain = build_research_chain()
+    result = chain.invoke(
+        {"query": "What is SAE analysis?"},
+        config={"callbacks": [prysm_langchain]}
+    )
+    assert "sparse autoencoder" in result.content.lower()
+    # All calls are now visible in your Prysm dashboard`}
+              language="python"
+              filename="tests/conftest.py + tests/test_agent.py"
+            />
+
+            <Callout type="tip">
+              <strong>CI/CD best practice:</strong> Set <IC>PRYSM_API_KEY</IC> as a GitHub Actions
+              secret (Settings &rarr; Secrets &rarr; Actions). The SDK reads it from the environment
+              automatically &mdash; no code changes needed between local development and CI.
+            </Callout>
 
             {/* ═══════════════════════════════════════════════════════════ */}
             {/* ALL ENDPOINTS */}

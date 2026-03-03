@@ -787,10 +787,10 @@
 - [x] Build LangChain callback handler (prysmai/integrations/langchain.py) — 14 tests
 - [x] Build CrewAI monitor (prysmai/integrations/crewai.py) — 11 tests
 - [x] Build LlamaIndex span handler (prysmai/integrations/llamaindex.py) — 7 tests
-- [ ] Add optional dependencies to pyproject.toml
+- [x] Add optional dependencies to pyproject.toml
 - [x] Write tests for all three framework integrations (37 tests passing)
-- [ ] Update SDK docs page in the web app
-- [ ] Publish v0.4.0 to PyPI Release SDK v0.4.0 to PyPI
+- [x] Update SDK docs page in the web app
+- [x] Publish v0.4.0 to PyPI (https://pypi.org/project/prysmai/0.4.0/)
 
 ## Docs Page Update: SDK v0.4.0 Framework Integrations
 - [x] Add LangChain integration section with code examples
@@ -798,3 +798,10 @@
 - [x] Add LlamaIndex integration section with code examples
 - [x] Update installation section to show optional deps (prysmai[langchain], etc.)
 - [x] Update version references to v0.4.0
+
+## Docs Update: CI/CD, Security, and v0.4.0 Banner
+- [x] Add CI/CD framework integration examples (GitHub Actions with LangChain/CrewAI/LlamaIndex Prysm callbacks)
+- [x] Add off-topic detection docs to Security section
+- [x] Add NER detection docs to Security section
+- [x] Add ML toxicity scoring docs to Security section
+- [x] Add "What's New in v0.4.0" banner to top of docs page
