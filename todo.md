@@ -791,3 +791,10 @@
 - [x] Write tests for all three framework integrations (37 tests passing)
 - [ ] Update SDK docs page in the web app
 - [ ] Publish v0.4.0 to PyPI Release SDK v0.4.0 to PyPI
+
+## Docs Page Update: SDK v0.4.0 Framework Integrations
+- [x] Add LangChain integration section with code examples
+- [x] Add CrewAI integration section with code examples
+- [x] Add LlamaIndex integration section with code examples
+- [x] Update installation section to show optional deps (prysmai[langchain], etc.)
+- [x] Update version references to v0.4.0

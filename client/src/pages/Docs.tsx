@@ -172,6 +172,7 @@ const NAV_SECTIONS = [
   { id: "overview", label: "Overview", icon: BookOpen },
   { id: "getting-started", label: "Getting Started", icon: Zap },
   { id: "python-sdk", label: "Python SDK", icon: Code2 },
+  { id: "frameworks", label: "Framework Integrations", icon: Plug },
   { id: "rest-api", label: "REST API", icon: Globe },
   { id: "providers", label: "Providers", icon: Layers },
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -567,6 +568,17 @@ print(response.choices[0].message.content)`}
             </p>
             <CodeBlock code="pip install prysmai" language="bash" filename="Terminal" />
 
+            <Callout type="tip">
+              <strong>Framework integrations (v0.4.0):</strong> Install with optional dependencies for your framework:
+              <CodeBlock
+                code={`pip install prysmai[langchain]    # LangChain
+pip install prysmai[crewai]       # CrewAI
+pip install prysmai[llamaindex]   # LlamaIndex
+pip install prysmai[all]          # All frameworks`}
+                language="bash"
+              />
+            </Callout>
+
             <SubHeading id="prysm-client">PrysmClient</SubHeading>
             <p className="text-muted-foreground leading-relaxed mb-2">
               The primary entry point. Creates sync or async OpenAI clients routed through the
@@ -721,6 +733,204 @@ async def main():
 
 asyncio.run(main())`}
             />
+
+            {/* ═══════════════════════════════════════════════════════════ */}
+            {/* Framework Integrations */}
+            {/* ═══════════════════════════════════════════════════════════ */}
+            <SectionHeading id="frameworks">Framework Integrations</SectionHeading>
+            <p className="text-muted-foreground leading-relaxed mb-4">
+              Prysm AI integrates natively with popular LLM frameworks. Each integration captures
+              framework-specific events (chain runs, agent actions, tool calls, task completions)
+              and sends them to your Prysm dashboard alongside your standard LLM traces.
+            </p>
+
+            <SubHeading id="fw-langchain">LangChain</SubHeading>
+            <p className="text-muted-foreground leading-relaxed mb-2">
+              The <IC>PrysmCallbackHandler</IC> plugs into LangChain's callback system to capture
+              chain executions, LLM calls, agent actions, tool invocations, and retriever queries.
+              Works with any LangChain chain, agent, or pipeline.
+            </p>
+            <CodeBlock
+              code="pip install prysmai[langchain]"
+              language="bash"
+              filename="Terminal"
+            />
+            <CodeBlock
+              filename="langchain_example.py"
+              code={`from langchain_openai import ChatOpenAI
+from langchain_core.prompts import ChatPromptTemplate
+from prysmai.integrations.langchain import PrysmCallbackHandler
+
+# Initialize the callback handler
+handler = PrysmCallbackHandler(
+    prysm_key="sk-prysm-...",
+    metadata={"app": "my-chatbot", "env": "production"}
+)
+
+# Use with any LangChain chain
+llm = ChatOpenAI(model="gpt-4o-mini")
+prompt = ChatPromptTemplate.from_messages([
+    ("system", "You are a helpful assistant."),
+    ("human", "{input}")
+])
+chain = prompt | llm
+
+# Pass the handler via config — all events are captured
+result = chain.invoke(
+    {"input": "What is mechanistic interpretability?"},
+    config={"callbacks": [handler]}
+)
+
+# Flush remaining events when done
+handler.close()`}
+            />
+
+            <ParamTable
+              params={[
+                { name: "prysm_key", type: "str", default: "PRYSM_API_KEY env", desc: "Your Prysm API key" },
+                { name: "base_url", type: "str", default: "prysmai.io/api/v1", desc: "Prysm proxy URL" },
+                { name: "metadata", type: "dict", default: "{}", desc: "Global metadata attached to all events" },
+                { name: "batch_size", type: "int", default: "50", desc: "Events buffered before auto-flush" },
+              ]}
+            />
+
+            <div className="overflow-x-auto my-6">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left py-2.5 pr-4 text-muted-foreground font-medium">Captured Events</th>
+                    <th className="text-left py-2.5 text-muted-foreground font-medium">Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    ["LLM calls", "Model, messages, tokens, latency, completion content"],
+                    ["Chain runs", "Chain name, inputs, outputs, duration"],
+                    ["Agent actions", "Tool selected, input, reasoning"],
+                    ["Tool calls", "Tool name, arguments, output, errors"],
+                    ["Retriever queries", "Query text, document count, sources"],
+                  ].map(([event, desc]) => (
+                    <tr key={event} className="border-b border-border/50">
+                      <td className="py-2.5 pr-4 font-mono text-primary text-xs">{event}</td>
+                      <td className="py-2.5 text-muted-foreground">{desc}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <SubHeading id="fw-crewai">CrewAI</SubHeading>
+            <p className="text-muted-foreground leading-relaxed mb-2">
+              The <IC>PrysmCrewMonitor</IC> wraps CrewAI crews to capture the full lifecycle —
+              crew execution, individual agent runs, task completions, and tool usage. Gives you
+              visibility into multi-agent orchestration.
+            </p>
+            <CodeBlock
+              code="pip install prysmai[crewai]"
+              language="bash"
+              filename="Terminal"
+            />
+            <CodeBlock
+              filename="crewai_example.py"
+              code={`from crewai import Agent, Task, Crew
+from prysmai.integrations.crewai import PrysmCrewMonitor
+
+# Initialize the monitor
+monitor = PrysmCrewMonitor(
+    prysm_key="sk-prysm-...",
+    metadata={"project": "research-crew"}
+)
+
+# Define your crew as usual
+researcher = Agent(
+    role="Researcher",
+    goal="Find accurate information",
+    backstory="Expert researcher",
+)
+task = Task(
+    description="Research mechanistic interpretability",
+    agent=researcher,
+    expected_output="A summary of key findings"
+)
+crew = Crew(agents=[researcher], tasks=[task])
+
+# Wrap the crew — all events are captured automatically
+monitor.monitor_crew(crew)
+result = crew.kickoff()
+
+# Flush when done
+monitor.close()`}
+            />
+
+            <div className="overflow-x-auto my-6">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left py-2.5 pr-4 text-muted-foreground font-medium">Captured Events</th>
+                    <th className="text-left py-2.5 text-muted-foreground font-medium">Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    ["Crew lifecycle", "Start/end timestamps, total duration, final output"],
+                    ["Agent runs", "Agent role, goal, start/end, output"],
+                    ["Task execution", "Task description, assigned agent, output, duration"],
+                    ["Tool usage", "Tool name, arguments, result, errors"],
+                  ].map(([event, desc]) => (
+                    <tr key={event} className="border-b border-border/50">
+                      <td className="py-2.5 pr-4 font-mono text-primary text-xs">{event}</td>
+                      <td className="py-2.5 text-muted-foreground">{desc}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <SubHeading id="fw-llamaindex">LlamaIndex</SubHeading>
+            <p className="text-muted-foreground leading-relaxed mb-2">
+              The <IC>PrysmSpanHandler</IC> integrates with LlamaIndex's instrumentation system
+              to capture query spans, LLM calls, embedding operations, and retrieval events
+              across your RAG pipelines.
+            </p>
+            <CodeBlock
+              code="pip install prysmai[llamaindex]"
+              language="bash"
+              filename="Terminal"
+            />
+            <CodeBlock
+              filename="llamaindex_example.py"
+              code={`from llama_index.core import VectorStoreIndex, SimpleDirectoryReader, Settings
+from llama_index.core.instrumentation import get_dispatcher
+from prysmai.integrations.llamaindex import PrysmSpanHandler
+
+# Initialize the span handler
+handler = PrysmSpanHandler(
+    prysm_key="sk-prysm-...",
+    metadata={"pipeline": "doc-qa"}
+)
+
+# Register with LlamaIndex's dispatcher
+dispatcher = get_dispatcher()
+dispatcher.add_span_handler(handler)
+
+# Use LlamaIndex as usual — all spans are captured
+documents = SimpleDirectoryReader("data").load_data()
+index = VectorStoreIndex.from_documents(documents)
+query_engine = index.as_query_engine()
+
+response = query_engine.query("What is SAE analysis?")
+print(response)
+
+# Flush when done
+handler.close()`}
+            />
+
+            <Callout type="tip">
+              <strong>All frameworks together:</strong> Install everything with{" "}
+              <IC>pip install prysmai[all]</IC>. Each integration sends events to the same
+              Prysm dashboard, so you get a unified view across LangChain chains, CrewAI crews,
+              and LlamaIndex pipelines.
+            </Callout>
 
             {/* ═══════════════════════════════════════════════════════════ */}
             {/* REST API */}
