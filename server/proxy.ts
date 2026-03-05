@@ -46,9 +46,36 @@ import {
   estimateAnthropicConfidence,
 } from "./confidence-analysis";
 import { updateTraceConfidenceAnalysis } from "./db";
-import { resolveProvider, type ProjectProviderConfig } from "./provider-router";
+import { resolveProvider, type ProjectProviderConfig, getSupportedModels } from "./provider-router";
+import { createRateLimiter, getClientIp } from "./rate-limiter";
 
 const proxyRouter = Router();
+
+// ─── Per-request rate limiter for proxy endpoints (BUG-002 fix) ───
+// Prevents connection exhaustion under rapid sequential load.
+// 60 requests per minute per IP — generous for normal use, protective against batch abuse.
+const proxyRateLimiter = createRateLimiter("proxy", {
+  maxRequests: 60,
+  windowMs: 60 * 1000,
+});
+
+/**
+ * Set standard rate limit headers on the response.
+ * These headers allow clients to implement proper backoff strategies.
+ */
+function setRateLimitHeaders(
+  res: Response,
+  remaining: number,
+  limit: number,
+  retryAfterMs: number
+): void {
+  res.set("X-RateLimit-Limit", limit.toString());
+  res.set("X-RateLimit-Remaining", remaining.toString());
+  if (retryAfterMs > 0) {
+    res.set("Retry-After", Math.ceil(retryAfterMs / 1000).toString());
+    res.set("X-RateLimit-Reset", new Date(Date.now() + retryAfterMs).toISOString());
+  }
+}
 
 // ─── Auth middleware: extract and validate sk-prysm-* key ───
 
@@ -283,19 +310,35 @@ async function handleChatNonStreaming(req: Request, res: Response, auth: AuthRes
 
     const meta = extractTraceMetadata(req);
 
-    // ─── Output Scanning (non-streaming) ───
+    // ─── Output Scanning (non-streaming) — upgraded to async for ML/NER (P1 fix) ───
     let finalResponseData = responseData;
     if (upstreamResponse.ok && completion) {
       try {
         const outputConfig = await getOutputScanConfig(auth.projectId);
         if (outputConfig.outputScanning) {
-          const outputResult = scanOutputSync(completion, outputConfig);
+          // P1 fix: Use async scanOutput instead of scanOutputSync to enable ML toxicity + NER
+          const outputResult = await scanOutput(completion, outputConfig, auth.orgPlan);
 
           // Add output security headers
           res.set("X-Prysm-Output-Threat-Score", outputResult.outputThreatScore.toString());
           res.set("X-Prysm-Output-Threat-Level", outputResult.outputThreatLevel);
+          // P1 fix: Expose scan summary for client-side verification
+          res.set("X-Prysm-Output-Scan-Result", outputResult.summary.substring(0, 200));
           if (outputResult.toxicityCategories.length > 0) {
             res.set("X-Prysm-Output-Flags", outputResult.toxicityCategories.join(","));
+          }
+          // P1 fix: Expose ML toxicity categories if available
+          if (outputResult.mlToxicityResult?.flaggedCategories?.length) {
+            res.set("X-Prysm-ML-Toxicity-Flags", outputResult.mlToxicityResult.flaggedCategories.join(","));
+          }
+          // P1 fix: Expose NER entities detected
+          if (outputResult.nerResult?.scanned && outputResult.nerResult.sensitiveCount > 0) {
+            res.set("X-Prysm-Entities-Detected", outputResult.nerResult.entityTypes.join(","));
+            res.set("X-Prysm-Entities-Count", outputResult.nerResult.sensitiveCount.toString());
+          }
+          // P1 fix: Expose policy violations
+          if (outputResult.policyResult?.scanned && outputResult.policyResult.violationCount > 0) {
+            res.set("X-Prysm-Policy-Violations", outputResult.policyResult.violatedPolicies.join(","));
           }
 
           // Log output security event asynchronously
@@ -1068,6 +1111,20 @@ async function handleEmbeddings(req: Request, res: Response, auth: AuthResult) {
 
 // Chat completions (streaming + non-streaming, OpenAI + Anthropic)
 proxyRouter.post("/chat/completions", async (req: Request, res: Response) => {
+  // ─── Per-request rate limiting (BUG-002 fix) ───
+  const clientIp = getClientIp(req);
+  const rateCheck = proxyRateLimiter.check(clientIp);
+  setRateLimitHeaders(res, rateCheck.remaining, rateCheck.limit, rateCheck.retryAfterMs);
+  if (!rateCheck.allowed) {
+    return res.status(429).json({
+      error: {
+        message: `Per-request rate limit exceeded. Try again in ${Math.ceil(rateCheck.retryAfterMs / 1000)} seconds.`,
+        type: "rate_limit_error",
+        retry_after_ms: rateCheck.retryAfterMs,
+      },
+    });
+  }
+
   const auth = await authenticateProxyRequest(req);
   if (!auth) {
     return res.status(401).json({
@@ -1097,8 +1154,15 @@ proxyRouter.post("/chat/completions", async (req: Request, res: Response) => {
   if (securityResult) {
     res.set("X-Prysm-Threat-Score", securityResult.threatScore.toString());
     res.set("X-Prysm-Threat-Level", securityResult.threatLevel);
+    // P1 fix: Expose scan summary for client-side verification
+    res.set("X-Prysm-Scan-Result", securityResult.summary.substring(0, 200));
     if (securityResult.llmEnhanced) {
       res.set("X-Prysm-Scan-Tier", "deep");
+    }
+    // P1 fix: Expose off-topic detection result
+    if (securityResult.offTopicResult?.isOffTopic) {
+      res.set("X-Prysm-Off-Topic", "true");
+      res.set("X-Prysm-Off-Topic-Reason", securityResult.offTopicResult.reason?.substring(0, 200) ?? "detected");
     }
     if (securityResult.action === "block") {
       return res.status(403).json({
@@ -1180,15 +1244,32 @@ proxyRouter.post("/embeddings", async (req: Request, res: Response) => {
   await handleEmbeddings(req, res, auth);
 });
 
-// Health check
+// Health check (FINDING-001: now includes supported_models)
 proxyRouter.get("/health", (_req: Request, res: Response) => {
   res.json({
     status: "ok",
     service: "prysm-proxy",
     version: "0.4.0",
-    endpoints: ["/chat/completions", "/completions", "/embeddings"],
+    endpoints: ["/chat/completions", "/completions", "/embeddings", "/models"],
     providers: ["openai", "anthropic", "google", "vllm", "ollama", "tgi"],
     capabilities: ["observability", "security", "explainability"],
+    supported_models: getSupportedModels(),
+  });
+});
+
+// Models listing endpoint (FINDING-001: explicit model documentation)
+proxyRouter.get("/models", (_req: Request, res: Response) => {
+  const models = getSupportedModels();
+  res.json({
+    object: "list",
+    data: models.flatMap((m) =>
+      m.examples.map((example) => ({
+        id: example,
+        object: "model",
+        provider: m.provider,
+        pattern: m.pattern,
+      }))
+    ),
   });
 });
 

@@ -820,3 +820,13 @@
 - [x] Add output policy compliance to paid tier features
 - [x] Add PagerDuty & Slack alert channels to paid tier features
 - [x] Update feature comparison table (5 new rows: off-topic, toxicity, NER, policy, alerts)
+
+## Stress Test Report Fixes (March 5, 2026)
+- [x] BUG-001: Fix PrysmCallbackHandler.on_chain_start AttributeError — null check on serialized parameter
+- [x] BUG-002: Fix proxy connection errors under sequential load — rate limiter improvements + retry headers
+- [x] BUG-003: Fix CrewAI DelegateWorkToolSchema validation errors when agents delegate work
+- [x] FINDING-001: Document all supported model names in provider router / docs
+- [x] FINDING-002: Improve CrewAI agent prompt quality for better moderation output
+- [x] FINDING-003: Add LlamaIndex pre-warming / index warm-up guidance in docs and code
+- [x] P1-REC: Expose server-side scan results in response headers (X-Prysm-Scan-Result, X-Prysm-Entities-Detected)
+- [x] P1-REC: Add rate limit headers to proxy responses (X-RateLimit-Remaining, Retry-After)

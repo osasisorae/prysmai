@@ -235,6 +235,62 @@ export function resolveProvider(
 }
 
 /**
+ * Supported Models Reference (FINDING-001)
+ *
+ * The router auto-detects providers from model names using regex patterns.
+ * Below is the complete list of supported model name patterns and example models.
+ *
+ * | Provider   | Pattern             | Example Models                                                  |
+ * |------------|---------------------|-----------------------------------------------------------------|
+ * | OpenAI     | gpt-*               | gpt-4o, gpt-4o-mini, gpt-4.1, gpt-4.1-mini, gpt-4.1-nano      |
+ * | OpenAI     | o[1-9](-*)?         | o1, o1-preview, o3, o3-mini                                    |
+ * | OpenAI     | chatgpt-*           | chatgpt-4o-latest                                               |
+ * | OpenAI     | text-embedding*     | text-embedding-3-small, text-embedding-3-large, text-embedding-ada-002 |
+ * | OpenAI     | text-davinci*       | text-davinci-003                                                |
+ * | OpenAI     | whisper*            | whisper-1                                                       |
+ * | OpenAI     | dall-e*             | dall-e-3, dall-e-2                                              |
+ * | OpenAI     | tts-*               | tts-1, tts-1-hd                                                |
+ * | Anthropic  | claude-*            | claude-sonnet-4-20250514, claude-3.5-sonnet, claude-3-opus      |
+ * | Google     | gemini-*            | gemini-2.5-flash, gemini-2.5-pro, gemini-1.5-pro               |
+ * | Google     | gemma-*             | gemma-2-9b, gemma-7b                                           |
+ * | Meta       | llama*, meta-llama* | llama-3.1-70b, meta-llama/Llama-3.1-8B (via vLLM/Ollama)       |
+ * | Mistral    | mistral*, mixtral*  | mistral-large, mixtral-8x7b, codestral, pixtral                |
+ * | DeepSeek   | deepseek*           | deepseek-chat, deepseek-coder, deepseek-r1                     |
+ * | Qwen       | qwen*               | qwen-2.5-72b, qwen-turbo                                       |
+ * | Cohere     | command*            | command-r-plus, command-r                                       |
+ *
+ * Models routed as "openai" use the OpenAI-compatible API format.
+ * Anthropic models are auto-translated via the Anthropic translation layer.
+ * Google Gemini models use the OpenAI-compatible endpoint.
+ *
+ * To use a model not in this list, set X-Prysm-Provider header explicitly
+ * or configure a defaultProvider in your project settings.
+ */
+
+/**
+ * Get a structured list of all supported model patterns for documentation/API.
+ */
+export function getSupportedModels(): Array<{ provider: string; pattern: string; examples: string[] }> {
+  return [
+    { provider: "openai", pattern: "gpt-*", examples: ["gpt-4o", "gpt-4o-mini", "gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano"] },
+    { provider: "openai", pattern: "o[1-9]*", examples: ["o1", "o1-preview", "o3", "o3-mini"] },
+    { provider: "openai", pattern: "chatgpt-*", examples: ["chatgpt-4o-latest"] },
+    { provider: "openai", pattern: "text-embedding*", examples: ["text-embedding-3-small", "text-embedding-3-large"] },
+    { provider: "openai", pattern: "whisper*", examples: ["whisper-1"] },
+    { provider: "openai", pattern: "dall-e*", examples: ["dall-e-3", "dall-e-2"] },
+    { provider: "openai", pattern: "tts-*", examples: ["tts-1", "tts-1-hd"] },
+    { provider: "anthropic", pattern: "claude-*", examples: ["claude-sonnet-4-20250514", "claude-3.5-sonnet", "claude-3-opus"] },
+    { provider: "google", pattern: "gemini-*", examples: ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-1.5-pro"] },
+    { provider: "google", pattern: "gemma-*", examples: ["gemma-2-9b"] },
+    { provider: "openai", pattern: "llama*", examples: ["llama-3.1-70b", "meta-llama/Llama-3.1-8B"] },
+    { provider: "openai", pattern: "mistral*", examples: ["mistral-large", "mixtral-8x7b", "codestral"] },
+    { provider: "openai", pattern: "deepseek*", examples: ["deepseek-chat", "deepseek-coder", "deepseek-r1"] },
+    { provider: "openai", pattern: "qwen*", examples: ["qwen-2.5-72b", "qwen-turbo"] },
+    { provider: "openai", pattern: "command*", examples: ["command-r-plus", "command-r"] },
+  ];
+}
+
+/**
  * Get list of connected providers for a project (for UI display).
  */
 export function getConnectedProviders(project: ProjectProviderConfig): string[] {
