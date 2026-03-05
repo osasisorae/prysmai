@@ -830,3 +830,18 @@
 - [x] FINDING-003: Add LlamaIndex pre-warming / index warm-up guidance in docs and code
 - [x] P1-REC: Expose server-side scan results in response headers (X-Prysm-Scan-Result, X-Prysm-Entities-Detected)
 - [x] P1-REC: Add rate limit headers to proxy responses (X-RateLimit-Remaining, Retry-After)
+
+## SDK v0.4.1 Real Integration Tests (March 5, 2026)
+- [x] Test BUG-001 fix with real LangChain calls through live Prysm proxy
+- [x] Test BUG-003 fix with real CrewAI delegation through live Prysm proxy
+- [x] Test general PrysmClient and monitor() against live proxy
+- [x] Write production-grade integration tests with real API key
+- [x] Build and publish v0.4.1 to PyPI (https://pypi.org/project/prysmai/0.4.1/)
+- [x] Push v0.4.1 to GitHub (tagged v0.4.1)
+
+## Site Publish & Docs Update (March 5, 2026)
+- [x] Update docs page with new response headers (X-Prysm-Scan-Result, X-Prysm-Entities-Detected, X-Prysm-ML-Toxicity-Flags, X-Prysm-Policy-Violations, X-Prysm-Scan-Tier, X-Prysm-Off-Topic)
+- [x] Update docs page with rate limit headers (X-RateLimit-Limit, X-RateLimit-Remaining, Retry-After)
+- [x] Document the /models endpoint in docs
+- [x] Add v0.4.1 SDK changelog to docs page
+- [x] Publish site with all platform changes

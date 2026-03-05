@@ -184,10 +184,12 @@ const NAV_SECTIONS = [
   { id: "explainability", label: "Explainability", icon: Sparkles },
   { id: "cicd", label: "CI/CD Integration", icon: Plug },
   { id: "endpoints", label: "All Endpoints", icon: Blocks },
+  { id: "response-headers", label: "Response Headers", icon: Eye },
   { id: "advanced", label: "Advanced Features", icon: Wrench },
   { id: "self-hosted", label: "Self-Hosted Proxy", icon: Shield },
   { id: "examples", label: "Example Apps", icon: FlaskConical },
   { id: "errors", label: "Error Handling", icon: Activity },
+  { id: "changelog", label: "Changelog", icon: FileWarning },
 ];
 
 function Sidebar({ activeSection }: { activeSection: string }) {
@@ -344,7 +346,7 @@ export default function Docs() {
               rel="noopener noreferrer"
             >
               <span className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
-                v0.4.0 on PyPI <ExternalLink className="w-3 h-3" />
+                v0.4.1 on PyPI <ExternalLink className="w-3 h-3" />
               </span>
             </a>
           </div>
@@ -360,16 +362,25 @@ export default function Docs() {
             </div>
             <div>
               <h3 className="text-sm font-semibold text-foreground mb-1.5">
-                What&apos;s New in v0.4.0
+                What&apos;s New in v0.4.1
               </h3>
+              <p className="text-xs text-muted-foreground mb-2">SDK patch release &mdash; March 5, 2026</p>
               <ul className="text-sm text-muted-foreground space-y-1">
-                <li><strong className="text-foreground">Framework Integrations</strong> &mdash; Native callbacks for <a href="#frameworks" className="text-primary hover:underline">LangChain, CrewAI, and LlamaIndex</a>. Install with <code className="text-xs bg-secondary/50 px-1.5 py-0.5 rounded">pip install prysmai[langchain]</code></li>
-                <li><strong className="text-foreground">Off-Topic Detection</strong> &mdash; <a href="#off-topic-detection" className="text-primary hover:underline">Prevent agent misuse</a> with keyword + LLM-based relevance scoring</li>
-                <li><strong className="text-foreground">ML Toxicity Scoring</strong> &mdash; <a href="#ml-toxicity" className="text-primary hover:underline">6-dimension content analysis</a> replaces keyword matching on paid tiers</li>
-                <li><strong className="text-foreground">NER-Based PII Detection</strong> &mdash; <a href="#ner-detection" className="text-primary hover:underline">LLM-powered entity recognition</a> catches names, orgs, and addresses that regex misses</li>
-                <li><strong className="text-foreground">PagerDuty Alerts</strong> &mdash; Trigger and auto-resolve incidents via Events API v2</li>
-                <li><strong className="text-foreground">CI/CD Examples</strong> &mdash; <a href="#cicd-github-actions" className="text-primary hover:underline">GitHub Actions workflows</a> for testing with Prysm observability</li>
+                <li><strong className="text-foreground">SDK Bug Fixes (v0.4.1)</strong> &mdash; Fixed <code className="text-xs bg-secondary/50 px-1.5 py-0.5 rounded">AttributeError</code> in LangChain handler when <code className="text-xs bg-secondary/50 px-1.5 py-0.5 rounded">serialized=None</code>, fixed CrewAI delegation tool crashes. Upgrade: <code className="text-xs bg-secondary/50 px-1.5 py-0.5 rounded">pip install --upgrade prysmai</code></li>
+                <li><strong className="text-foreground">Response Headers</strong> &mdash; All proxy responses now include <a href="#response-headers" className="text-primary hover:underline">security scan results and rate limit headers</a></li>
+                <li><strong className="text-foreground">Models Endpoint</strong> &mdash; New <a href="#rest-models" className="text-primary hover:underline"><code className="text-xs bg-secondary/50 px-1.5 py-0.5 rounded">GET /api/v1/models</code></a> endpoint lists all supported models</li>
+                <li><strong className="text-foreground">PagerDuty Alerts</strong> &mdash; <a href="#alert-channels" className="text-primary hover:underline">Trigger and auto-resolve</a> incidents via Events API v2</li>
               </ul>
+              <details className="mt-3">
+                <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground">v0.4.0 highlights</summary>
+                <ul className="text-sm text-muted-foreground space-y-1 mt-2">
+                  <li><strong className="text-foreground">Framework Integrations</strong> &mdash; Native callbacks for <a href="#frameworks" className="text-primary hover:underline">LangChain, CrewAI, and LlamaIndex</a></li>
+                  <li><strong className="text-foreground">Off-Topic Detection</strong> &mdash; <a href="#off-topic-detection" className="text-primary hover:underline">Prevent agent misuse</a> with keyword + LLM-based relevance scoring</li>
+                  <li><strong className="text-foreground">ML Toxicity Scoring</strong> &mdash; <a href="#ml-toxicity" className="text-primary hover:underline">6-dimension content analysis</a> replaces keyword matching on paid tiers</li>
+                  <li><strong className="text-foreground">NER-Based PII Detection</strong> &mdash; <a href="#ner-detection" className="text-primary hover:underline">LLM-powered entity recognition</a> catches names, orgs, and addresses that regex misses</li>
+                  <li><strong className="text-foreground">CI/CD Examples</strong> &mdash; <a href="#cicd-github-actions" className="text-primary hover:underline">GitHub Actions workflows</a> for testing with Prysm observability</li>
+                </ul>
+              </details>
             </div>
           </div>
         </div>
@@ -1372,6 +1383,7 @@ console.log(response.choices[0].message.content);`}
                     ["Email", "email@example.com", "Sent via Resend from hello@prysmai.io"],
                     ["Slack", "https://hooks.slack.com/services/...", "Posts to a Slack incoming webhook"],
                     ["Discord", "https://discord.com/api/webhooks/...", "Posts to a Discord webhook"],
+                    ["PagerDuty", "PagerDuty Integration Key (32-char)", "Events API v2 — triggers and auto-resolves incidents with dedup_key"],
                     ["Webhook", "https://your-server.com/alerts", "POST with JSON payload (alert name, metric, value, threshold)"],
                   ].map(([channel, target, notes]) => (
                     <tr key={channel} className="border-b border-border/50">
@@ -2429,7 +2441,8 @@ def test_research_chain(prysm_langchain):
                     ["POST", "/api/v1/chat/completions", "Chat completions (OpenAI-compatible). Supports streaming."],
                     ["POST", "/api/v1/completions", "Text completions (legacy). Supports streaming."],
                     ["POST", "/api/v1/embeddings", "Generate embeddings for text input."],
-                    ["GET", "/api/v1/health", "Health check. Returns { status: 'ok' }. No auth required."],
+                    ["GET", "/api/v1/models", "List all supported models grouped by provider. No auth required."],
+                    ["GET", "/api/v1/health", "Health check. Returns status, supported models, and version. No auth required."],
                   ].map(([method, endpoint, desc]) => (
                     <tr key={endpoint} className="border-b border-border/50">
                       <td className="py-2.5 pr-4 font-mono text-xs text-primary font-medium">{method}</td>
@@ -2459,6 +2472,130 @@ ws.onmessage = (event) => {
   }
 };`}
             />
+
+            {/* ═══════════════════════════════════════════════════════════ */}
+            {/* RESPONSE HEADERS */}
+            {/* ═══════════════════════════════════════════════════════════ */}
+            <SectionHeading id="response-headers">Response Headers</SectionHeading>
+            <p className="text-muted-foreground leading-relaxed mb-4">
+              Every response from the Prysm proxy includes headers that expose security scan results
+              and rate limit information. These headers let you build client-side logic that reacts
+              to scan outcomes without parsing the response body.
+            </p>
+
+            <SubHeading id="security-scan-headers">Security Scan Headers</SubHeading>
+            <p className="text-muted-foreground leading-relaxed mb-4">
+              These headers are set on every <IC>/chat/completions</IC> response, both streaming and non-streaming.
+            </p>
+            <div className="overflow-x-auto my-6">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left py-2.5 pr-4 text-muted-foreground font-medium">Header</th>
+                    <th className="text-left py-2.5 pr-4 text-muted-foreground font-medium">Example</th>
+                    <th className="text-left py-2.5 text-muted-foreground font-medium">Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    ["X-Prysm-Threat-Score", "0.12", "Input threat score (0.0 \u2013 1.0). Higher = more suspicious."],
+                    ["X-Prysm-Threat-Level", "clean | low | medium | high | critical", "Human-readable threat classification for the input."],
+                    ["X-Prysm-Scan-Result", "No threats detected", "Summary of the input scan. Shows detected threat types when flagged."],
+                    ["X-Prysm-Scan-Tier", "basic | standard | deep", "Which scanning tier was applied (depends on your plan)."],
+                    ["X-Prysm-Off-Topic", "true | false", "Whether the input was flagged as off-topic (if off-topic detection is enabled)."],
+                    ["X-Prysm-Output-Threat-Score", "0.05", "Output threat score after scanning the model\u2019s response."],
+                    ["X-Prysm-Output-Flags", "none | pii,toxicity", "Comma-separated list of output scan flags."],
+                    ["X-Prysm-Output-Scan-Result", "clean", "Summary of the output scan result."],
+                    ["X-Prysm-Entities-Detected", "PERSON:2,ORG:1", "NER entities found in the output (type:count pairs). Empty if none."],
+                    ["X-Prysm-ML-Toxicity-Flags", "none", "ML toxicity dimensions that exceeded threshold (e.g., threat,insult)."],
+                    ["X-Prysm-Policy-Violations", "none", "Output policy rules that were violated (e.g., no-competitor-mentions)."],
+                  ].map(([header, example, desc]) => (
+                    <tr key={header} className="border-b border-border/50">
+                      <td className="py-2.5 pr-4 font-mono text-xs text-primary whitespace-nowrap">{header}</td>
+                      <td className="py-2.5 pr-4 font-mono text-xs text-muted-foreground">{example}</td>
+                      <td className="py-2.5 text-muted-foreground">{desc}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <SubHeading id="rate-limit-headers">Rate Limit Headers</SubHeading>
+            <p className="text-muted-foreground leading-relaxed mb-4">
+              Rate limit headers help you implement client-side backoff and avoid hitting limits.
+            </p>
+            <div className="overflow-x-auto my-6">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left py-2.5 pr-4 text-muted-foreground font-medium">Header</th>
+                    <th className="text-left py-2.5 pr-4 text-muted-foreground font-medium">Example</th>
+                    <th className="text-left py-2.5 text-muted-foreground font-medium">Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    ["X-RateLimit-Limit", "60", "Maximum requests allowed in the current window."],
+                    ["X-RateLimit-Remaining", "47", "Requests remaining in the current window."],
+                    ["X-RateLimit-Reset", "1709654400", "Unix timestamp when the rate limit window resets."],
+                    ["Retry-After", "30", "Seconds to wait before retrying (only present on 429 responses)."],
+                  ].map(([header, example, desc]) => (
+                    <tr key={header} className="border-b border-border/50">
+                      <td className="py-2.5 pr-4 font-mono text-xs text-primary whitespace-nowrap">{header}</td>
+                      <td className="py-2.5 pr-4 font-mono text-xs text-muted-foreground">{example}</td>
+                      <td className="py-2.5 text-muted-foreground">{desc}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <Callout type="tip">
+              <strong>Tip:</strong> Use <IC>X-RateLimit-Remaining</IC> to implement proactive throttling in your application.
+              When it drops below 10, start adding delays between requests to avoid hitting a 429.
+            </Callout>
+
+            <SubHeading id="rest-models">Models Endpoint</SubHeading>
+            <p className="text-muted-foreground leading-relaxed mb-4">
+              The <IC>GET /api/v1/models</IC> endpoint returns all models supported by the Prysm proxy,
+              grouped by provider. No authentication required.
+            </p>
+            <CodeBlock
+              filename="models_endpoint.py"
+              code={`import requests
+
+response = requests.get("https://prysmai.io/api/v1/models")
+models = response.json()
+
+# Response structure:
+# {
+#   "object": "list",
+#   "data": [
+#     {
+#       "id": "gpt-4o",
+#       "object": "model",
+#       "provider": "openai",
+#       "category": "flagship"
+#     },
+#     {
+#       "id": "claude-3-5-sonnet-20241022",
+#       "object": "model",
+#       "provider": "anthropic",
+#       "category": "flagship"
+#     },
+#     ...
+#   ]
+# }
+
+# List all available model IDs
+for model in models["data"]:
+    print(f"{model['provider']}: {model['id']} ({model['category']})")`}
+            />
+            <Callout type="info">
+              <strong>Supported providers:</strong> OpenAI (gpt-4o, gpt-4o-mini, gpt-4-turbo, o1, o1-mini, o3-mini),
+              Anthropic (claude-3-5-sonnet, claude-3-5-haiku, claude-3-opus), and Google (gemini-2.0-flash, gemini-1.5-pro, gemini-1.5-flash).
+              Use the <IC>/models</IC> endpoint for the authoritative, up-to-date list.
+            </Callout>
 
             {/* ═══════════════════════════════════════════════════════════ */}
             {/* ADVANCED FEATURES */}
@@ -2775,6 +2912,52 @@ except openai.APIError as e:
                   ))}
                 </tbody>
               </table>
+            </div>
+
+            {/* ═══════════════════════════════════════════════════════════ */}
+            {/* CHANGELOG */}
+            {/* ═══════════════════════════════════════════════════════════ */}
+            <SectionHeading id="changelog">Changelog</SectionHeading>
+
+            <div className="space-y-8">
+              {/* v0.4.1 */}
+              <div className="border border-border rounded-lg p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/30">v0.4.1</span>
+                  <span className="text-sm text-muted-foreground">March 5, 2026</span>
+                  <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-green-500/10 text-green-400 border border-green-500/30">LATEST</span>
+                </div>
+                <h4 className="text-sm font-semibold text-foreground mb-3">SDK Bug Fixes & Platform Hardening</h4>
+                <div className="space-y-2 text-sm text-muted-foreground">
+                  <p><span className="text-red-400 font-mono text-xs">BUG-001</span> Fixed <IC>PrysmCallbackHandler.on_chain_start</IC> crashing with <IC>AttributeError</IC> when LangChain passes <IC>serialized=None</IC> (e.g., <IC>RunnableSequence</IC> chains). Added null guards to all callback methods.</p>
+                  <p><span className="text-red-400 font-mono text-xs">BUG-002</span> Added per-request rate limiting to the proxy with <IC>X-RateLimit-Limit</IC>, <IC>X-RateLimit-Remaining</IC>, <IC>X-RateLimit-Reset</IC>, and <IC>Retry-After</IC> headers. Sequential load no longer causes connection errors.</p>
+                  <p><span className="text-red-400 font-mono text-xs">BUG-003</span> Fixed <IC>PrysmCrewMonitor</IC> crashing when CrewAI agents delegate work and <IC>gpt-4o-mini</IC> produces malformed <IC>DelegateWorkToolSchema</IC> arguments. Delegation events are now captured gracefully.</p>
+                  <p><span className="text-primary font-mono text-xs">NEW</span> <IC>GET /api/v1/models</IC> endpoint — returns all supported models grouped by provider.</p>
+                  <p><span className="text-primary font-mono text-xs">NEW</span> Response headers for security scan results: <IC>X-Prysm-Scan-Result</IC>, <IC>X-Prysm-Entities-Detected</IC>, <IC>X-Prysm-ML-Toxicity-Flags</IC>, <IC>X-Prysm-Policy-Violations</IC>, <IC>X-Prysm-Scan-Tier</IC>, <IC>X-Prysm-Off-Topic</IC>.</p>
+                  <p><span className="text-primary font-mono text-xs">NEW</span> Non-streaming responses now use full async output scanning (ML toxicity + NER + policy engine), matching streaming behavior.</p>
+                  <p><span className="text-primary font-mono text-xs">NEW</span> PagerDuty alert channel support via Events API v2 with automatic incident creation and dedup.</p>
+                </div>
+              </div>
+
+              {/* v0.4.0 */}
+              <div className="border border-border/50 rounded-lg p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-secondary text-muted-foreground border border-border">v0.4.0</span>
+                  <span className="text-sm text-muted-foreground">February 2026</span>
+                </div>
+                <h4 className="text-sm font-semibold text-foreground mb-3">Security Suite & Framework Integrations</h4>
+                <div className="space-y-2 text-sm text-muted-foreground">
+                  <p><span className="text-primary font-mono text-xs">NEW</span> Off-topic detection — keyword blocklist + LLM-powered semantic analysis with configurable thresholds.</p>
+                  <p><span className="text-primary font-mono text-xs">NEW</span> ML toxicity scoring — 6-dimension analysis (toxicity, severe toxicity, identity attack, insult, profanity, threat) with weighted scoring.</p>
+                  <p><span className="text-primary font-mono text-xs">NEW</span> NER-based PII detection — 7 entity types (PERSON, ORG, LOCATION, EMAIL, PHONE, SSN, CREDIT_CARD) with risk-weighted scoring.</p>
+                  <p><span className="text-primary font-mono text-xs">NEW</span> Output policy engine — keyword blocklist, regex pattern matching, and LLM-judged semantic rules.</p>
+                  <p><span className="text-primary font-mono text-xs">NEW</span> Tiered scanning — Basic (keyword only), Standard (+ ML toxicity), Deep (+ NER + output policies) based on plan.</p>
+                  <p><span className="text-primary font-mono text-xs">NEW</span> Alert channels — Email, Slack, Discord, and custom webhook notifications with configurable thresholds.</p>
+                  <p><span className="text-primary font-mono text-xs">NEW</span> Framework integrations — <IC>PrysmCallbackHandler</IC> (LangChain), <IC>PrysmCrewMonitor</IC> (CrewAI), <IC>PrysmSpanHandler</IC> (LlamaIndex).</p>
+                  <p><span className="text-primary font-mono text-xs">NEW</span> Anthropic translation layer — use Claude models through the OpenAI-compatible proxy endpoint.</p>
+                  <p><span className="text-primary font-mono text-xs">NEW</span> Confidence analysis, recommendations engine, and explainability suite in the dashboard.</p>
+                </div>
+              </div>
             </div>
 
             {/* ─── CTA ─── */}
