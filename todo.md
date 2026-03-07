@@ -845,3 +845,36 @@
 - [x] Document the /models endpoint in docs
 - [x] Add v0.4.1 SDK changelog to docs page
 - [x] Publish site with all platform changes
+
+## Governance Layer — Phase 1: Data Model + MCP Server (March 7, 2026)
+- [x] Add 6 new tables to drizzle/schema.ts (agent_sessions, session_events, behavioral_assessments, code_security_scans, governance_policies, governance_violations)
+- [x] Add session_summaries table to schema
+- [x] Run migrations (pnpm db:push)
+- [x] Build session manager (CRUD for sessions + events) — server/mcp/session-manager.ts
+- [x] Build event ingester (validate, store, link to traces) — server/mcp/event-ingester.ts
+- [x] Install @modelcontextprotocol/sdk
+- [x] Build MCP server with Streamable HTTP transport — server/mcp/index.ts
+- [x] Implement 4 MCP tool handlers (session_start, check_behavior, scan_code, session_end) — server/mcp/tools.ts
+- [x] Implement MCP resource handlers — server/mcp/resources.ts
+- [x] Implement MCP notification dispatch — server/mcp/notifications.ts
+- [x] Register /api/mcp route in Express — server/_core/index.ts
+- [x] Write vitest tests for governance router integration
+
+## Governance Layer — Phase 2: High-Confidence Behavioral Detectors (March 7, 2026)
+- [x] Build detection engine orchestrator — server/behavioral/engine.ts
+- [x] Build shared types — server/behavioral/types.ts
+- [x] Implement early stopping detector — server/behavioral/detectors/early-stopping.ts
+- [x] Implement tool undertriggering detector — server/behavioral/detectors/tool-undertriggering.ts
+- [x] Wire detectors into MCP tool handlers (check_behavior + session_end)
+- [x] Write vitest tests for early stopping detector (8 tests)
+- [x] Write vitest tests for tool undertriggering detector (7 tests)
+
+## Governance Layer — Phase 3: Dashboard Visualization (March 7, 2026)
+- [x] Build governance tRPC router with 11 procedures — server/governance-router.ts
+- [x] Wire governance router into appRouter — server/routers.ts
+- [x] Build Session Explorer page (list + detail + timeline) — client/src/pages/SessionExplorer.tsx
+- [x] Build Governance Dashboard page (aggregate metrics, trends, detectors) — client/src/pages/GovernanceDashboard.tsx
+- [x] Build Policy Manager page (CRUD + violations) — client/src/pages/PolicyManager.tsx
+- [x] Add broadcastSessionEvent to WebSocket — server/ws-live-feed.ts
+- [x] Add 3 nav items (Sessions, Governance, Policies) to DashboardShell sidebar
+- [x] Write vitest tests for governance tRPC router (7 tests)

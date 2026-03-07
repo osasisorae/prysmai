@@ -43,6 +43,7 @@ import { computeConfidenceAnalysis, estimateAnthropicConfidence, type Confidence
 import { createCheckoutSession, createBillingPortalSession, getSubscription, cancelSubscription, stripe, PLANS } from "./stripe";
 import { organizations as orgsTable } from "../drizzle/schema";
 import { createRateLimiter, getClientIp } from "./rate-limiter";
+import { governanceRouter } from "./governance-router";
 
 // Demo scanner rate limit: 3 scans per hour per IP
 const DEMO_SCAN_LIMIT = 3;
@@ -1387,6 +1388,9 @@ Keep the explanation concise (200-400 words).`;
         return snapshots;
       }),
   }),
+
+  // ─── Governance Layer ───
+  governance: governanceRouter,
 
   // ─── Stripe Billing ───
   billing: router({

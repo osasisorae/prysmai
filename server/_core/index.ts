@@ -15,6 +15,7 @@ import { resendWebhookRouter } from "../resendWebhook";
 import { handleStripeWebhook } from "../stripe/webhook";
 import { startMetricsScheduler } from "../metrics-scheduler";
 import { initWebSocketServer } from "../ws-live-feed";
+import { registerMcpRoutes } from "../mcp/index";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -52,6 +53,8 @@ async function startServer() {
   registerChatRoutes(app);
   // Resend Inbound webhook for email forwarding
   app.use("/api/webhooks", resendWebhookRouter);
+  // Prysm AI Governance MCP Server
+  registerMcpRoutes(app);
   // Prysm AI Proxy Gateway — OpenAI-compatible reverse proxy
   // Must be under /api/* for deployment platform routing
   app.use("/api/v1", proxyRouter);

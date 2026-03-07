@@ -563,3 +563,294 @@ export const recommendationSnapshots = mysqlTable(
 
 export type RecommendationSnapshot = typeof recommendationSnapshots.$inferSelect;
 export type InsertRecommendationSnapshot = typeof recommendationSnapshots.$inferInsert;
+
+// ═══════════════════════════════════════════════════════════════
+// GOVERNANCE LAYER — Agent Session Monitoring & Behavioral Detection
+// Spec: prysmai-governance-engineering-spec.md v1.1
+// ═══════════════════════════════════════════════════════════════
+
+// ─── Agent Sessions ───
+// Top-level container for an agent task. One session = one task = one governance report.
+
+export const agentSessions = mysqlTable(
+  "agent_sessions",
+  {
+    id: bigint("id", { mode: "number" }).autoincrement().primaryKey(),
+    projectId: int("projectId").notNull(),
+    sessionId: varchar("sessionId", { length: 128 }).notNull(), // externally provided by SDK/MCP client
+    status: mysqlEnum("status", ["active", "completed", "failed", "timeout"]).default("active").notNull(),
+    agentType: mysqlEnum("agentType", [
+      "claude_code", "manus", "kiro", "codex", "langchain", "crewai", "custom",
+    ]).notNull(),
+    source: mysqlEnum("source", ["mcp", "sdk", "api"]).default("mcp").notNull(),
+    // Task context
+    taskInstructions: text("taskInstructions"),
+    availableTools: json("availableTools").$type<string[]>(),
+    context: json("context").$type<Record<string, unknown>>(),
+    // Outcome
+    outcome: mysqlEnum("outcome", ["completed", "failed", "partial", "timeout"]),
+    outputSummary: text("outputSummary"),
+    filesModified: json("filesModified").$type<string[]>(),
+    // Aggregated metrics (populated on session_end)
+    totalEvents: int("totalEvents").default(0),
+    totalLlmCalls: int("totalLlmCalls").default(0),
+    totalToolCalls: int("totalToolCalls").default(0),
+    totalTokens: int("totalTokens").default(0),
+    totalCostCents: int("totalCostCents").default(0),
+    // Behavioral summary (populated by detection engine)
+    behaviorScore: int("behaviorScore"), // 0-100
+    behavioralFlags: json("behavioralFlags").$type<Array<{
+      detectorId: string;
+      severity: number;
+      triggered: boolean;
+    }>>(),
+    // Timing
+    startedAt: bigint("startedAt", { mode: "number" }).notNull(), // UTC ms
+    endedAt: bigint("endedAt", { mode: "number" }),
+    durationMs: int("durationMs"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("sessions_project_sessionid_idx").on(table.projectId, table.sessionId),
+    index("sessions_project_status_idx").on(table.projectId, table.status),
+    index("sessions_project_started_idx").on(table.projectId, table.startedAt),
+    index("sessions_agent_type_idx").on(table.projectId, table.agentType),
+  ]
+);
+
+export type AgentSession = typeof agentSessions.$inferSelect;
+export type InsertAgentSession = typeof agentSessions.$inferInsert;
+
+// ─── Session Events ───
+// Every action within a session. Replaces the need to infer agent behavior from LLM traces alone.
+
+export const sessionEvents = mysqlTable(
+  "session_events",
+  {
+    id: bigint("id", { mode: "number" }).autoincrement().primaryKey(),
+    sessionId: bigint("sessionId", { mode: "number" }).notNull(), // FK → agent_sessions.id
+    projectId: int("projectId").notNull(), // denormalized for query perf
+    traceId: int("traceId"), // FK → traces (if this event is an LLM call)
+    // Event identity
+    eventType: mysqlEnum("eventType", [
+      "llm_call", "tool_call", "tool_result", "code_generated", "code_executed",
+      "file_read", "file_write", "decision", "error", "delegation",
+      "user_input", "session_start", "session_end",
+    ]).notNull(),
+    // Event data (type-specific payload)
+    eventData: json("eventData").$type<Record<string, unknown>>().notNull(),
+    // For tool_call events
+    toolName: varchar("toolName", { length: 128 }),
+    toolInput: json("toolInput").$type<Record<string, unknown>>(),
+    toolOutput: json("toolOutput").$type<Record<string, unknown>>(),
+    toolSuccess: boolean("toolSuccess"),
+    toolDurationMs: int("toolDurationMs"),
+    // For code_generated events
+    codeLanguage: varchar("codeLanguage", { length: 32 }),
+    codeContent: text("codeContent"), // first 2K chars; full content to S3 if exceeds
+    codeFilePath: varchar("codeFilePath", { length: 512 }),
+    codeS3Key: varchar("codeS3Key", { length: 512 }), // S3 key for full content if > 2K
+    // For llm_call events (links to existing trace)
+    model: varchar("model", { length: 128 }),
+    promptTokens: int("promptTokens"),
+    completionTokens: int("completionTokens"),
+    costCents: int("costCents"),
+    // Behavioral annotations (populated by detection engine)
+    behavioralFlags: json("behavioralFlags").$type<Array<{ flag: string; severity: number }>>(),
+    // Timing
+    eventTimestamp: bigint("eventTimestamp", { mode: "number" }).notNull(), // UTC ms
+    sequenceNumber: int("sequenceNumber").notNull(), // order within session
+    // Security
+    threatScore: int("threatScore").default(0),
+    securityFlags: json("securityFlags").$type<string[]>(),
+  },
+  (table) => [
+    index("sevents_session_idx").on(table.sessionId),
+    index("sevents_session_seq_idx").on(table.sessionId, table.sequenceNumber),
+    index("sevents_project_time_idx").on(table.projectId, table.eventTimestamp),
+    index("sevents_event_type_idx").on(table.sessionId, table.eventType),
+    index("sevents_tool_name_idx").on(table.sessionId, table.toolName),
+  ]
+);
+
+export type SessionEvent = typeof sessionEvents.$inferSelect;
+export type InsertSessionEvent = typeof sessionEvents.$inferInsert;
+
+// ─── Behavioral Assessments ───
+// Output of the behavioral detection engine for each session.
+
+export const behavioralAssessments = mysqlTable(
+  "behavioral_assessments",
+  {
+    id: bigint("id", { mode: "number" }).autoincrement().primaryKey(),
+    sessionId: bigint("sessionId", { mode: "number" }).notNull(),
+    projectId: int("projectId").notNull(),
+    // Assessment results
+    overallScore: int("overallScore").notNull(), // 0-100
+    assessmentType: mysqlEnum("assessmentType", ["realtime", "post_session"]).notNull(),
+    // Individual detector results
+    detectors: json("detectors").$type<Array<{
+      detectorId: string;
+      triggered: boolean;
+      severity: number;
+      evidence: Array<Record<string, unknown>>;
+    }>>().notNull(),
+    // LLM-generated summary
+    summary: text("summary"),
+    recommendations: json("recommendations").$type<string[]>(),
+    // Metadata
+    assessedAt: bigint("assessedAt", { mode: "number" }).notNull(), // UTC ms
+    processingMs: int("processingMs"),
+  },
+  (table) => [
+    index("bassess_session_idx").on(table.sessionId),
+    index("bassess_project_time_idx").on(table.projectId, table.assessedAt),
+    index("bassess_score_idx").on(table.projectId, table.overallScore),
+  ]
+);
+
+export type BehavioralAssessment = typeof behavioralAssessments.$inferSelect;
+export type InsertBehavioralAssessment = typeof behavioralAssessments.$inferInsert;
+
+// ─── Code Security Scans ───
+// Security analysis of AI-generated code (distinct from security_events which track LLM I/O threats).
+
+export const codeSecurityScans = mysqlTable(
+  "code_security_scans",
+  {
+    id: bigint("id", { mode: "number" }).autoincrement().primaryKey(),
+    sessionId: bigint("sessionId", { mode: "number" }).notNull(),
+    eventId: bigint("eventId", { mode: "number" }).notNull(), // FK → session_events
+    projectId: int("projectId").notNull(),
+    // Scan results
+    language: varchar("language", { length: 32 }).notNull(),
+    filePath: varchar("filePath", { length: 512 }),
+    vulnerabilityCount: int("vulnerabilityCount").default(0),
+    vulnerabilities: json("vulnerabilities").$type<Array<{
+      type: string;
+      severity: string;
+      line: number;
+      description: string;
+      cweId?: string;
+    }>>(),
+    // Categories
+    hasInjection: boolean("hasInjection").default(false),
+    hasAuthIssues: boolean("hasAuthIssues").default(false),
+    hasPiiExposure: boolean("hasPiiExposure").default(false),
+    hasSecretLeak: boolean("hasSecretLeak").default(false),
+    hasInputValidation: boolean("hasInputValidation").default(false),
+    hasDependencyRisk: boolean("hasDependencyRisk").default(false),
+    // Severity
+    maxSeverity: mysqlEnum("maxSeverity", ["info", "low", "medium", "high", "critical"]).default("info"),
+    scannedAt: bigint("scannedAt", { mode: "number" }).notNull(),
+    processingMs: int("processingMs"),
+  },
+  (table) => [
+    index("codescan_session_idx").on(table.sessionId),
+    index("codescan_project_severity_idx").on(table.projectId, table.maxSeverity),
+    index("codescan_project_time_idx").on(table.projectId, table.scannedAt),
+  ]
+);
+
+export type CodeSecurityScan = typeof codeSecurityScans.$inferSelect;
+export type InsertCodeSecurityScan = typeof codeSecurityScans.$inferInsert;
+
+// ─── Governance Policies ───
+// Session-level governance policies (extends security_configs with behavioral/compliance rules).
+
+export const governancePolicies = mysqlTable(
+  "governance_policies",
+  {
+    id: bigint("id", { mode: "number" }).autoincrement().primaryKey(),
+    projectId: int("projectId").notNull(),
+    name: varchar("name", { length: 128 }).notNull(),
+    description: text("description"),
+    policyType: mysqlEnum("policyType", [
+      "behavioral", "security", "cost", "model_access", "tool_access", "content", "compliance",
+    ]).notNull(),
+    // Policy rules (JSON schema depends on policyType)
+    rules: json("rules").$type<Record<string, unknown>>().notNull(),
+    // Enforcement
+    enforcement: mysqlEnum("enforcement", ["monitor", "warn", "block"]).default("monitor"),
+    enabled: boolean("enabled").default(true),
+    // Metadata
+    createdBy: int("createdBy"), // FK → users
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  (table) => [
+    index("govpol_project_type_idx").on(table.projectId, table.policyType),
+    index("govpol_project_enabled_idx").on(table.projectId, table.enabled),
+  ]
+);
+
+export type GovernancePolicy = typeof governancePolicies.$inferSelect;
+export type InsertGovernancePolicy = typeof governancePolicies.$inferInsert;
+
+// ─── Governance Violations ───
+// Records every policy violation detected during a session.
+
+export const governanceViolations = mysqlTable(
+  "governance_violations",
+  {
+    id: bigint("id", { mode: "number" }).autoincrement().primaryKey(),
+    sessionId: bigint("sessionId", { mode: "number" }).notNull(),
+    eventId: bigint("eventId", { mode: "number" }), // FK → session_events (if tied to specific event)
+    policyId: bigint("policyId", { mode: "number" }).notNull(), // FK → governance_policies
+    projectId: int("projectId").notNull(),
+    // Violation details
+    severity: mysqlEnum("severity", ["info", "low", "medium", "high", "critical"]).notNull(),
+    description: text("description").notNull(),
+    evidence: json("evidence").$type<Record<string, unknown>>(),
+    // Resolution
+    status: mysqlEnum("status", ["open", "acknowledged", "resolved", "false_positive"]).default("open"),
+    resolvedBy: int("resolvedBy"), // FK → users
+    resolvedAt: bigint("resolvedAt", { mode: "number" }),
+    resolutionNote: text("resolutionNote"),
+    detectedAt: bigint("detectedAt", { mode: "number" }).notNull(),
+  },
+  (table) => [
+    index("govviol_session_idx").on(table.sessionId),
+    index("govviol_policy_idx").on(table.policyId),
+    index("govviol_project_status_idx").on(table.projectId, table.status),
+    index("govviol_project_severity_idx").on(table.projectId, table.severity),
+  ]
+);
+
+export type GovernanceViolation = typeof governanceViolations.$inferSelect;
+export type InsertGovernanceViolation = typeof governanceViolations.$inferInsert;
+
+// ─── Session Summaries ───
+// LLM-generated governance reports for completed sessions.
+
+export const sessionSummaries = mysqlTable(
+  "session_summaries",
+  {
+    id: bigint("id", { mode: "number" }).autoincrement().primaryKey(),
+    sessionId: bigint("sessionId", { mode: "number" }).notNull(),
+    projectId: int("projectId").notNull(),
+    summaryType: mysqlEnum("summaryType", ["behavioral", "security", "compliance", "full"]).notNull(),
+    content: text("content").notNull(), // LLM-generated report (Markdown)
+    scores: json("scores").$type<{
+      behavior?: number;
+      security?: number;
+      compliance?: number;
+      overall: number;
+    }>(),
+    findings: json("findings").$type<Array<{
+      category: string;
+      severity: string;
+      description: string;
+    }>>(),
+    generatedAt: bigint("generatedAt", { mode: "number" }).notNull(),
+    modelUsed: varchar("modelUsed", { length: 128 }),
+    processingMs: int("processingMs"),
+  },
+  (table) => [
+    index("sesssum_session_idx").on(table.sessionId),
+    index("sesssum_project_time_idx").on(table.projectId, table.generatedAt),
+  ]
+);
+
+export type SessionSummary = typeof sessionSummaries.$inferSelect;
+export type InsertSessionSummary = typeof sessionSummaries.$inferInsert;

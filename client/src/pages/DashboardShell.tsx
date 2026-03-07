@@ -20,6 +20,9 @@ import {
   Sparkles,
   ArrowUpRight,
   CreditCard,
+  Activity,
+  BarChart3,
+  Scale,
 } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -36,6 +39,9 @@ import SecurityDashboard from "./SecurityDashboard";
 import ExplainabilityPage from "./Explainability";
 import Playbooks from "./Playbooks";
 import Billing from "./Billing";
+import SessionExplorer from "./SessionExplorer";
+import GovernanceDashboard from "./GovernanceDashboard";
+import PolicyManager from "./PolicyManager";
 
 const NAV_ITEMS = [
   { id: "overview", label: "Overview", icon: LayoutDashboard, path: "/dashboard" },
@@ -44,6 +50,9 @@ const NAV_ITEMS = [
   { id: "security", label: "Security", icon: Shield, path: "/dashboard/security" },
   { id: "explainability", label: "Explainability", icon: Brain, path: "/dashboard/explainability" },
   { id: "playbooks", label: "Playbooks", icon: BookOpen, path: "/dashboard/playbooks" },
+  { id: "sessions", label: "Sessions", icon: Activity, path: "/dashboard/sessions" },
+  { id: "governance", label: "Governance", icon: BarChart3, path: "/dashboard/governance" },
+  { id: "policies", label: "Policies", icon: Scale, path: "/dashboard/policies" },
   { id: "billing", label: "Billing", icon: CreditCard, path: "/dashboard/billing" },
   { id: "settings", label: "Settings", icon: SettingsIcon, path: "/dashboard/settings" },
 ];
@@ -302,6 +311,9 @@ export default function DashboardShell() {
           {activeNav.id === "security" && <SecurityDashboard projectId={activeProject.id} />}
           {activeNav.id === "explainability" && <ExplainabilityPage projectId={activeProject.id} />}
           {activeNav.id === "playbooks" && <Playbooks projectId={activeProject.id} />}
+          {activeNav.id === "sessions" && <SessionExplorer projectId={activeProject.id} />}
+          {activeNav.id === "governance" && <GovernanceDashboard projectId={activeProject.id} />}
+          {activeNav.id === "policies" && <PolicyManager projectId={activeProject.id} />}
           {activeNav.id === "billing" && <Billing />}
           {activeNav.id === "settings" && <SettingsPage projectId={activeProject.id} />}
         </div>

@@ -142,3 +142,34 @@ export function getTotalClientCount(): number {
   }
   return total;
 }
+
+/**
+ * Broadcast a session-level event to all clients subscribed to a project.
+ * Used by the MCP server to push governance session updates in real time.
+ */
+export function broadcastSessionEvent(projectId: number, event: {
+  type: string;
+  sessionId: string;
+  [key: string]: unknown;
+}): void {
+  const clients = projectClients.get(projectId);
+  if (!clients || clients.size === 0) return;
+
+  const message = JSON.stringify({
+    type: "session_event",
+    data: event,
+  });
+
+  let sent = 0;
+  const clientArray = Array.from(clients);
+  for (const client of clientArray) {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(message);
+      sent++;
+    }
+  }
+
+  if (sent > 0) {
+    console.log(`[WS] Broadcast session event ${event.type} to ${sent} clients for project ${projectId}`);
+  }
+}
