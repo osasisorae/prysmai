@@ -896,3 +896,14 @@
 - [x] Add v0.5.0 to Changelog with LATEST badge
 - [x] Update installation instructions for new extras (langgraph, all)
 - [x] Verify all docs render correctly in browser (11 sections confirmed)
+
+## Documentation Overhaul — March 8, 2026
+- [x] Audit current docs structure and content gaps (22 sections, 3,316 lines)
+- [x] Restructure sidebar into grouped navigation (Getting Started, SDK & Integrations, Platform, Security & Analysis, Reference)
+- [x] Build shared docs-content.ts with all 22 sections as Markdown source
+- [x] Build copy-as-Markdown feature — per-section hover button on SectionHeading
+- [x] Build "Copy full docs as MD" button in sidebar
+- [x] Build MCP docs server at /api/mcp/docs with 3 tools (prysm_search_docs, prysm_get_section, prysm_list_sections)
+- [x] Add 23 MCP resources (full docs + 22 individual sections)
+- [x] Add MCP connection panel to sidebar with Claude Desktop/Cursor config example
+- [x] Verify end-to-end: all MCP tools, resources, copy-as-MD, sidebar grouping, config panel

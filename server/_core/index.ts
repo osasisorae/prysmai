@@ -16,6 +16,7 @@ import { handleStripeWebhook } from "../stripe/webhook";
 import { startMetricsScheduler } from "../metrics-scheduler";
 import { initWebSocketServer } from "../ws-live-feed";
 import { registerMcpRoutes } from "../mcp/index";
+import { registerMcpDocsRoutes } from "../mcp/docs-server";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -55,6 +56,8 @@ async function startServer() {
   app.use("/api/webhooks", resendWebhookRouter);
   // Prysm AI Governance MCP Server
   registerMcpRoutes(app);
+  // Prysm AI Documentation MCP Server (public, no auth)
+  registerMcpDocsRoutes(app);
   // Prysm AI Proxy Gateway — OpenAI-compatible reverse proxy
   // Must be under /api/* for deployment platform routing
   app.use("/api/v1", proxyRouter);

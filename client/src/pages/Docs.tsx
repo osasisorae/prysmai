@@ -43,7 +43,11 @@ import {
   Plug,
   Sparkles,
   FlaskConical,
+  FileText,
+  ChevronDown,
 } from "lucide-react";
+import { DOCS, DOC_GROUPS, getAllDocsMarkdown, getSectionMarkdown, searchDocs } from "@shared/docs-content";
+import type { DocSection } from "@shared/docs-content";
 
 const LOGO_URL = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663306080277/pKkWElgCpRmlNvjQ.png";
 
@@ -106,9 +110,35 @@ function IC({ children }: { children: React.ReactNode }) {
 
 /* ─── Section Heading ─── */
 function SectionHeading({ id, children }: { id: string; children: React.ReactNode }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyMd = () => {
+    const md = getSectionMarkdown(id);
+    if (md) {
+      navigator.clipboard.writeText(md);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
   return (
-    <h2 id={id} className="text-2xl font-bold tracking-tight mt-16 mb-4 scroll-mt-24">
+    <h2 id={id} className="text-2xl font-bold tracking-tight mt-16 mb-4 scroll-mt-24 group flex items-center gap-3">
       {children}
+      <button
+        onClick={handleCopyMd}
+        className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-primary"
+        title="Copy section as Markdown"
+      >
+        {copied ? (
+          <span className="flex items-center gap-1 text-xs font-normal text-green-500">
+            <Check className="w-3.5 h-3.5" /> Copied
+          </span>
+        ) : (
+          <span className="flex items-center gap-1 text-xs font-normal">
+            <FileText className="w-3.5 h-3.5" /> Copy as MD
+          </span>
+        )}
+      </button>
     </h2>
   );
 }
@@ -168,61 +198,192 @@ function Callout({ children, type = "info" }: { children: React.ReactNode; type?
 }
 
 /* ─── Sidebar Navigation ─── */
-const NAV_SECTIONS = [
-  { id: "overview", label: "Overview", icon: BookOpen },
-  { id: "getting-started", label: "Getting Started", icon: Zap },
-  { id: "python-sdk", label: "Python SDK", icon: Code2 },
-  { id: "governance", label: "Governance", icon: Shield },
-  { id: "frameworks", label: "Framework Integrations", icon: Plug },
-  { id: "rest-api", label: "REST API", icon: Globe },
-  { id: "providers", label: "Providers", icon: Layers },
-  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { id: "api-keys", label: "API Keys", icon: Key },
-  { id: "alerts", label: "Alerts", icon: Bell },
-  { id: "team", label: "Team Management", icon: Users },
-  { id: "cost-tracking", label: "Cost Tracking", icon: DollarSign },
-  { id: "security", label: "Security", icon: ShieldAlert },
-  { id: "explainability", label: "Explainability", icon: Sparkles },
-  { id: "cicd", label: "CI/CD Integration", icon: Plug },
-  { id: "endpoints", label: "All Endpoints", icon: Blocks },
-  { id: "response-headers", label: "Response Headers", icon: Eye },
-  { id: "advanced", label: "Advanced Features", icon: Wrench },
-  { id: "self-hosted", label: "Self-Hosted Proxy", icon: Shield },
-  { id: "examples", label: "Example Apps", icon: FlaskConical },
-  { id: "errors", label: "Error Handling", icon: Activity },
-  { id: "changelog", label: "Changelog", icon: FileWarning },
+const NAV_GROUPS = [
+  {
+    label: "Getting Started",
+    items: [
+      { id: "overview", label: "Overview", icon: BookOpen },
+      { id: "getting-started", label: "Quick Start", icon: Zap },
+    ],
+  },
+  {
+    label: "SDK & Integrations",
+    items: [
+      { id: "python-sdk", label: "Python SDK", icon: Code2 },
+      { id: "governance", label: "Governance", icon: Shield },
+      { id: "frameworks", label: "Frameworks", icon: Plug },
+    ],
+  },
+  {
+    label: "Platform",
+    items: [
+      { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+      { id: "api-keys", label: "API Keys", icon: Key },
+      { id: "alerts", label: "Alerts", icon: Bell },
+      { id: "team", label: "Team", icon: Users },
+      { id: "cost-tracking", label: "Cost Tracking", icon: DollarSign },
+    ],
+  },
+  {
+    label: "Security & Analysis",
+    items: [
+      { id: "security", label: "Security", icon: ShieldAlert },
+      { id: "explainability", label: "Explainability", icon: Sparkles },
+    ],
+  },
+  {
+    label: "Reference",
+    items: [
+      { id: "rest-api", label: "REST API", icon: Globe },
+      { id: "providers", label: "Providers", icon: Layers },
+      { id: "cicd", label: "CI/CD", icon: Plug },
+      { id: "endpoints", label: "All Endpoints", icon: Blocks },
+      { id: "response-headers", label: "Response Headers", icon: Eye },
+      { id: "advanced", label: "Advanced", icon: Wrench },
+      { id: "self-hosted", label: "Self-Hosted", icon: Shield },
+      { id: "examples", label: "Examples", icon: FlaskConical },
+      { id: "errors", label: "Errors", icon: Activity },
+      { id: "changelog", label: "Changelog", icon: FileWarning },
+    ],
+  },
 ];
+
+// Flat list for IntersectionObserver
+const NAV_SECTIONS = NAV_GROUPS.flatMap((g) => g.items);
+
+function CopyAllDocsButton() {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = () => {
+    navigator.clipboard.writeText(getAllDocsMarkdown());
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+  return (
+    <button
+      onClick={handleCopy}
+      className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors w-full px-3 py-2 rounded-md hover:bg-secondary/50"
+    >
+      {copied ? (
+        <><Check className="w-3 h-3 text-green-500" /><span className="text-green-500">Copied all docs!</span></>
+      ) : (
+        <><FileText className="w-3 h-3" />Copy full docs as MD</>
+      )}
+    </button>
+  );
+}
+
+function McpConnectionPanel() {
+  const [copied, setCopied] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  const mcpUrl = `${window.location.origin}/api/mcp/docs`;
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(mcpUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const configJson = JSON.stringify(
+    {
+      mcpServers: {
+        "prysm-docs": {
+          url: mcpUrl,
+          transport: "streamable-http",
+        },
+      },
+    },
+    null,
+    2
+  );
+
+  return (
+    <div className="mt-4 pt-4 border-t border-border/40">
+      <p className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-widest px-3 mb-2">
+        AI Assistants
+      </p>
+      <div className="px-3 py-2.5 rounded-md bg-primary/5 border border-primary/20">
+        <p className="text-[10px] font-medium text-foreground mb-1.5">Connect via MCP</p>
+        <p className="text-[10px] text-muted-foreground mb-2">
+          Let Claude, Cursor, or any MCP client query these docs in real-time.
+        </p>
+        <div className="flex items-center gap-1 mb-2">
+          <code className="text-[9px] text-primary font-mono bg-background/50 px-1.5 py-0.5 rounded border border-border/50 truncate flex-1">
+            {mcpUrl}
+          </code>
+          <button
+            onClick={handleCopy}
+            className="shrink-0 p-1 rounded hover:bg-secondary/50 transition-colors"
+            title="Copy MCP URL"
+          >
+            {copied ? (
+              <Check className="w-3 h-3 text-green-500" />
+            ) : (
+              <Copy className="w-3 h-3 text-muted-foreground" />
+            )}
+          </button>
+        </div>
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className="text-[10px] text-primary hover:underline flex items-center gap-1"
+        >
+          <ChevronDown className={`w-3 h-3 transition-transform ${expanded ? 'rotate-180' : ''}`} />
+          {expanded ? 'Hide' : 'Show'} config example
+        </button>
+        {expanded && (
+          <div className="mt-2 relative">
+            <pre className="text-[9px] font-mono text-muted-foreground bg-background/50 rounded border border-border/50 p-2 overflow-x-auto">
+              {configJson}
+            </pre>
+            <p className="text-[9px] text-muted-foreground mt-1.5">
+              Add to your <code className="text-primary">claude_desktop_config.json</code> or Cursor MCP settings.
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 function Sidebar({ activeSection }: { activeSection: string }) {
   return (
     <div className="hidden lg:block w-56 shrink-0">
-      <div className="sticky top-24">
+      <div className="sticky top-24 max-h-[calc(100vh-8rem)] overflow-y-auto">
         <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-4">
           Documentation
         </p>
-        <nav className="space-y-0.5">
-          {NAV_SECTIONS.map((s) => (
-            <a
-              key={s.id}
-              href={`#${s.id}`}
-              className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors ${
-                activeSection === s.id
-                  ? "bg-primary/10 text-primary font-medium"
-                  : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-              }`}
-            >
-              <s.icon className="w-3.5 h-3.5 shrink-0" />
-              {s.label}
-            </a>
+        <nav className="space-y-4">
+          {NAV_GROUPS.map((group) => (
+            <div key={group.label}>
+              <p className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-widest px-3 mb-1">
+                {group.label}
+              </p>
+              <div className="space-y-0.5">
+                {group.items.map((s) => (
+                  <a
+                    key={s.id}
+                    href={`#${s.id}`}
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors ${
+                      activeSection === s.id
+                        ? "bg-primary/10 text-primary font-medium"
+                        : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                    }`}
+                  >
+                    <s.icon className="w-3.5 h-3.5 shrink-0" />
+                    {s.label}
+                  </a>
+                ))}
+              </div>
+            </div>
           ))}
         </nav>
 
-        <div className="mt-8 pt-6 border-t border-border/40">
+        <div className="mt-6 pt-4 border-t border-border/40 space-y-1">
+          <CopyAllDocsButton />
           <a
             href="https://pypi.org/project/prysmai/"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5"
           >
             <ExternalLink className="w-3 h-3" />
             PyPI Package
@@ -231,12 +392,15 @@ function Sidebar({ activeSection }: { activeSection: string }) {
             href="https://github.com/osasisorae/prysmai-python"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors mt-2"
+            className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5"
           >
             <ExternalLink className="w-3 h-3" />
             GitHub Source
           </a>
         </div>
+
+        {/* MCP Connection Info */}
+        <McpConnectionPanel />
       </div>
     </div>
   );
