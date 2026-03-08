@@ -22,6 +22,7 @@ export const DOC_GROUPS = [
   { key: "platform", label: "Platform" },
   { key: "security", label: "Security & Analysis" },
   { key: "reference", label: "Reference" },
+  { key: "agent-tracing", label: "Agent Tracing" },
 ] as const;
 
 export const DOCS: DocSection[] = [
@@ -1253,6 +1254,195 @@ except openai.APIError as e:
 - **NEW** Framework integrations (CrewAI, LlamaIndex).
 - **NEW** Anthropic translation layer.
 - **NEW** Confidence analysis and explainability suite.
+`,
+  },
+  // ═══════════════════════════════════════════════════════════
+  // GROUP: Agent Tracing (Phase 2)
+  // ═══════════════════════════════════════════════════════════
+  {
+    id: "agent-framework",
+    title: "Microsoft Agent Framework",
+    group: "agent-tracing",
+    summary: "Integrate Prysm with Microsoft Agent Framework for full agent observability.",
+    markdown: `# Microsoft Agent Framework Integration
+
+Prysm provides first-class integration with [Microsoft Agent Framework](https://github.com/microsoft/agent-framework), capturing agent runs, function/tool calls, and LLM chat completions through the framework's middleware system.
+
+## Installation
+
+\`\`\`bash
+pip install prysmai[agent-framework]
+\`\`\`
+
+## Quick Start
+
+\`\`\`python
+from prysmai.integrations.agent_framework import (
+    PrysmAgentMiddleware,
+    PrysmFunctionMiddleware,
+    PrysmChatMiddleware,
+)
+import prysmai
+
+# Initialize Prysm
+prysmai.init(api_key="sk-prysm-...", project="my-project")
+
+# Create middleware instances
+agent_mw = PrysmAgentMiddleware(session_id="my-session")
+function_mw = PrysmFunctionMiddleware(session_id="my-session")
+chat_mw = PrysmChatMiddleware(session_id="my-session")
+
+# Register with your Agent Framework runtime
+runtime.add_middleware(agent_mw)
+runtime.add_middleware(function_mw)
+runtime.add_middleware(chat_mw)
+\`\`\`
+
+## What Gets Captured
+
+| Middleware | Events | Data |
+|-----------|--------|------|
+| PrysmAgentMiddleware | Agent start/end | Agent type, messages, timing, errors |
+| PrysmFunctionMiddleware | Tool/function calls | Function name, args, result, duration |
+| PrysmChatMiddleware | LLM completions | Messages, model, tokens, response |
+
+## Governance Mode
+
+All three middleware classes accept a \`governance_session\` parameter to forward events to the governance engine for behavioral analysis:
+
+\`\`\`python
+from prysmai import GovernanceSession
+
+session = GovernanceSession(api_key="sk-prysm-...", project="my-project")
+agent_mw = PrysmAgentMiddleware(session_id="s1", governance_session=session)
+\`\`\`
+`,
+  },
+  {
+    id: "unified-timeline",
+    title: "Unified Timeline",
+    group: "agent-tracing",
+    summary: "Correlated view of LLM traces, tool events, and session events.",
+    markdown: `# Unified Timeline
+
+The Unified Timeline merges three data sources into a single chronologically-ordered stream:
+
+1. **LLM Traces** — captured by the proxy (model, tokens, latency, cost)
+2. **Session Events** — captured by SDK integrations (tool calls, decisions, delegations)
+3. **Agent Sessions** — captured by governance layer (session metadata, behavioral scores)
+
+## Dashboard
+
+Navigate to **Dashboard → Timeline** to see the unified view. You can filter by:
+
+- Time range (1h, 24h, 7d, all time)
+- Event type (LLM calls, tool calls, decisions, errors)
+- Session ID
+- Free-text search
+
+Each event shows its source (LLM Trace or Session Event), timing, and relevant metrics. Click to expand for full details.
+
+## API
+
+\`\`\`
+GET /api/trpc/unifiedTrace.getTimeline
+\`\`\`
+
+Parameters: \`projectId\`, \`sessionId?\`, \`from?\`, \`to?\`, \`eventTypes?\`, \`limit\`, \`offset\`
+
+Returns \`{ events: UnifiedTimelineEvent[], total: number }\`
+`,
+  },
+  {
+    id: "tool-performance",
+    title: "Tool Performance",
+    group: "agent-tracing",
+    summary: "Monitor tool execution metrics, success rates, and latency patterns.",
+    markdown: `# Tool Performance Dashboard
+
+The Tool Performance dashboard provides aggregated metrics for every tool your agents use.
+
+## Metrics
+
+| Metric | Description |
+|--------|-------------|
+| Total Calls | Number of times the tool was invoked |
+| Success Rate | Percentage of successful invocations |
+| Avg Latency | Mean execution time |
+| Max Latency | Slowest execution |
+| Failure Count | Number of failed invocations |
+
+## Visualizations
+
+- **Bar Chart** — calls by tool with failure overlay
+- **Scatter Plot** — latency timeline showing each call as a dot (green=success, red=failure)
+- **Failure Analysis** — ranked list of tools with highest failure rates
+
+## Dashboard
+
+Navigate to **Dashboard → Tool Perf** to access the dashboard. Click any tool in the metrics table to filter the scatter plot to that specific tool.
+`,
+  },
+  {
+    id: "agent-decisions",
+    title: "Agent Decisions",
+    group: "agent-tracing",
+    summary: "Understand why your agent chose specific tools and actions.",
+    markdown: `# Agent Decision Explainability
+
+The Agent Decisions page answers the question: **"Why did my agent choose that tool / take that action?"**
+
+For each decision event in a session, Prysm shows:
+
+1. **Context** — the preceding events (LLM calls, tool results) that led to this decision
+2. **The Decision** — what the agent chose to do
+3. **Consequence** — what happened after the decision
+4. **Triggering LLM Call** — the specific LLM call that produced this decision
+
+## How It Works
+
+Decision events are recorded when:
+- The agent selects a tool (\`tool_call\` events)
+- The agent makes an explicit decision (\`decision\` events)
+- The agent delegates to a sub-agent (\`delegation\` events)
+
+For each decision, Prysm looks backward through the event sequence to find the closest preceding LLM call — this is the model invocation that likely produced the decision.
+
+## Dashboard
+
+Navigate to **Dashboard → Decisions**, select a session, and click any decision card to expand the full context view.
+`,
+  },
+  {
+    id: "workflow-graph",
+    title: "Workflow Graph",
+    group: "agent-tracing",
+    summary: "Directed execution graph showing node-to-node flow for agent sessions.",
+    markdown: `# Workflow Graph
+
+The Workflow Graph renders a directed execution graph for any agent session, showing the flow from agent start through LLM calls, tool calls, decisions, and delegations.
+
+## Node Types
+
+| Type | Color | Description |
+|------|-------|-------------|
+| Agent Run | Indigo | The root session node |
+| LLM Call | Violet | A call to a language model |
+| Tool Call | Cyan | A tool/function invocation |
+| Decision | Amber | An explicit decision point |
+| Delegation | Blue | Delegation to a sub-agent |
+| Code | Emerald | Code generation or execution |
+| Error | Red | An error event |
+
+## Interaction
+
+- **Pan** — click and drag the canvas
+- **Zoom** — scroll wheel or use the +/- buttons
+- **Inspect** — click any node to see its metadata in the detail panel
+
+## Dashboard
+
+Navigate to **Dashboard → Workflow**, select a session, and the graph renders automatically.
 `,
   },
 ];

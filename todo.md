@@ -913,3 +913,49 @@
 - [x] Make controls visible/sticky on every docs page (sticky top-20 z-40)
 - [x] Connect MCP dropdown shows URL, copy button, and Claude Desktop/Cursor config example
 - [x] Fixed esbuild parse error in docs-content.ts (escaped template literals)
+
+## Phase 2 Completion — Agent Workflow Tracing (March 8, 2026)
+
+### 1. Microsoft Agent Framework SDK Integration (replacing AutoGen)
+- [x] Build agent_framework.py integration module (AgentMiddleware, FunctionMiddleware, ChatMiddleware)
+- [x] Capture agent run execution (start/end, timing, messages, metadata)
+- [x] Capture function/tool calls (name, arguments, result, timing)
+- [x] Capture chat/LLM calls (messages, options, response, tokens)
+- [x] Support governance mode (forward events to GovernanceSession)
+- [x] Add optional dependency to pyproject.toml
+- [x] Write pytest tests for Agent Framework integration (28/28 passed)
+- [x] Update SDK __init__.py with Agent Framework import example
+
+### 2. Unified Trace Model (correlate LLM calls + tool events + sessions)
+- [x] Build unified trace query in server/db.ts (getUnifiedTimeline, getTraceTree, getToolPerformance, getToolCallTimeline, getAgentDecisionExplanations)
+- [x] Build unifiedTrace tRPC procedures (getTimeline, getTraceTree, getToolPerformance, getToolCallTimeline, getDecisionExplanations)
+- [x] Build UnifiedTimeline React component (interleaved LLM calls, tool events, decisions)
+- [x] Build unified-trace-router.ts and wire into appRouter
+- [x] Write vitest tests for unified trace model (29 tests passed)
+
+### 3. Agent Decision Explainability
+- [x] Build agent-level explanation engine (why-tool, why-action analysis)
+- [x] Build tRPC procedure for agent decision explanations (getDecisionExplanations)
+- [x] Build AgentDecisions.tsx page (session selector, decision cards, context view)
+- [x] Add Decisions nav item to dashboard sidebar
+- [x] Vitest tests included in unified-trace.test.ts
+
+### 4. Directed Graph Visualization (agent workflow execution graph)
+- [x] Build graph data extraction from trace tree (nodes, edges, state transitions)
+- [x] Build WorkflowGraph.tsx page (canvas-based directed graph with SVG)
+- [x] Show node types (LLM call, tool call, decision, delegation, error) with distinct colors
+- [x] Pan/zoom controls and node click detail panel
+- [x] Add Workflow nav item to dashboard sidebar
+- [x] Vitest tests included in unified-trace.test.ts
+
+### 5. Tool Performance Dashboard
+- [x] Build tool analytics tRPC procedures (getToolPerformance, getToolCallTimeline)
+- [x] Build ToolPerformance.tsx page (success rates, latency scatter plot, failure analysis)
+- [x] Add Tool Perf nav item to dashboard sidebar
+- [x] Vitest tests included in unified-trace.test.ts
+
+### 6. Documentation & Blog
+- [x] Add Agent Tracing group to docs-content.ts (5 new doc sections)
+- [x] Add Phase 2 blog post to blog-posts.ts
+- [x] Add agent_framework to agentType enum in schema
+- [x] All 843 vitest tests passing (36 test files)

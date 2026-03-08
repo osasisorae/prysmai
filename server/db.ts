@@ -8,6 +8,7 @@ import {
   traces, InsertTrace,
   modelPricing,
   explainabilityReports, InsertExplainabilityReport,
+  agentSessions, sessionEvents,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 import crypto from "crypto";
@@ -1421,4 +1422,645 @@ export async function checkAndSendUsageAlert(
   );
 
   return crossedThreshold;
+}
+
+
+// ─── Unified Trace Model ───
+// Correlates LLM traces, session events, and agent sessions into a single timeline.
+
+export interface UnifiedTimelineEvent {
+  id: string;           // unique composite id
+  source: "trace" | "session_event";
+  eventType: string;
+  timestamp: number;    // UTC ms
+  // LLM trace fields (when source=trace)
+  traceId?: string;
+  model?: string | null;
+  provider?: string | null;
+  promptTokens?: number | null;
+  completionTokens?: number | null;
+  totalTokens?: number | null;
+  latencyMs?: number | null;
+  status?: string | null;
+  costUsd?: string | null;
+  completion?: string | null;
+  // Session event fields (when source=session_event)
+  sessionEventId?: number;
+  toolName?: string | null;
+  toolSuccess?: boolean | null;
+  toolDurationMs?: number | null;
+  codeLanguage?: string | null;
+  codeFilePath?: string | null;
+  eventData?: Record<string, unknown> | null;
+  sequenceNumber?: number | null;
+  behavioralFlags?: Array<{ flag: string; severity: number }> | null;
+  // Session context (always present when session exists)
+  sessionId?: string | null;
+  agentType?: string | null;
+  sessionStatus?: string | null;
+}
+
+/**
+ * Get a unified timeline for a project, merging LLM traces and session events
+ * into a single chronologically-ordered stream.
+ */
+export async function getUnifiedTimeline(
+  projectId: number,
+  opts: {
+    sessionId?: string;
+    from?: number;
+    to?: number;
+    eventTypes?: string[];
+    limit?: number;
+    offset?: number;
+  } = {}
+): Promise<{ events: UnifiedTimelineEvent[]; total: number }> {
+  const db = await getDb();
+  if (!db) return { events: [], total: 0 };
+
+  const limit = opts.limit ?? 100;
+  const offset = opts.offset ?? 0;
+
+  // Build WHERE conditions for traces
+  const traceConditions = [eq(traces.projectId, projectId)];
+  if (opts.from) traceConditions.push(gte(traces.timestamp, new Date(opts.from)));
+  if (opts.to) traceConditions.push(lte(traces.timestamp, new Date(opts.to)));
+  if (opts.sessionId) traceConditions.push(eq(traces.sessionId, opts.sessionId));
+
+  // Build WHERE conditions for session events
+  const eventConditions = [eq(sessionEvents.projectId, projectId)];
+  if (opts.from) eventConditions.push(gte(sessionEvents.eventTimestamp, opts.from));
+  if (opts.to) eventConditions.push(lte(sessionEvents.eventTimestamp, opts.to));
+
+  // If filtering by sessionId, join through agent_sessions
+  let sessionDbId: number | null = null;
+  if (opts.sessionId) {
+    const [session] = await db
+      .select({ id: agentSessions.id })
+      .from(agentSessions)
+      .where(and(eq(agentSessions.projectId, projectId), eq(agentSessions.sessionId, opts.sessionId)))
+      .limit(1);
+    if (session) {
+      sessionDbId = session.id;
+      eventConditions.push(eq(sessionEvents.sessionId, session.id));
+    }
+  }
+
+  // Filter by event types if specified
+  const wantTraces = !opts.eventTypes || opts.eventTypes.includes("llm_call") || opts.eventTypes.includes("trace");
+  const wantEvents = !opts.eventTypes || opts.eventTypes.some(t => t !== "trace");
+
+  const allEvents: UnifiedTimelineEvent[] = [];
+
+  // Fetch LLM traces
+  if (wantTraces) {
+    const traceRows = await db
+      .select()
+      .from(traces)
+      .where(and(...traceConditions))
+      .orderBy(desc(traces.timestamp))
+      .limit(limit + offset);
+
+    for (const t of traceRows) {
+      allEvents.push({
+        id: `trace-${t.id}`,
+        source: "trace",
+        eventType: "llm_call",
+        timestamp: t.timestamp.getTime(),
+        traceId: t.traceId,
+        model: t.model,
+        provider: t.provider,
+        promptTokens: t.promptTokens,
+        completionTokens: t.completionTokens,
+        totalTokens: t.totalTokens,
+        latencyMs: t.latencyMs,
+        status: t.status,
+        costUsd: t.costUsd,
+        completion: t.completion?.slice(0, 200),
+        sessionId: t.sessionId,
+      });
+    }
+  }
+
+  // Fetch session events
+  if (wantEvents) {
+    const eventTypeFilter = opts.eventTypes?.filter(t => t !== "trace");
+
+    let eventQuery = db
+      .select({
+        event: sessionEvents,
+        session: {
+          sessionId: agentSessions.sessionId,
+          agentType: agentSessions.agentType,
+          status: agentSessions.status,
+        },
+      })
+      .from(sessionEvents)
+      .leftJoin(agentSessions, eq(sessionEvents.sessionId, agentSessions.id))
+      .where(and(...eventConditions))
+      .orderBy(desc(sessionEvents.eventTimestamp))
+      .limit(limit + offset);
+
+    const eventRows = await eventQuery;
+
+    for (const row of eventRows) {
+      const e = row.event;
+      // Skip llm_call events that are already represented by traces (avoid duplicates)
+      if (e.eventType === "llm_call" && e.traceId && wantTraces) continue;
+
+      allEvents.push({
+        id: `event-${e.id}`,
+        source: "session_event",
+        eventType: e.eventType,
+        timestamp: e.eventTimestamp,
+        sessionEventId: e.id,
+        toolName: e.toolName,
+        toolSuccess: e.toolSuccess,
+        toolDurationMs: e.toolDurationMs,
+        codeLanguage: e.codeLanguage,
+        codeFilePath: e.codeFilePath,
+        eventData: e.eventData,
+        sequenceNumber: e.sequenceNumber,
+        behavioralFlags: e.behavioralFlags,
+        sessionId: row.session?.sessionId ?? null,
+        agentType: row.session?.agentType ?? null,
+        sessionStatus: row.session?.status ?? null,
+        // LLM fields from event data if present
+        model: e.model,
+        promptTokens: e.promptTokens,
+        completionTokens: e.completionTokens,
+        latencyMs: e.toolDurationMs,
+      });
+    }
+  }
+
+  // Sort by timestamp descending
+  allEvents.sort((a, b) => b.timestamp - a.timestamp);
+
+  const total = allEvents.length;
+  const paged = allEvents.slice(offset, offset + limit);
+
+  return { events: paged, total };
+}
+
+/**
+ * Get a trace tree: given a session, build the parent-child relationships
+ * between agent runs, LLM calls, and tool calls.
+ */
+export interface TraceTreeNode {
+  id: string;
+  type: "agent_run" | "llm_call" | "tool_call" | "decision" | "delegation" | "code" | "file_op" | "error" | "other";
+  label: string;
+  timestamp: number;
+  durationMs?: number | null;
+  success?: boolean | null;
+  children: TraceTreeNode[];
+  metadata?: Record<string, unknown>;
+}
+
+export async function getTraceTree(
+  projectId: number,
+  sessionId: string
+): Promise<TraceTreeNode | null> {
+  const db = await getDb();
+  if (!db) return null;
+
+  // Find the session
+  const [session] = await db
+    .select()
+    .from(agentSessions)
+    .where(and(eq(agentSessions.projectId, projectId), eq(agentSessions.sessionId, sessionId)))
+    .limit(1);
+
+  if (!session) return null;
+
+  // Get all events for this session
+  const events = await db
+    .select()
+    .from(sessionEvents)
+    .where(eq(sessionEvents.sessionId, session.id))
+    .orderBy(asc(sessionEvents.sequenceNumber));
+
+  // Build the tree: root is the agent run
+  const root: TraceTreeNode = {
+    id: `session-${session.id}`,
+    type: "agent_run",
+    label: `${session.agentType} session`,
+    timestamp: session.startedAt,
+    durationMs: session.durationMs,
+    success: session.status === "completed",
+    children: [],
+    metadata: {
+      status: session.status,
+      outcome: session.outcome,
+      totalEvents: session.totalEvents,
+      totalTokens: session.totalTokens,
+      behaviorScore: session.behaviorScore,
+    },
+  };
+
+  // Map events to tree nodes
+  for (const e of events) {
+    const node = eventToTreeNode(e);
+    root.children.push(node);
+  }
+
+  return root;
+}
+
+function eventToTreeNode(e: any): TraceTreeNode {
+  const data = e.eventData as Record<string, unknown> | null;
+
+  switch (e.eventType) {
+    case "llm_call":
+      return {
+        id: `event-${e.id}`,
+        type: "llm_call",
+        label: `LLM: ${e.model || data?.model || "unknown"}`,
+        timestamp: e.eventTimestamp,
+        durationMs: e.toolDurationMs,
+        success: true,
+        children: [],
+        metadata: {
+          model: e.model,
+          promptTokens: e.promptTokens,
+          completionTokens: e.completionTokens,
+          costCents: e.costCents,
+          traceId: e.traceId,
+        },
+      };
+    case "tool_call":
+    case "tool_result":
+      return {
+        id: `event-${e.id}`,
+        type: "tool_call",
+        label: `Tool: ${e.toolName || "unknown"}`,
+        timestamp: e.eventTimestamp,
+        durationMs: e.toolDurationMs,
+        success: e.toolSuccess,
+        children: [],
+        metadata: {
+          toolName: e.toolName,
+          toolInput: e.toolInput,
+          toolOutput: e.toolOutput,
+        },
+      };
+    case "decision":
+      return {
+        id: `event-${e.id}`,
+        type: "decision",
+        label: `Decision: ${(data?.description as string)?.slice(0, 80) || ""}`,
+        timestamp: e.eventTimestamp,
+        children: [],
+        metadata: data ?? undefined,
+      };
+    case "delegation":
+      return {
+        id: `event-${e.id}`,
+        type: "delegation",
+        label: `Delegate → ${data?.target || "sub-agent"}`,
+        timestamp: e.eventTimestamp,
+        children: [],
+        metadata: data ?? undefined,
+      };
+    case "code_generated":
+    case "code_executed":
+      return {
+        id: `event-${e.id}`,
+        type: "code",
+        label: `${e.eventType === "code_generated" ? "Gen" : "Exec"} ${e.codeLanguage || ""} ${e.codeFilePath || ""}`.trim(),
+        timestamp: e.eventTimestamp,
+        children: [],
+        metadata: {
+          language: e.codeLanguage,
+          filePath: e.codeFilePath,
+        },
+      };
+    case "file_read":
+    case "file_write":
+      return {
+        id: `event-${e.id}`,
+        type: "file_op",
+        label: `${e.eventType === "file_read" ? "Read" : "Write"}: ${(data?.path as string) || ""}`,
+        timestamp: e.eventTimestamp,
+        children: [],
+        metadata: data ?? undefined,
+      };
+    case "error":
+      return {
+        id: `event-${e.id}`,
+        type: "error",
+        label: `Error: ${(data?.message as string)?.slice(0, 80) || "unknown"}`,
+        timestamp: e.eventTimestamp,
+        success: false,
+        children: [],
+        metadata: data ?? undefined,
+      };
+    default:
+      return {
+        id: `event-${e.id}`,
+        type: "other",
+        label: e.eventType,
+        timestamp: e.eventTimestamp,
+        children: [],
+        metadata: data ?? undefined,
+      };
+  }
+}
+
+/**
+ * Get tool performance metrics for a project.
+ * Aggregates tool call success rates, latency stats, and usage frequency.
+ */
+export interface ToolPerformanceMetrics {
+  toolName: string;
+  totalCalls: number;
+  successCount: number;
+  failureCount: number;
+  successRate: number;
+  avgLatencyMs: number;
+  p50LatencyMs: number;
+  p95LatencyMs: number;
+  maxLatencyMs: number;
+  minLatencyMs: number;
+  totalDurationMs: number;
+}
+
+export async function getToolPerformance(
+  projectId: number,
+  opts: {
+    from?: number;
+    to?: number;
+    sessionId?: string;
+    limit?: number;
+  } = {}
+): Promise<ToolPerformanceMetrics[]> {
+  const db = await getDb();
+  if (!db) return [];
+
+  const conditions = [
+    eq(sessionEvents.projectId, projectId),
+    sql`${sessionEvents.toolName} IS NOT NULL`,
+  ];
+
+  if (opts.from) conditions.push(gte(sessionEvents.eventTimestamp, opts.from));
+  if (opts.to) conditions.push(lte(sessionEvents.eventTimestamp, opts.to));
+
+  if (opts.sessionId) {
+    const [session] = await db
+      .select({ id: agentSessions.id })
+      .from(agentSessions)
+      .where(and(eq(agentSessions.projectId, projectId), eq(agentSessions.sessionId, opts.sessionId)))
+      .limit(1);
+    if (session) {
+      conditions.push(eq(sessionEvents.sessionId, session.id));
+    }
+  }
+
+  const rows = await db
+    .select({
+      toolName: sessionEvents.toolName,
+      totalCalls: count().as("total_calls"),
+      successCount: sql<number>`SUM(CASE WHEN ${sessionEvents.toolSuccess} = true THEN 1 ELSE 0 END)`.as("success_count"),
+      failureCount: sql<number>`SUM(CASE WHEN ${sessionEvents.toolSuccess} = false THEN 1 ELSE 0 END)`.as("failure_count"),
+      avgLatencyMs: sql<number>`AVG(${sessionEvents.toolDurationMs})`.as("avg_latency"),
+      maxLatencyMs: sql<number>`MAX(${sessionEvents.toolDurationMs})`.as("max_latency"),
+      minLatencyMs: sql<number>`MIN(${sessionEvents.toolDurationMs})`.as("min_latency"),
+      totalDurationMs: sql<number>`SUM(${sessionEvents.toolDurationMs})`.as("total_duration"),
+    })
+    .from(sessionEvents)
+    .where(and(...conditions))
+    .groupBy(sessionEvents.toolName)
+    .orderBy(desc(sql`total_calls`))
+    .limit(opts.limit ?? 50);
+
+  return rows.map((r) => ({
+    toolName: r.toolName || "unknown",
+    totalCalls: r.totalCalls,
+    successCount: r.successCount ?? 0,
+    failureCount: r.failureCount ?? 0,
+    successRate: r.totalCalls > 0 ? (r.successCount ?? 0) / r.totalCalls : 0,
+    avgLatencyMs: Math.round(r.avgLatencyMs ?? 0),
+    p50LatencyMs: 0, // computed client-side from raw data
+    p95LatencyMs: 0,
+    maxLatencyMs: r.maxLatencyMs ?? 0,
+    minLatencyMs: r.minLatencyMs ?? 0,
+    totalDurationMs: r.totalDurationMs ?? 0,
+  }));
+}
+
+/**
+ * Get tool call timeline — raw tool calls ordered by time for latency distribution charts.
+ */
+export async function getToolCallTimeline(
+  projectId: number,
+  opts: {
+    toolName?: string;
+    from?: number;
+    to?: number;
+    limit?: number;
+  } = {}
+): Promise<Array<{
+  id: number;
+  toolName: string;
+  toolSuccess: boolean | null;
+  toolDurationMs: number | null;
+  eventTimestamp: number;
+  sessionId: string | null;
+  agentType: string | null;
+}>> {
+  const db = await getDb();
+  if (!db) return [];
+
+  const conditions = [
+    eq(sessionEvents.projectId, projectId),
+    sql`${sessionEvents.toolName} IS NOT NULL`,
+  ];
+
+  if (opts.toolName) conditions.push(eq(sessionEvents.toolName, opts.toolName));
+  if (opts.from) conditions.push(gte(sessionEvents.eventTimestamp, opts.from));
+  if (opts.to) conditions.push(lte(sessionEvents.eventTimestamp, opts.to));
+
+  const rows = await db
+    .select({
+      id: sessionEvents.id,
+      toolName: sessionEvents.toolName,
+      toolSuccess: sessionEvents.toolSuccess,
+      toolDurationMs: sessionEvents.toolDurationMs,
+      eventTimestamp: sessionEvents.eventTimestamp,
+      sessionExternalId: agentSessions.sessionId,
+      agentType: agentSessions.agentType,
+    })
+    .from(sessionEvents)
+    .leftJoin(agentSessions, eq(sessionEvents.sessionId, agentSessions.id))
+    .where(and(...conditions))
+    .orderBy(desc(sessionEvents.eventTimestamp))
+    .limit(opts.limit ?? 200);
+
+  return rows.map((r) => ({
+    id: r.id,
+    toolName: r.toolName || "unknown",
+    toolSuccess: r.toolSuccess,
+    toolDurationMs: r.toolDurationMs,
+    eventTimestamp: r.eventTimestamp,
+    sessionId: r.sessionExternalId,
+    agentType: r.agentType,
+  }));
+}
+
+/**
+ * Get agent decision explainability — for a given session, extract decision events
+ * and correlate them with the LLM calls and tool calls that preceded/followed them.
+ */
+export interface AgentDecisionExplanation {
+  decisionId: number;
+  sequenceNumber: number;
+  timestamp: number;
+  description: string;
+  // Context: what happened before this decision
+  precedingEvents: Array<{
+    eventType: string;
+    toolName?: string | null;
+    model?: string | null;
+    summary: string;
+    timestamp: number;
+  }>;
+  // Consequence: what happened after this decision
+  followingEvents: Array<{
+    eventType: string;
+    toolName?: string | null;
+    model?: string | null;
+    summary: string;
+    timestamp: number;
+  }>;
+  // The LLM call that likely produced this decision (closest preceding llm_call)
+  triggeringLlmCall?: {
+    model: string | null;
+    promptTokens: number | null;
+    completionTokens: number | null;
+    traceId: number | null;
+  } | null;
+}
+
+export async function getAgentDecisions(
+  projectId: number,
+  sessionId: string,
+  opts: { contextWindow?: number } = {}
+): Promise<AgentDecisionExplanation[]> {
+  const db = await getDb();
+  if (!db) return [];
+
+  const contextWindow = opts.contextWindow ?? 5; // events before/after
+
+  // Find the session
+  const [session] = await db
+    .select()
+    .from(agentSessions)
+    .where(and(eq(agentSessions.projectId, projectId), eq(agentSessions.sessionId, sessionId)))
+    .limit(1);
+
+  if (!session) return [];
+
+  // Get all events for this session
+  const events = await db
+    .select()
+    .from(sessionEvents)
+    .where(eq(sessionEvents.sessionId, session.id))
+    .orderBy(asc(sessionEvents.sequenceNumber));
+
+  const decisions: AgentDecisionExplanation[] = [];
+
+  for (let i = 0; i < events.length; i++) {
+    const e = events[i];
+
+    // Look for decision events, tool_call events (tool selection is a decision),
+    // and delegation events
+    const isDecision = e.eventType === "decision" || e.eventType === "delegation";
+    const isToolSelection = e.eventType === "tool_call";
+
+    if (!isDecision && !isToolSelection) continue;
+
+    const data = e.eventData as Record<string, unknown> | null;
+    let description = "";
+
+    if (e.eventType === "decision") {
+      description = (data?.description as string) || "Agent made a decision";
+    } else if (e.eventType === "delegation") {
+      description = `Delegated to ${data?.target || "sub-agent"}`;
+    } else if (e.eventType === "tool_call") {
+      description = `Selected tool: ${e.toolName || "unknown"}`;
+    }
+
+    // Preceding events (context)
+    const preceding = events
+      .slice(Math.max(0, i - contextWindow), i)
+      .map((pe) => ({
+        eventType: pe.eventType,
+        toolName: pe.toolName,
+        model: pe.model,
+        summary: summarizeEventForExplain(pe),
+        timestamp: pe.eventTimestamp,
+      }));
+
+    // Following events (consequence)
+    const following = events
+      .slice(i + 1, Math.min(events.length, i + 1 + contextWindow))
+      .map((fe) => ({
+        eventType: fe.eventType,
+        toolName: fe.toolName,
+        model: fe.model,
+        summary: summarizeEventForExplain(fe),
+        timestamp: fe.eventTimestamp,
+      }));
+
+    // Find the closest preceding LLM call (the one that likely produced this decision)
+    let triggeringLlmCall: AgentDecisionExplanation["triggeringLlmCall"] = null;
+    for (let j = i - 1; j >= 0; j--) {
+      if (events[j].eventType === "llm_call") {
+        triggeringLlmCall = {
+          model: events[j].model,
+          promptTokens: events[j].promptTokens,
+          completionTokens: events[j].completionTokens,
+          traceId: events[j].traceId,
+        };
+        break;
+      }
+    }
+
+    decisions.push({
+      decisionId: e.id,
+      sequenceNumber: e.sequenceNumber,
+      timestamp: e.eventTimestamp,
+      description,
+      precedingEvents: preceding,
+      followingEvents: following,
+      triggeringLlmCall,
+    });
+  }
+
+  return decisions;
+}
+
+function summarizeEventForExplain(e: any): string {
+  const data = e.eventData as Record<string, unknown> | null;
+  switch (e.eventType) {
+    case "llm_call":
+      return `LLM call (${e.model || "unknown"})`;
+    case "tool_call":
+      return `Called ${e.toolName || "unknown"}`;
+    case "tool_result":
+      return `Result from ${e.toolName || "unknown"}: ${e.toolSuccess ? "success" : "failure"}`;
+    case "code_generated":
+      return `Generated ${e.codeLanguage || ""} code`;
+    case "code_executed":
+      return `Executed code${e.codeFilePath ? ` (${e.codeFilePath})` : ""}`;
+    case "decision":
+      return `Decision: ${(data?.description as string)?.slice(0, 80) || ""}`;
+    case "delegation":
+      return `Delegated to ${data?.target || "sub-agent"}`;
+    case "error":
+      return `Error: ${(data?.message as string)?.slice(0, 80) || ""}`;
+    default:
+      return e.eventType;
+  }
 }

@@ -1,0 +1,1 @@
+ALTER TABLE `agent_sessions` MODIFY COLUMN `agentType` enum('claude_code','manus','kiro','codex','langchain','crewai','agent_framework','custom') NOT NULL;

@@ -1266,6 +1266,41 @@ python app.py
 </div>
 `
   },
+  {
+    slug: "phase-2-agent-tracing",
+    title: "Phase 2: Full Agent Workflow Tracing Is Here",
+    author: "Osarenren I.",
+    date: "March 8, 2026",
+    readTime: "8 min read",
+    category: "PRODUCT",
+    excerpt: "Prysm AI now traces entire agent workflows end-to-end. Unified timeline, tool performance dashboards, agent decision explainability, directed workflow graphs, and Microsoft Agent Framework integration.",
+    content: `<div>
+<p>When we launched Prysm AI, we solved the first problem: <strong>seeing inside your LLM calls</strong>. Every token, every cost, every latency spike, every security threat &mdash; captured automatically through a single proxy endpoint.</p>
+
+<p>But LLM calls are only half the picture. Modern AI applications aren&rsquo;t single API calls &mdash; they&rsquo;re <strong>agent workflows</strong>. A LangGraph agent might make 15 LLM calls, invoke 8 tools, delegate to 3 sub-agents, and make dozens of decisions before producing a final answer. Until today, you could see each LLM call individually, but you couldn&rsquo;t see the forest for the trees.</p>
+
+<p>Phase 2 changes that. Today we&rsquo;re shipping five major features that give you complete visibility into agent workflows.</p>
+
+<h2>1. Unified Timeline</h2>
+<p>The Unified Timeline merges LLM traces, tool events, and session events into a single chronologically-ordered stream. No more switching between three different views to understand what happened. Filter by time range, event type, session, or free-text search. Every event shows its source, timing, and relevant metrics &mdash; click to expand for full details.</p>
+
+<h2>2. Tool Performance Dashboard</h2>
+<p>Your agents are only as reliable as the tools they use. The new Tool Performance dashboard shows success rates, latency distributions, and failure patterns for every tool in your stack. A scatter plot visualizes each individual call over time, making it easy to spot degradation patterns or intermittent failures.</p>
+
+<h2>3. Agent Decision Explainability</h2>
+<p>This is the feature we&rsquo;re most excited about. For every decision your agent makes &mdash; selecting a tool, delegating to a sub-agent, generating code &mdash; Prysm now shows you <strong>why</strong>. We trace backward through the event sequence to find the triggering LLM call, show the preceding context that informed the decision, and display the consequences that followed.</p>
+
+<h2>4. Directed Workflow Graph</h2>
+<p>See your agent&rsquo;s execution as a directed graph. Each node represents an event (LLM call, tool invocation, decision, delegation), and edges show the execution flow. Pan, zoom, and click any node to inspect its metadata. This is particularly powerful for LangGraph and Microsoft Agent Framework workflows where the execution path isn&rsquo;t linear.</p>
+
+<h2>5. Microsoft Agent Framework Integration</h2>
+<p>We&rsquo;ve added first-class support for <a href=\"https://github.com/microsoft/agent-framework\" target=\"_blank\">Microsoft Agent Framework</a> &mdash; the successor to AutoGen. Three middleware classes (PrysmAgentMiddleware, PrysmFunctionMiddleware, PrysmChatMiddleware) capture agent runs, function calls, and LLM completions automatically. Install with <code>pip install prysmai[agent-framework]</code> and add three lines of code.</p>
+
+<h2>What&rsquo;s Next</h2>
+<p>Phase 3 is already in development: multi-agent coordination, shared memory systems, and cross-agent communication tracing. If you&rsquo;re building complex agent architectures, we&rsquo;d love to hear what you need.</p>
+</div>
+`
+  },
 ];
 
 export function getPostBySlug(slug: string): BlogPost | undefined {

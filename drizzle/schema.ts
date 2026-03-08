@@ -580,7 +580,7 @@ export const agentSessions = mysqlTable(
     sessionId: varchar("sessionId", { length: 128 }).notNull(), // externally provided by SDK/MCP client
     status: mysqlEnum("status", ["active", "completed", "failed", "timeout"]).default("active").notNull(),
     agentType: mysqlEnum("agentType", [
-      "claude_code", "manus", "kiro", "codex", "langchain", "crewai", "custom",
+      "claude_code", "manus", "kiro", "codex", "langchain", "crewai", "agent_framework", "custom",
     ]).notNull(),
     source: mysqlEnum("source", ["mcp", "sdk", "api"]).default("mcp").notNull(),
     // Task context

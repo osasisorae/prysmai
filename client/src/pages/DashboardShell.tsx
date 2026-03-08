@@ -23,6 +23,10 @@ import {
   Activity,
   BarChart3,
   Scale,
+  Wrench,
+  Lightbulb,
+  GitBranch,
+  Layers,
 } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -42,6 +46,10 @@ import Billing from "./Billing";
 import SessionExplorer from "./SessionExplorer";
 import GovernanceDashboard from "./GovernanceDashboard";
 import PolicyManager from "./PolicyManager";
+import ToolPerformance from "./ToolPerformance";
+import AgentDecisions from "./AgentDecisions";
+import WorkflowGraph from "./WorkflowGraph";
+import UnifiedTimeline from "./UnifiedTimeline";
 
 const NAV_ITEMS = [
   { id: "overview", label: "Overview", icon: LayoutDashboard, path: "/dashboard" },
@@ -53,6 +61,10 @@ const NAV_ITEMS = [
   { id: "sessions", label: "Sessions", icon: Activity, path: "/dashboard/sessions" },
   { id: "governance", label: "Governance", icon: BarChart3, path: "/dashboard/governance" },
   { id: "policies", label: "Policies", icon: Scale, path: "/dashboard/policies" },
+  { id: "tools", label: "Tool Perf", icon: Wrench, path: "/dashboard/tools" },
+  { id: "decisions", label: "Decisions", icon: Lightbulb, path: "/dashboard/decisions" },
+  { id: "workflow", label: "Workflow", icon: GitBranch, path: "/dashboard/workflow" },
+  { id: "timeline", label: "Timeline", icon: Layers, path: "/dashboard/timeline" },
   { id: "billing", label: "Billing", icon: CreditCard, path: "/dashboard/billing" },
   { id: "settings", label: "Settings", icon: SettingsIcon, path: "/dashboard/settings" },
 ];
@@ -314,6 +326,10 @@ export default function DashboardShell() {
           {activeNav.id === "sessions" && <SessionExplorer projectId={activeProject.id} />}
           {activeNav.id === "governance" && <GovernanceDashboard projectId={activeProject.id} />}
           {activeNav.id === "policies" && <PolicyManager projectId={activeProject.id} />}
+          {activeNav.id === "tools" && <ToolPerformance projectId={activeProject.id} />}
+          {activeNav.id === "decisions" && <AgentDecisions projectId={activeProject.id} />}
+          {activeNav.id === "workflow" && <WorkflowGraph projectId={activeProject.id} />}
+          {activeNav.id === "timeline" && <UnifiedTimeline projectId={activeProject.id} />}
           {activeNav.id === "billing" && <Billing />}
           {activeNav.id === "settings" && <SettingsPage projectId={activeProject.id} />}
         </div>

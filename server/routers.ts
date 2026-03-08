@@ -44,6 +44,7 @@ import { createCheckoutSession, createBillingPortalSession, getSubscription, can
 import { organizations as orgsTable } from "../drizzle/schema";
 import { createRateLimiter, getClientIp } from "./rate-limiter";
 import { governanceRouter } from "./governance-router";
+import { unifiedTraceRouter } from "./unified-trace-router";
 
 // Demo scanner rate limit: 3 scans per hour per IP
 const DEMO_SCAN_LIMIT = 3;
@@ -1391,6 +1392,9 @@ Keep the explanation concise (200-400 words).`;
 
   // ─── Governance Layer ───
   governance: governanceRouter,
+
+  // ─── Unified Trace Model (Phase 2) ───
+  unifiedTrace: unifiedTraceRouter,
 
   // ─── Stripe Billing ───
   billing: router({
