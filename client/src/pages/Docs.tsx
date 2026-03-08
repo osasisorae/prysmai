@@ -272,6 +272,101 @@ function CopyAllDocsButton() {
   );
 }
 
+/* ─── Docs Toolbar (top-right of content area) ─── */
+function DocsToolbar() {
+  const [copiedAll, setCopiedAll] = useState(false);
+  const [copiedMcp, setCopiedMcp] = useState(false);
+  const [mcpExpanded, setMcpExpanded] = useState(false);
+  const mcpUrl = `${window.location.origin}/api/mcp/docs`;
+
+  const handleCopyAll = () => {
+    navigator.clipboard.writeText(getAllDocsMarkdown());
+    setCopiedAll(true);
+    setTimeout(() => setCopiedAll(false), 2000);
+  };
+
+  const handleCopyMcp = () => {
+    navigator.clipboard.writeText(mcpUrl);
+    setCopiedMcp(true);
+    setTimeout(() => setCopiedMcp(false), 2000);
+  };
+
+  const configJson = JSON.stringify(
+    {
+      mcpServers: {
+        "prysm-docs": {
+          url: mcpUrl,
+          transport: "streamable-http",
+        },
+      },
+    },
+    null,
+    2
+  );
+
+  return (
+    <div className="flex items-center gap-2 relative">
+      {/* Copy all docs as MD */}
+      <button
+        onClick={handleCopyAll}
+        className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border border-border bg-background hover:bg-secondary/50 transition-colors"
+        title="Copy entire documentation as Markdown"
+      >
+        {copiedAll ? (
+          <><Check className="w-3.5 h-3.5 text-green-500" /><span className="text-green-500">Copied!</span></>
+        ) : (
+          <><FileText className="w-3.5 h-3.5 text-muted-foreground" /><span className="text-muted-foreground">Copy as MD</span></>
+        )}
+      </button>
+
+      {/* MCP Connect */}
+      <div className="relative">
+        <button
+          onClick={() => setMcpExpanded(!mcpExpanded)}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border border-primary/30 bg-primary/5 hover:bg-primary/10 transition-colors text-primary"
+          title="Connect your AI assistant via MCP"
+        >
+          <Plug className="w-3.5 h-3.5" />
+          Connect MCP
+          <ChevronDown className={`w-3 h-3 transition-transform ${mcpExpanded ? 'rotate-180' : ''}`} />
+        </button>
+
+        {mcpExpanded && (
+          <div className="absolute right-0 top-full mt-2 w-80 rounded-lg border border-border bg-background shadow-lg z-50 p-4">
+            <p className="text-xs font-medium text-foreground mb-1">Connect via MCP</p>
+            <p className="text-[11px] text-muted-foreground mb-3">
+              Let Claude, Cursor, or any MCP client query these docs in real-time.
+            </p>
+            <div className="flex items-center gap-1.5 mb-3">
+              <code className="text-[10px] text-primary font-mono bg-secondary/50 px-2 py-1 rounded border border-border/50 truncate flex-1">
+                {mcpUrl}
+              </code>
+              <button
+                onClick={handleCopyMcp}
+                className="shrink-0 p-1.5 rounded hover:bg-secondary/50 transition-colors border border-border"
+                title="Copy MCP URL"
+              >
+                {copiedMcp ? (
+                  <Check className="w-3.5 h-3.5 text-green-500" />
+                ) : (
+                  <Copy className="w-3.5 h-3.5 text-muted-foreground" />
+                )}
+              </button>
+            </div>
+            <p className="text-[10px] font-medium text-muted-foreground mb-1.5">Add to your config:</p>
+            <pre className="text-[10px] font-mono text-muted-foreground bg-secondary/30 rounded border border-border/50 p-2.5 overflow-x-auto mb-2">
+              {configJson}
+            </pre>
+            <p className="text-[10px] text-muted-foreground">
+              Paste into <code className="text-primary">claude_desktop_config.json</code> or Cursor MCP settings.
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function McpConnectionPanel() {
   const [copied, setCopied] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -378,7 +473,6 @@ function Sidebar({ activeSection }: { activeSection: string }) {
         </nav>
 
         <div className="mt-6 pt-4 border-t border-border/40 space-y-1">
-          <CopyAllDocsButton />
           <a
             href="https://pypi.org/project/prysmai/"
             target="_blank"
@@ -398,9 +492,6 @@ function Sidebar({ activeSection }: { activeSection: string }) {
             GitHub Source
           </a>
         </div>
-
-        {/* MCP Connection Info */}
-        <McpConnectionPanel />
       </div>
     </div>
   );
@@ -566,6 +657,11 @@ export default function Docs() {
           <Sidebar activeSection={activeSection} />
 
           <div className="flex-1 max-w-3xl">
+
+            {/* ─── Top-right toolbar: Copy as MD + Connect MCP ─── */}
+            <div className="flex justify-end mb-6 sticky top-20 z-40">
+              <DocsToolbar />
+            </div>
 
             {/* ═══════════════════════════════════════════════════════════ */}
             {/* OVERVIEW */}

@@ -983,8 +983,8 @@ jobs:
         run: pip install prysmai[langgraph] pytest -r requirements.txt
       - name: Run LangGraph tests with Prysm
         env:
-          PRYSM_API_KEY: ${'$'}{{ secrets.PRYSM_API_KEY }}
-          OPENAI_API_KEY: ${'$'}{{ secrets.OPENAI_API_KEY }}
+          PRYSM_API_KEY: \${{ secrets.PRYSM_API_KEY }}
+          OPENAI_API_KEY: \${{ secrets.OPENAI_API_KEY }}
         run: pytest tests/ -v
 \`\`\`
 

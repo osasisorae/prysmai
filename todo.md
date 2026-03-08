@@ -907,3 +907,9 @@
 - [x] Add 23 MCP resources (full docs + 22 individual sections)
 - [x] Add MCP connection panel to sidebar with Claude Desktop/Cursor config example
 - [x] Verify end-to-end: all MCP tools, resources, copy-as-MD, sidebar grouping, config panel
+
+## Docs UI Fix — March 8, 2026
+- [x] Move Copy as MD and Connect via MCP controls from sidebar bottom to top-right of content area
+- [x] Make controls visible/sticky on every docs page (sticky top-20 z-40)
+- [x] Connect MCP dropdown shows URL, copy button, and Claude Desktop/Cursor config example
+- [x] Fixed esbuild parse error in docs-content.ts (escaped template literals)
