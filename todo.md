@@ -883,3 +883,16 @@
 - [x] Fix -32603 Internal Server Error on all MCP tool/resource calls (CRITICAL) — root cause: MCP SDK Server can only connect to one transport at a time; fix: create fresh Server instance per request
 - [x] Update testing guide v1.1 to document Accept header requirement, SSE response format, and sed parsing
 - [x] Verify fix end-to-end with curl against live server (all 4 tools + resources + sequential calls confirmed)
+
+## SDK v0.5.0 Publish + Website Docs Update — March 8, 2026
+- [x] Publish prysmai v0.5.0 to PyPI (https://pypi.org/project/prysmai/0.5.0/)
+- [x] Review existing website documentation pages (3000+ line Docs.tsx)
+- [x] Update version badge to v0.5.0
+- [x] Update What's New banner with governance highlights
+- [x] Add full Governance section (GovernanceSession, Behavioral Detectors, Code Security Scanning, MCP Endpoint, Governance Dashboard)
+- [x] Replace LangChain with LangGraph in Framework Integrations
+- [x] Update CrewAI section with governance=True flag
+- [x] Update CI/CD section to reference LangGraph
+- [x] Add v0.5.0 to Changelog with LATEST badge
+- [x] Update installation instructions for new extras (langgraph, all)
+- [x] Verify all docs render correctly in browser (11 sections confirmed)

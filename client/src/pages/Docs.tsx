@@ -172,6 +172,7 @@ const NAV_SECTIONS = [
   { id: "overview", label: "Overview", icon: BookOpen },
   { id: "getting-started", label: "Getting Started", icon: Zap },
   { id: "python-sdk", label: "Python SDK", icon: Code2 },
+  { id: "governance", label: "Governance", icon: Shield },
   { id: "frameworks", label: "Framework Integrations", icon: Plug },
   { id: "rest-api", label: "REST API", icon: Globe },
   { id: "providers", label: "Providers", icon: Layers },
@@ -346,7 +347,7 @@ export default function Docs() {
               rel="noopener noreferrer"
             >
               <span className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
-                v0.4.1 on PyPI <ExternalLink className="w-3 h-3" />
+                v0.5.0 on PyPI <ExternalLink className="w-3 h-3" />
               </span>
             </a>
           </div>
@@ -356,29 +357,38 @@ export default function Docs() {
       {/* What's New Banner */}
       <div className="container pt-8 pb-0">
         <div className="rounded-lg border border-primary/30 bg-primary/[0.04] p-5">
-          <div className="flex items-start gap-4">
+            <div className="flex items-start gap-4">
             <div className="shrink-0 mt-0.5">
               <Sparkles className="w-5 h-5 text-primary" />
             </div>
             <div>
               <h3 className="text-sm font-semibold text-foreground mb-1.5">
-                What&apos;s New in v0.4.1
+                What&apos;s New in v0.5.0
               </h3>
-              <p className="text-xs text-muted-foreground mb-2">SDK patch release &mdash; March 5, 2026</p>
+              <p className="text-xs text-muted-foreground mb-2">Governance Layer &mdash; March 8, 2026</p>
               <ul className="text-sm text-muted-foreground space-y-1">
-                <li><strong className="text-foreground">SDK Bug Fixes (v0.4.1)</strong> &mdash; Fixed <code className="text-xs bg-secondary/50 px-1.5 py-0.5 rounded">AttributeError</code> in LangChain handler when <code className="text-xs bg-secondary/50 px-1.5 py-0.5 rounded">serialized=None</code>, fixed CrewAI delegation tool crashes. Upgrade: <code className="text-xs bg-secondary/50 px-1.5 py-0.5 rounded">pip install --upgrade prysmai</code></li>
-                <li><strong className="text-foreground">Response Headers</strong> &mdash; All proxy responses now include <a href="#response-headers" className="text-primary hover:underline">security scan results and rate limit headers</a></li>
-                <li><strong className="text-foreground">Models Endpoint</strong> &mdash; New <a href="#rest-models" className="text-primary hover:underline"><code className="text-xs bg-secondary/50 px-1.5 py-0.5 rounded">GET /api/v1/models</code></a> endpoint lists all supported models</li>
-                <li><strong className="text-foreground">PagerDuty Alerts</strong> &mdash; <a href="#alert-channels" className="text-primary hover:underline">Trigger and auto-resolve</a> incidents via Events API v2</li>
+                <li><strong className="text-foreground">Governance Layer</strong> &mdash; New <a href="#governance" className="text-primary hover:underline"><code className="text-xs bg-secondary/50 px-1.5 py-0.5 rounded">GovernanceSession</code></a> class for behavioral monitoring, code security scanning, and policy enforcement across agent sessions</li>
+                <li><strong className="text-foreground">LangGraph Integration</strong> &mdash; Replaced LangChain with <a href="#fw-langgraph" className="text-primary hover:underline"><code className="text-xs bg-secondary/50 px-1.5 py-0.5 rounded">PrysmGraphMonitor</code></a> &mdash; graph-aware telemetry with node tracking, state transitions, and governance support</li>
+                <li><strong className="text-foreground">CrewAI Governance</strong> &mdash; <a href="#fw-crewai" className="text-primary hover:underline"><code className="text-xs bg-secondary/50 px-1.5 py-0.5 rounded">governance=True</code></a> flag on <code className="text-xs bg-secondary/50 px-1.5 py-0.5 rounded">PrysmCrewMonitor</code> auto-starts behavioral detection for crew runs</li>
+                <li><strong className="text-foreground">Behavioral Detectors</strong> &mdash; Early stopping and tool undertriggering detection with evidence-based severity scoring</li>
+                <li><strong className="text-foreground">MCP Endpoint</strong> &mdash; Model Context Protocol server at <code className="text-xs bg-secondary/50 px-1.5 py-0.5 rounded">/api/mcp</code> for direct agent-to-governance communication</li>
               </ul>
               <details className="mt-3">
+                <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground">v0.4.1 highlights</summary>
+                <ul className="text-sm text-muted-foreground space-y-1 mt-2">
+                  <li><strong className="text-foreground">SDK Bug Fixes</strong> &mdash; Fixed <code className="text-xs bg-secondary/50 px-1.5 py-0.5 rounded">AttributeError</code> in callback handler, fixed CrewAI delegation tool crashes</li>
+                  <li><strong className="text-foreground">Response Headers</strong> &mdash; Security scan results and rate limit headers on all proxy responses</li>
+                  <li><strong className="text-foreground">Models Endpoint</strong> &mdash; <code className="text-xs bg-secondary/50 px-1.5 py-0.5 rounded">GET /api/v1/models</code> lists all supported models</li>
+                  <li><strong className="text-foreground">PagerDuty Alerts</strong> &mdash; Trigger and auto-resolve incidents via Events API v2</li>
+                </ul>
+              </details>
+              <details className="mt-2">
                 <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground">v0.4.0 highlights</summary>
                 <ul className="text-sm text-muted-foreground space-y-1 mt-2">
-                  <li><strong className="text-foreground">Framework Integrations</strong> &mdash; Native callbacks for <a href="#frameworks" className="text-primary hover:underline">LangChain, CrewAI, and LlamaIndex</a></li>
-                  <li><strong className="text-foreground">Off-Topic Detection</strong> &mdash; <a href="#off-topic-detection" className="text-primary hover:underline">Prevent agent misuse</a> with keyword + LLM-based relevance scoring</li>
-                  <li><strong className="text-foreground">ML Toxicity Scoring</strong> &mdash; <a href="#ml-toxicity" className="text-primary hover:underline">6-dimension content analysis</a> replaces keyword matching on paid tiers</li>
-                  <li><strong className="text-foreground">NER-Based PII Detection</strong> &mdash; <a href="#ner-detection" className="text-primary hover:underline">LLM-powered entity recognition</a> catches names, orgs, and addresses that regex misses</li>
-                  <li><strong className="text-foreground">CI/CD Examples</strong> &mdash; <a href="#cicd-github-actions" className="text-primary hover:underline">GitHub Actions workflows</a> for testing with Prysm observability</li>
+                  <li><strong className="text-foreground">Framework Integrations</strong> &mdash; Native callbacks for CrewAI and LlamaIndex</li>
+                  <li><strong className="text-foreground">Off-Topic Detection</strong> &mdash; Keyword + LLM-based relevance scoring</li>
+                  <li><strong className="text-foreground">ML Toxicity Scoring</strong> &mdash; 6-dimension content analysis</li>
+                  <li><strong className="text-foreground">NER-Based PII Detection</strong> &mdash; LLM-powered entity recognition</li>
                 </ul>
               </details>
             </div>
@@ -604,9 +614,9 @@ print(response.choices[0].message.content)`}
             <CodeBlock code="pip install prysmai" language="bash" filename="Terminal" />
 
             <Callout type="tip">
-              <strong>Framework integrations (v0.4.0):</strong> Install with optional dependencies for your framework:
+              <strong>Framework integrations (v0.5.0):</strong> Install with optional dependencies for your framework:
               <CodeBlock
-                code={`pip install prysmai[langchain]    # LangChain
+                code={`pip install prysmai[langgraph]    # LangGraph
 pip install prysmai[crewai]       # CrewAI
 pip install prysmai[llamaindex]   # LlamaIndex
 pip install prysmai[all]          # All frameworks`}
@@ -720,6 +730,7 @@ with prysm_context(user_id="user_456", metadata={"feature": "chat"}):
                     ["prysm_context.get()", "Get the current context object"],
                     ["prysm_context.clear()", "Reset context to defaults"],
                     ["prysm_context(...)", "Use as context manager for scoped metadata"],
+                    ["governance_session_id", "(v0.5.0) Auto-set when GovernanceSession is active — links traces to governance reports"],
                   ].map(([method, desc]) => (
                     <tr key={method} className="border-b border-border/50">
                       <td className="py-2.5 pr-4 font-mono text-primary text-xs">{method}</td>
@@ -770,6 +781,178 @@ asyncio.run(main())`}
             />
 
             {/* ═══════════════════════════════════════════════════════════ */}
+            {/* Governance */}
+            {/* ═══════════════════════════════════════════════════════════ */}
+            <SectionHeading id="governance">Governance</SectionHeading>
+            <p className="text-muted-foreground leading-relaxed mb-4">
+              The governance layer (v0.5.0) monitors agent sessions for behavioral anomalies,
+              scans generated code for security vulnerabilities, and enforces policies across
+              your AI operations. It works standalone or integrated into LangGraph and CrewAI workflows.
+            </p>
+
+            <SubHeading id="gov-session">GovernanceSession</SubHeading>
+            <p className="text-muted-foreground leading-relaxed mb-2">
+              The <IC>GovernanceSession</IC> context manager wraps an agent&apos;s work session.
+              It communicates with the Prysm governance endpoint via the Model Context Protocol (MCP)
+              to start sessions, report events, run behavioral checks, scan code, and generate
+              end-of-session reports.
+            </p>
+            <CodeBlock
+              filename="governance_example.py"
+              code={`from prysmai import PrysmClient
+from prysmai.governance import GovernanceSession
+
+client = PrysmClient(prysm_key="sk-prysm-...")
+
+# Context manager handles session lifecycle automatically
+with GovernanceSession(
+    client,
+    task="Fix authentication bug in user service",
+    agent_type="claude_code",
+    auto_check_interval=5  # Check behavior every 5 events
+) as gov:
+    # Report events as they happen
+    gov.report_event("llm_call", {
+        "model": "gpt-4o",
+        "messages": [{"role": "user", "content": "Analyze auth flow"}],
+        "tokens": 1200
+    })
+
+    gov.report_event("tool_call", {
+        "tool": "read_file",
+        "arguments": {"path": "auth/service.py"}
+    })
+
+    # Scan generated code for vulnerabilities
+    result = gov.scan_code(
+        code="password = request.args.get('pwd')",
+        language="python"
+    )
+    # result.findings: list of security issues
+
+    # Manually trigger behavioral check
+    assessment = gov.check_behavior()
+    # assessment.detectors: early_stopping, tool_undertriggering
+
+# Session auto-ends, report generated in dashboard`}
+            />
+
+            <ParamTable
+              params={[
+                { name: "client", type: "PrysmClient", default: "required", desc: "Authenticated PrysmClient instance" },
+                { name: "task", type: "str", default: "None", desc: "Description of the agent's task" },
+                { name: "agent_type", type: "str", default: "None", desc: "Agent framework identifier (e.g., 'claude_code', 'crewai', 'langgraph')" },
+                { name: "auto_check_interval", type: "int", default: "0", desc: "Auto-run behavioral check every N events (0 = disabled)" },
+                { name: "metadata", type: "dict", default: "{}", desc: "Custom metadata attached to the governance session" },
+              ]}
+            />
+
+            <SubHeading id="gov-detectors">Behavioral Detectors</SubHeading>
+            <p className="text-muted-foreground leading-relaxed mb-4">
+              The governance engine runs two high-confidence behavioral detectors on every session.
+              Each detector produces evidence-based findings with severity scores (0–100).
+            </p>
+            <div className="overflow-x-auto my-6">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left py-2.5 pr-4 text-muted-foreground font-medium">Detector</th>
+                    <th className="text-left py-2.5 pr-4 text-muted-foreground font-medium">What It Catches</th>
+                    <th className="text-left py-2.5 text-muted-foreground font-medium">Evidence</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    ["Early Stopping", "Agent quits before completing its stated task — e.g., stops after reading a file without implementing the fix", "Unfollowed intents, incomplete tool sequences, premature session end"],
+                    ["Tool Undertriggering", "Agent has tools available but doesn't use them when the task requires it — e.g., generates code without running tests", "Available vs. used tool ratio, task-tool mismatch, unused critical tools"],
+                  ].map(([detector, catches, evidence]) => (
+                    <tr key={detector} className="border-b border-border/50">
+                      <td className="py-2.5 pr-4 font-medium text-foreground whitespace-nowrap">{detector}</td>
+                      <td className="py-2.5 pr-4 text-muted-foreground">{catches}</td>
+                      <td className="py-2.5 text-muted-foreground">{evidence}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <SubHeading id="gov-code-scan">Code Security Scanning</SubHeading>
+            <p className="text-muted-foreground leading-relaxed mb-4">
+              Use <IC>gov.scan_code()</IC> to scan any code generated by your agent for security
+              vulnerabilities before it gets committed or executed. The scanner checks for
+              injection flaws, hardcoded secrets, unsafe deserialization, and more.
+            </p>
+            <CodeBlock
+              filename="code_scan.py"
+              code={`result = gov.scan_code(
+    code="""import subprocess\nsubprocess.call(user_input, shell=True)""",
+    language="python"
+)
+
+for finding in result.get("findings", []):
+    print(f"[{finding['severity']}] {finding['rule']}: {finding['message']}")
+    # [HIGH] command-injection: User input passed to shell=True subprocess`}
+            />
+
+            <SubHeading id="gov-mcp">MCP Endpoint</SubHeading>
+            <p className="text-muted-foreground leading-relaxed mb-4">
+              The governance layer exposes a Model Context Protocol (MCP) server at <IC>/api/mcp</IC>.
+              Any MCP-compatible agent (Claude Code, Cursor, etc.) can connect directly for
+              governance without the Python SDK. The endpoint uses Streamable HTTP transport
+              with JSON-RPC 2.0 over SSE.
+            </p>
+            <div className="overflow-x-auto my-6">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left py-2.5 pr-4 text-muted-foreground font-medium">MCP Tool</th>
+                    <th className="text-left py-2.5 text-muted-foreground font-medium">Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    ["session_start", "Begin a governance session with task description and agent metadata"],
+                    ["check_behavior", "Run behavioral detectors on accumulated session events"],
+                    ["scan_code", "Scan code for security vulnerabilities (Python, JS, TS, Go, Rust, etc.)"],
+                    ["session_end", "End session, run final assessment, generate report"],
+                  ].map(([tool, desc]) => (
+                    <tr key={tool} className="border-b border-border/50">
+                      <td className="py-2.5 pr-4 font-mono text-primary text-xs">{tool}</td>
+                      <td className="py-2.5 text-muted-foreground">{desc}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <SubHeading id="gov-dashboard">Governance Dashboard</SubHeading>
+            <p className="text-muted-foreground leading-relaxed mb-4">
+              All governance data flows into three dedicated dashboard views:
+            </p>
+            <div className="overflow-x-auto my-6">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left py-2.5 pr-4 text-muted-foreground font-medium">View</th>
+                    <th className="text-left py-2.5 text-muted-foreground font-medium">What You See</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    ["Session Explorer", "Browse all agent sessions with event timelines, behavioral assessments, and code scan results"],
+                    ["Governance Dashboard", "Aggregate metrics — session counts, anomaly rates, detector trends, severity distributions"],
+                    ["Policy Manager", "Create and manage governance policies, view violations, set enforcement actions"],
+                  ].map(([view, desc]) => (
+                    <tr key={view} className="border-b border-border/50">
+                      <td className="py-2.5 pr-4 font-medium text-foreground whitespace-nowrap">{view}</td>
+                      <td className="py-2.5 text-muted-foreground">{desc}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* ═══════════════════════════════════════════════════════════ */}
             {/* Framework Integrations */}
             {/* ═══════════════════════════════════════════════════════════ */}
             <SectionHeading id="frameworks">Framework Integrations</SectionHeading>
@@ -779,45 +962,48 @@ asyncio.run(main())`}
               and sends them to your Prysm dashboard alongside your standard LLM traces.
             </p>
 
-            <SubHeading id="fw-langchain">LangChain</SubHeading>
+            <SubHeading id="fw-langgraph">LangGraph</SubHeading>
             <p className="text-muted-foreground leading-relaxed mb-2">
-              The <IC>PrysmCallbackHandler</IC> plugs into LangChain's callback system to capture
-              chain executions, LLM calls, agent actions, tool invocations, and retriever queries.
-              Works with any LangChain chain, agent, or pipeline.
+              The <IC>PrysmGraphMonitor</IC> integrates with LangGraph&apos;s stateful graph execution to capture
+              node transitions, LLM calls, tool invocations, and state checkpoints. Supports <IC>governance=True</IC> for
+              automatic behavioral detection during graph runs.
             </p>
             <CodeBlock
-              code="pip install prysmai[langchain]"
+              code="pip install prysmai[langgraph]"
               language="bash"
               filename="Terminal"
             />
             <CodeBlock
-              filename="langchain_example.py"
-              code={`from langchain_openai import ChatOpenAI
-from langchain_core.prompts import ChatPromptTemplate
-from prysmai.integrations.langchain import PrysmCallbackHandler
+              filename="langgraph_example.py"
+              code={`from langgraph.graph import StateGraph, MessagesState
+from langchain_openai import ChatOpenAI
+from prysmai.integrations.langgraph import PrysmGraphMonitor
 
-# Initialize the callback handler
-handler = PrysmCallbackHandler(
+# Initialize the graph monitor
+monitor = PrysmGraphMonitor(
     prysm_key="sk-prysm-...",
-    metadata={"app": "my-chatbot", "env": "production"}
+    metadata={"app": "research-agent", "env": "production"},
+    governance=True  # Enable behavioral detection
 )
 
-# Use with any LangChain chain
-llm = ChatOpenAI(model="gpt-4o-mini")
-prompt = ChatPromptTemplate.from_messages([
-    ("system", "You are a helpful assistant."),
-    ("human", "{input}")
-])
-chain = prompt | llm
+# Build your graph as usual
+def agent_node(state: MessagesState):
+    llm = ChatOpenAI(model="gpt-4o-mini")
+    return {"messages": [llm.invoke(state["messages"])]}
 
-# Pass the handler via config — all events are captured
-result = chain.invoke(
-    {"input": "What is mechanistic interpretability?"},
-    config={"callbacks": [handler]}
+graph = StateGraph(MessagesState)
+graph.add_node("agent", agent_node)
+graph.set_entry_point("agent")
+app = graph.compile()
+
+# Run with Prysm monitoring — all events captured
+result = app.invoke(
+    {"messages": [{"role": "user", "content": "Analyze this codebase"}]},
+    config={"callbacks": [monitor.callback_handler()]}
 )
 
-# Flush remaining events when done
-handler.close()`}
+# Flush remaining events and close governance session
+monitor.close()`}
             />
 
             <ParamTable
@@ -825,6 +1011,8 @@ handler.close()`}
                 { name: "prysm_key", type: "str", default: "PRYSM_API_KEY env", desc: "Your Prysm API key" },
                 { name: "base_url", type: "str", default: "prysmai.io/api/v1", desc: "Prysm proxy URL" },
                 { name: "metadata", type: "dict", default: "{}", desc: "Global metadata attached to all events" },
+                { name: "governance", type: "bool", default: "False", desc: "(v0.5.0) Enable governance session with behavioral detection" },
+                { name: "governance_task", type: "str", default: "None", desc: "(v0.5.0) Task description for the governance session" },
                 { name: "batch_size", type: "int", default: "50", desc: "Events buffered before auto-flush" },
               ]}
             />
@@ -839,11 +1027,12 @@ handler.close()`}
                 </thead>
                 <tbody>
                   {[
+                    ["Node transitions", "Node name, entry/exit timestamps, state changes"],
                     ["LLM calls", "Model, messages, tokens, latency, completion content"],
-                    ["Chain runs", "Chain name, inputs, outputs, duration"],
-                    ["Agent actions", "Tool selected, input, reasoning"],
-                    ["Tool calls", "Tool name, arguments, output, errors"],
-                    ["Retriever queries", "Query text, document count, sources"],
+                    ["Tool calls", "Tool name, arguments, output, errors, owning node"],
+                    ["State checkpoints", "Graph state snapshots at each node boundary"],
+                    ["Conditional routing", "Edge decisions, branch taken, routing logic"],
+                    ["Governance alerts", "(v0.5.0) Behavioral anomalies detected during execution"],
                   ].map(([event, desc]) => (
                     <tr key={event} className="border-b border-border/50">
                       <td className="py-2.5 pr-4 font-mono text-primary text-xs">{event}</td>
@@ -856,9 +1045,10 @@ handler.close()`}
 
             <SubHeading id="fw-crewai">CrewAI</SubHeading>
             <p className="text-muted-foreground leading-relaxed mb-2">
-              The <IC>PrysmCrewMonitor</IC> wraps CrewAI crews to capture the full lifecycle —
-              crew execution, individual agent runs, task completions, and tool usage. Gives you
-              visibility into multi-agent orchestration.
+              The <IC>PrysmCrewMonitor</IC> wraps CrewAI crews to capture the full lifecycle &mdash;
+              crew execution, individual agent runs, task completions, and tool usage. In v0.5.0,
+              pass <IC>governance=True</IC> to automatically start a governance session that monitors
+              the crew for behavioral anomalies like early stopping and tool undertriggering.
             </p>
             <CodeBlock
               code="pip install prysmai[crewai]"
@@ -870,10 +1060,12 @@ handler.close()`}
               code={`from crewai import Agent, Task, Crew
 from prysmai.integrations.crewai import PrysmCrewMonitor
 
-# Initialize the monitor
+# Initialize the monitor with governance enabled
 monitor = PrysmCrewMonitor(
     prysm_key="sk-prysm-...",
-    metadata={"project": "research-crew"}
+    metadata={"project": "research-crew"},
+    governance=True,  # v0.5.0: auto-starts behavioral detection
+    governance_task="Research and summarize findings"
 )
 
 # Define your crew as usual
@@ -889,11 +1081,11 @@ task = Task(
 )
 crew = Crew(agents=[researcher], tasks=[task])
 
-# Wrap the crew — all events are captured automatically
+# Wrap the crew — all events + governance captured automatically
 monitor.monitor_crew(crew)
 result = crew.kickoff()
 
-# Flush when done
+# Flush events and close governance session
 monitor.close()`}
             />
 
@@ -911,6 +1103,7 @@ monitor.close()`}
                     ["Agent runs", "Agent role, goal, start/end, output"],
                     ["Task execution", "Task description, assigned agent, output, duration"],
                     ["Tool usage", "Tool name, arguments, result, errors"],
+                    ["Governance alerts", "(v0.5.0) Behavioral anomalies detected during crew execution"],
                   ].map(([event, desc]) => (
                     <tr key={event} className="border-b border-border/50">
                       <td className="py-2.5 pr-4 font-mono text-primary text-xs">{event}</td>
@@ -963,8 +1156,9 @@ handler.close()`}
             <Callout type="tip">
               <strong>All frameworks together:</strong> Install everything with{" "}
               <IC>pip install prysmai[all]</IC>. Each integration sends events to the same
-              Prysm dashboard, so you get a unified view across LangChain chains, CrewAI crews,
-              and LlamaIndex pipelines.
+              Prysm dashboard, so you get a unified view across LangGraph graphs, CrewAI crews,
+              and LlamaIndex pipelines. Enable <IC>governance=True</IC> on any integration to add
+              behavioral detection.
             </Callout>
 
             {/* ═══════════════════════════════════════════════════════════ */}
@@ -2314,7 +2508,7 @@ code_review_agent:
 
             <SubHeading id="cicd-github-actions">GitHub Actions with Framework Integrations</SubHeading>
             <p className="text-muted-foreground leading-relaxed mb-4">
-              Run your LangChain, CrewAI, or LlamaIndex tests with Prysm observability in CI.
+              Run your LangGraph, CrewAI, or LlamaIndex tests with Prysm observability in CI.
               Every LLM call during your test suite is captured, security-scanned, and visible
               in your Prysm dashboard &mdash; so you catch prompt injection regressions and
               cost spikes before they hit production.
@@ -2331,7 +2525,7 @@ on:
     branches: [main]
 
 jobs:
-  test-langchain:
+  test-langgraph:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -2341,10 +2535,10 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install prysmai[langchain] pytest
+          pip install prysmai[langgraph] pytest
           pip install -r requirements.txt
 
-      - name: Run LangChain tests with Prysm
+      - name: Run LangGraph tests with Prysm
         env:
           PRYSM_API_KEY: \${{ secrets.PRYSM_API_KEY }}
           OPENAI_API_KEY: \${{ secrets.OPENAI_API_KEY }}
@@ -2380,34 +2574,36 @@ jobs:
             <CodeBlock
               code={`# tests/conftest.py — shared Prysm fixtures for pytest
 import pytest
-from prysmai.integrations.langchain import PrysmCallbackHandler
+from prysmai.integrations.langgraph import PrysmGraphMonitor
 from prysmai.integrations.crewai import PrysmCrewMonitor
 
 @pytest.fixture
-def prysm_langchain():
-    handler = PrysmCallbackHandler(
-        metadata={"env": "ci", "run": "github-actions"}
+def prysm_langgraph():
+    monitor = PrysmGraphMonitor(
+        metadata={"env": "ci", "run": "github-actions"},
+        governance=True
     )
-    yield handler
-    handler.close()
+    yield monitor
+    monitor.close()
 
 @pytest.fixture
 def prysm_crewai():
     monitor = PrysmCrewMonitor(
-        metadata={"env": "ci", "run": "github-actions"}
+        metadata={"env": "ci", "run": "github-actions"},
+        governance=True
     )
     yield monitor
     monitor.close()
 
 # tests/test_agent.py — use the fixture in your tests
-def test_research_chain(prysm_langchain):
-    chain = build_research_chain()
-    result = chain.invoke(
-        {"query": "What is SAE analysis?"},
-        config={"callbacks": [prysm_langchain]}
+def test_research_graph(prysm_langgraph):
+    app = build_research_graph()
+    result = app.invoke(
+        {"messages": [{"role": "user", "content": "What is SAE analysis?"}]},
+        config={"callbacks": [prysm_langgraph.callback_handler()]}
     )
-    assert "sparse autoencoder" in result.content.lower()
-    # All calls are now visible in your Prysm dashboard`}
+    assert "sparse autoencoder" in result["messages"][-1].content.lower()
+    # All calls + governance reports visible in your Prysm dashboard`}
               language="python"
               filename="tests/conftest.py + tests/test_agent.py"
             />
@@ -2920,12 +3116,32 @@ except openai.APIError as e:
             <SectionHeading id="changelog">Changelog</SectionHeading>
 
             <div className="space-y-8">
-              {/* v0.4.1 */}
+              {/* v0.5.0 */}
               <div className="border border-border rounded-lg p-6">
                 <div className="flex items-center gap-3 mb-4">
-                  <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/30">v0.4.1</span>
-                  <span className="text-sm text-muted-foreground">March 5, 2026</span>
+                  <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/30">v0.5.0</span>
+                  <span className="text-sm text-muted-foreground">March 8, 2026</span>
                   <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-green-500/10 text-green-400 border border-green-500/30">LATEST</span>
+                </div>
+                <h4 className="text-sm font-semibold text-foreground mb-3">Governance Layer & LangGraph Integration</h4>
+                <div className="space-y-2 text-sm text-muted-foreground">
+                  <p><span className="text-primary font-mono text-xs">NEW</span> <IC>GovernanceSession</IC> &mdash; context manager for monitoring agent sessions with behavioral detection, code scanning, and policy enforcement via MCP.</p>
+                  <p><span className="text-primary font-mono text-xs">NEW</span> Early Stopping detector &mdash; catches agents that quit before completing their stated task (unfollowed intents, incomplete tool sequences).</p>
+                  <p><span className="text-primary font-mono text-xs">NEW</span> Tool Undertriggering detector &mdash; identifies when agents have tools available but fail to use them when the task requires it.</p>
+                  <p><span className="text-primary font-mono text-xs">NEW</span> Code Security Scanner &mdash; scans agent-generated code for injection flaws, hardcoded secrets, unsafe deserialization, and more.</p>
+                  <p><span className="text-primary font-mono text-xs">NEW</span> MCP endpoint at <IC>/api/mcp</IC> &mdash; Streamable HTTP transport with JSON-RPC 2.0 for direct agent integration (Claude Code, Cursor, etc.).</p>
+                  <p><span className="text-primary font-mono text-xs">NEW</span> <IC>PrysmGraphMonitor</IC> &mdash; LangGraph integration replacing LangChain, with graph-aware telemetry (node tracking, state transitions, conditional routing).</p>
+                  <p><span className="text-primary font-mono text-xs">NEW</span> <IC>governance=True</IC> flag on LangGraph and CrewAI integrations for automatic behavioral detection during agent runs.</p>
+                  <p><span className="text-primary font-mono text-xs">NEW</span> Session Explorer, Governance Dashboard, and Policy Manager views in the web dashboard.</p>
+                  <p><span className="text-red-400 font-mono text-xs">BREAKING</span> Removed <IC>PrysmCallbackHandler</IC> (LangChain). Use <IC>PrysmGraphMonitor</IC> (LangGraph) instead. Install with <IC>pip install prysmai[langgraph]</IC>.</p>
+                </div>
+              </div>
+
+              {/* v0.4.1 */}
+              <div className="border border-border/50 rounded-lg p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-secondary text-muted-foreground border border-border">v0.4.1</span>
+                  <span className="text-sm text-muted-foreground">March 5, 2026</span>
                 </div>
                 <h4 className="text-sm font-semibold text-foreground mb-3">SDK Bug Fixes & Platform Hardening</h4>
                 <div className="space-y-2 text-sm text-muted-foreground">
@@ -2953,7 +3169,7 @@ except openai.APIError as e:
                   <p><span className="text-primary font-mono text-xs">NEW</span> Output policy engine — keyword blocklist, regex pattern matching, and LLM-judged semantic rules.</p>
                   <p><span className="text-primary font-mono text-xs">NEW</span> Tiered scanning — Basic (keyword only), Standard (+ ML toxicity), Deep (+ NER + output policies) based on plan.</p>
                   <p><span className="text-primary font-mono text-xs">NEW</span> Alert channels — Email, Slack, Discord, and custom webhook notifications with configurable thresholds.</p>
-                  <p><span className="text-primary font-mono text-xs">NEW</span> Framework integrations — <IC>PrysmCallbackHandler</IC> (LangChain), <IC>PrysmCrewMonitor</IC> (CrewAI), <IC>PrysmSpanHandler</IC> (LlamaIndex).</p>
+                  <p><span className="text-primary font-mono text-xs">NEW</span> Framework integrations — <IC>PrysmCrewMonitor</IC> (CrewAI), <IC>PrysmSpanHandler</IC> (LlamaIndex). LangChain support was replaced by LangGraph in v0.5.0.</p>
                   <p><span className="text-primary font-mono text-xs">NEW</span> Anthropic translation layer — use Claude models through the OpenAI-compatible proxy endpoint.</p>
                   <p><span className="text-primary font-mono text-xs">NEW</span> Confidence analysis, recommendations engine, and explainability suite in the dashboard.</p>
                 </div>
