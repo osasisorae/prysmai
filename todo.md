@@ -878,3 +878,8 @@
 - [x] Add broadcastSessionEvent to WebSocket — server/ws-live-feed.ts
 - [x] Add 3 nav items (Sessions, Governance, Policies) to DashboardShell sidebar
 - [x] Write vitest tests for governance tRPC router (7 tests)
+
+## QA Bug Fixes — March 8, 2026
+- [x] Fix -32603 Internal Server Error on all MCP tool/resource calls (CRITICAL) — root cause: MCP SDK Server can only connect to one transport at a time; fix: create fresh Server instance per request
+- [x] Update testing guide v1.1 to document Accept header requirement, SSE response format, and sed parsing
+- [x] Verify fix end-to-end with curl against live server (all 4 tools + resources + sequential calls confirmed)

@@ -10,6 +10,10 @@
  *
  * Transport: Streamable HTTP at POST /api/mcp
  * Auth: Bearer sk-prysm-* API key (same as proxy gateway)
+ *
+ * Architecture: Each request creates a fresh Server + Transport pair.
+ * The MCP SDK's Server class can only be connected to one transport at a time,
+ * so we create a new instance per request to handle concurrent/sequential calls.
  */
 
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
@@ -18,19 +22,15 @@ import type { Express, Request, Response } from "express";
 import { hashApiKey, lookupApiKey, getProjectById } from "../db";
 import { registerTools, setDetectionEngine } from "./tools";
 import { registerResources } from "./resources";
-import { setMcpServer } from "./notifications";
 
-// Per-request project ID context (set by auth middleware, read by tool/resource handlers)
-let currentProjectId: number | null = null;
-
-function getProjectId(): number | null {
-  return currentProjectId;
-}
+// Behavioral detection engine — loaded once, shared across all request-scoped servers
+let detectBehaviorFn: ((sessionId: number, projectId: number, isRealtime: boolean) => Promise<any>) | null = null;
 
 /**
- * Create and configure the MCP server instance.
+ * Create a fresh MCP server instance scoped to a single request.
+ * Each request gets its own Server so there's no "already connected" conflict.
  */
-function createMcpServer(): Server {
+function createMcpServer(projectId: number): Server {
   const server = new Server(
     {
       name: "prysm-governance",
@@ -44,10 +44,17 @@ function createMcpServer(): Server {
     }
   );
 
-  // Register tools and resources on the low-level server
+  // Provide a closure that returns the authenticated project ID for this request
+  const getProjectId = () => projectId;
+
+  // Register tools and resources on this request-scoped server
   registerTools(server, getProjectId);
   registerResources(server, getProjectId);
-  setMcpServer(server);
+
+  // Wire up the detection engine if available
+  if (detectBehaviorFn) {
+    setDetectionEngine(detectBehaviorFn);
+  }
 
   return server;
 }
@@ -79,12 +86,11 @@ async function authenticateMcpRequest(req: Request): Promise<number | null> {
  * POST /api/mcp — handles all MCP JSON-RPC messages via Streamable HTTP transport.
  */
 export function registerMcpRoutes(app: Express): void {
-  const mcpServer = createMcpServer();
-
   // Lazy-load the behavioral detection engine to avoid circular imports
   setTimeout(async () => {
     try {
       const { runDetection } = await import("../behavioral/engine");
+      detectBehaviorFn = runDetection;
       setDetectionEngine(runDetection);
       console.log("[MCP] Behavioral detection engine connected");
     } catch {
@@ -92,8 +98,10 @@ export function registerMcpRoutes(app: Express): void {
     }
   }, 1000);
 
-  // POST /api/mcp — Streamable HTTP transport
+  // POST /api/mcp — Streamable HTTP transport (one Server per request)
   app.post("/api/mcp", async (req: Request, res: Response) => {
+    let mcpServer: Server | null = null;
+
     try {
       // Authenticate
       const projectId = await authenticateMcpRequest(req);
@@ -109,25 +117,33 @@ export function registerMcpRoutes(app: Express): void {
         return;
       }
 
-      // Set project context for this request
-      currentProjectId = projectId;
+      // Create a fresh server + transport for this request
+      mcpServer = createMcpServer(projectId);
 
-      // Create a transport for this request
       const transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: undefined, // stateless mode
       });
 
-      // Connect the MCP server to this transport
+      // Connect the server to the transport
       await mcpServer.connect(transport);
 
-      // Handle the request
+      // Handle the request — this writes the response
       await transport.handleRequest(req, res, req.body);
 
-      // Clean up
-      currentProjectId = null;
+      // Clean up: close the server so it releases the transport
+      await mcpServer.close();
+      mcpServer = null;
     } catch (err: any) {
       console.error("[MCP] Request error:", err);
-      currentProjectId = null;
+
+      // Attempt cleanup on error
+      if (mcpServer) {
+        try {
+          await mcpServer.close();
+        } catch {
+          // Ignore cleanup errors
+        }
+      }
 
       if (!res.headersSent) {
         res.status(500).json({
@@ -142,7 +158,7 @@ export function registerMcpRoutes(app: Express): void {
     }
   });
 
-  // GET /api/mcp — health check / SSE endpoint for notifications
+  // GET /api/mcp — health check / server metadata
   app.get("/api/mcp", (_req: Request, res: Response) => {
     res.json({
       name: "prysm-governance",
