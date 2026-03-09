@@ -959,3 +959,10 @@
 - [x] Add Phase 2 blog post to blog-posts.ts
 - [x] Add agent_framework to agentType enum in schema
 - [x] All 843 vitest tests passing (36 test files)
+
+## SDK v0.6.0 Publish + GitHub Push — March 9, 2026
+- [x] Bump SDK version to 0.6.0 in pyproject.toml
+- [x] Update SDK README with v0.6.0 release notes (Agent Framework highlights, feature table, installation)
+- [x] Build and publish prysmai v0.6.0 to PyPI (https://pypi.org/project/prysmai/0.6.0/)
+- [x] Push prysmai-python SDK repo to GitHub (tagged v0.6.0)
+- [x] Push prysmai web app repo to GitHub (cleaned .manus secrets from history)
