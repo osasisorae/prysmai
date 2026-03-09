@@ -588,8 +588,8 @@ export default function Docs() {
             Prysm AI Documentation
           </h1>
           <p className="text-lg text-muted-foreground max-w-2xl">
-            Full platform documentation for Prysm AI — the governance and security layer for autonomous AI agents.
-            Covers the Python SDK, REST API, agent tracing, governance policies, security scanning, and more.
+            Full platform documentation for Prysm AI. Get your first trace in 5 minutes.
+            Covers the Python SDK, REST API, security scanning, observability, explainability, and governance.
           </p>
           <div className="flex items-center gap-4 mt-6">
             <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-secondary/50 border border-border font-mono text-sm">

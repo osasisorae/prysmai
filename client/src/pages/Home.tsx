@@ -1,71 +1,33 @@
 /*
- * PRYSM AI LANDING PAGE — V6 (Governance-First)
- * Design: Clean dark theme with calm confidence
- * Principles: Generous whitespace, 2-color palette (cyan + neutral),
- *   single font (Inter), minimal animation, simplified cards
- * Positioning: "Security, governance, and observability for autonomous AI agents"
- * Flow: Hero → Stack logos → Problem → Identity → Solution → Teaser → CTA → Research → Footer
+ * PRYSM AI LANDING PAGE — V7 (Copy Document V1.0)
+ * Design: Clean dark theme, generous whitespace, 2-color palette (cyan + neutral)
+ * Flow: Hero → Providers → Problem → Solution → Features → Integration → Who It's For → Vision → Pricing Teaser → Final CTA → Research → Footer
  */
 
 import { useState } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { trpc } from "@/lib/trpc";
 import {
-  Brain,
-  ShieldCheck,
-  Timer,
-  MessageSquareWarning,
-  ArrowRight,
-  X,
-  Check,
+  Shield,
+  Eye,
   Sparkles,
-  Scan,
-  Layers,
-  Activity,
+  Scale,
+  ArrowRight,
+  Code,
+  Terminal,
+  User,
+  ShieldCheck,
+  BarChart3,
 } from "lucide-react";
 import { toast } from "sonner";
 import { StackLogo, ResearchLogo } from "@/components/BrandLogos";
 import { EarlyAccessModal } from "@/components/EarlyAccessModal";
-import SecurityScanDemo from "@/components/SecurityScanDemo";
 
 const LOGO_URL = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663306080277/pKkWElgCpRmlNvjQ.png";
 
-const CONCEPT_VISUAL = "https://private-us-east-1.manuscdn.com/sessionFile/Q0GdsnUFZ8bvWNXmTe1Tx2/sandbox/73vpL8l461ipBpWYew94xE-img-1_1771186440000_na1fn_cHJ5c20tY29uY2VwdC12aXN1YWw.png?x-oss-process=image/resize,w_1920,h_1920/format,webp/quality,q_80&Expires=1798761600&Policy=eyJTdGF0ZW1lbnQiOlt7IlJlc291cmNlIjoiaHR0cHM6Ly9wcml2YXRlLXVzLWVhc3QtMS5tYW51c2Nkbi5jb20vc2Vzc2lvbkZpbGUvUTBHZHNuVUZaOGJ2V05YbVRlMVR4Mi9zYW5kYm94LzczdnBMOGw0NjFpcEJwV1lldzk0eEUtaW1nLTFfMTc3MTE4NjQ0MDAwMF9uYTFmbl9jSEo1YzIwdFkyOXVZMlZ3ZEMxMmFYTjFZV3cucG5nP3gtb3NzLXByb2Nlc3M9aW1hZ2UvcmVzaXplLHdfMTkyMCxoXzE5MjAvZm9ybWF0LHdlYnAvcXVhbGl0eSxxXzgwIiwiQ29uZGl0aW9uIjp7IkRhdGVMZXNzVGhhbiI6eyJBV1M6RXBvY2hUaW1lIjoxNzk4NzYxNjAwfX19XX0_&Key-Pair-Id=K2HSFNDJXOU9YS&Signature=PeyyUycRnpBlFcOs6UD6sjB8VGHt9dDMHSyWG6g11Qm2krBrzztDVpydJV1Q71IXqOiFbJ8vrCV888uahk1JL43eLbXinUy41ewE9WbCDDdxOixhaztWXZom0~laLPaXWcjF0RO6SKsI5xffgQxip-mCipuD8Zq5APFPKYzl43bJMDbzOCofFjQekEoh~3UBsdZidcy5FkOtSL7jAk8yCSmnrh48qRAw3jbn6dYKIbD7cedLK9lNPx5Zdv9zCpbWzU8PeEEJV6hES~zJs0YIPzfkWYHpt4Vqbv5g3OZA07pY5cLuDLT8L2gj7GtOY5hqaeeXNTdzkfeamdwKUsp5Gw__";
-
 export default function Home() {
   let { user, loading, error, isAuthenticated, logout } = useAuth();
-
-  const [email, setEmail] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [earlyAccessOpen, setEarlyAccessOpen] = useState(false);
-
-  const joinWaitlist = trpc.waitlist.join.useMutation({
-    onSuccess: (data) => {
-      if (data.alreadyExists) {
-        toast.success("You're already on the list. We'll be in touch.");
-      } else {
-        toast.success("You're on the list. Welcome to the builders who go deeper.");
-      }
-      setEmail("");
-      setIsSubmitting(false);
-    },
-    onError: () => {
-      toast.error("Something went wrong. Please try again.");
-      setIsSubmitting(false);
-    },
-  });
-
-  const handleWaitlist = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email || !email.includes("@")) {
-      toast.error("Please enter a valid email address.");
-      return;
-    }
-    setIsSubmitting(true);
-    joinWaitlist.mutate({ email, source: "landing_page" });
-  };
 
   const scrollTo = (id: string) =>
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
@@ -82,8 +44,8 @@ export default function Home() {
             </span>
           </div>
           <div className="hidden md:flex items-center gap-8 text-sm text-muted-foreground">
-            <a href="#problem" className="hover:text-foreground transition-colors">Why Prysm</a>
-            <a href="#solution" className="hover:text-foreground transition-colors">Product</a>
+            <a href="#problem" className="hover:text-foreground transition-colors">Why Prysmai</a>
+            <a href="#features" className="hover:text-foreground transition-colors">Product</a>
             <a href="/pricing" className="hover:text-foreground transition-colors">Pricing</a>
             <a href="/docs" className="hover:text-foreground transition-colors">Docs</a>
             <a href="/blog" className="hover:text-foreground transition-colors">Blog</a>
@@ -93,7 +55,7 @@ export default function Home() {
             className="bg-primary text-primary-foreground hover:bg-primary/90"
             onClick={() => setEarlyAccessOpen(true)}
           >
-            Get Early Access
+            Get Started Free
           </Button>
         </div>
       </nav>
@@ -102,20 +64,16 @@ export default function Home() {
       <section className="pt-32 pb-24 lg:pt-44 lg:pb-36">
         <div className="container">
           <div className="max-w-3xl">
-            <p className="text-sm font-medium text-primary tracking-wide mb-6">
-              Security, governance, and observability for autonomous AI agents
-            </p>
-
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.1] mb-8">
-              Your agents make thousands of decisions.{" "}
-              <span className="text-primary">Do you know which ones to trust?</span>
+              You're shipping AI.{" "}
+              <span className="text-primary">Do you know what it's doing?</span>
             </h1>
 
             <p className="text-lg text-muted-foreground leading-relaxed max-w-2xl mb-12">
-              The teams shipping the most reliable AI agents aren't just monitoring outputs.
-              They're governing every decision, tracing every tool call, and catching threats
-              before they reach production. Prysm is the governance and security layer that
-              makes autonomous agents auditable, explainable, and safe.
+              Prysmai sits between your application and your AI provider. It watches every
+              request and response, catches security threats in real time, tracks your costs
+              to the cent, and tells you exactly when your AI is guessing versus when it's
+              confident. One line of code to get started.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-3">
@@ -123,47 +81,29 @@ export default function Home() {
                 className="h-12 px-8 bg-primary text-primary-foreground hover:bg-primary/90 font-medium"
                 onClick={() => setEarlyAccessOpen(true)}
               >
-                Get Early Access
+                Get Started Free
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
               <Button
                 variant="outline"
                 className="h-12 px-8 border-border hover:border-primary/40 hover:bg-primary/5"
-                onClick={() => scrollTo("problem")}
+                onClick={() => scrollTo("how-it-works")}
               >
-                Learn More
+                See How It Works
               </Button>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ========== CONCEPT VISUAL ========== */}
-      <section className="pb-24 lg:pb-36">
-        <div className="container">
-          <div className="max-w-4xl mx-auto">
-            <div className="rounded-xl overflow-hidden border border-border/30">
-              <img
-                src={CONCEPT_VISUAL}
-                alt="Prysm AI — light passing through a prism to reveal AI model internals"
-                className="w-full h-auto"
-              />
-            </div>
-            <p className="text-center text-sm text-muted-foreground mt-6">
-              Govern, secure, and observe every decision your agents make.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* ========== FRAMEWORK LOGOS — SOCIAL PROOF ========== */}
+      {/* ========== PROVIDER TRUST STRIP ========== */}
       <section className="py-16 border-y border-border/30">
         <div className="container">
           <p className="text-center text-xs font-medium tracking-widest uppercase text-muted-foreground mb-10">
-            Works with your stack
+            Works with OpenAI · Anthropic · Google Gemini · vLLM · Ollama · Any OpenAI-compatible endpoint
           </p>
           <div className="flex flex-wrap items-center justify-center gap-8 md:gap-12 opacity-50">
-            {["LangGraph", "CrewAI", "Agent Framework", "OpenAI", "Anthropic", "Meta / Llama", "Hugging Face"].map((name) => (
+            {["OpenAI", "Anthropic", "LangGraph", "CrewAI", "Agent Framework", "Meta / Llama", "Hugging Face"].map((name) => (
               <StackLogo key={name} name={name} />
             ))}
           </div>
@@ -173,36 +113,34 @@ export default function Home() {
       {/* ========== PROBLEM SECTION ========== */}
       <section id="problem" className="py-28 lg:py-40">
         <div className="container">
-          <div className="max-w-3xl mx-auto">
-            <p className="text-sm font-medium text-primary tracking-wide mb-6">
-              The governance gap
-            </p>
-
+          <div className="max-w-4xl mx-auto">
             <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-8">
-              Autonomous agents are powerful. Ungoverned agents are dangerous.
+              Right now, your AI application is a{" "}
+              <span className="text-primary">black box.</span>
             </h2>
 
-            <p className="text-lg text-muted-foreground leading-relaxed mb-20">
-              Your agents call tools, make decisions, and take actions on behalf of your users.
-              But when something goes wrong — a hallucination, a jailbreak, a tool call that
-              shouldn't have happened — you have no audit trail, no explanation, and no way to
-              prevent it from happening again. The problem isn't your agents. It's that no one
-              built the governance layer they need.
+            <p className="text-lg text-muted-foreground leading-relaxed mb-20 max-w-3xl">
+              You built something great. You integrated an LLM. It works. Users are using it.
+              But here's what you don't know:
             </p>
 
-            <div className="space-y-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
               {[
                 {
-                  title: "No audit trail for agent decisions",
-                  desc: "Your agent chose a tool, called an API, and took an action. Why? You can't answer that — and neither can your compliance team. Every ungoverned decision is a liability.",
+                  title: "Visibility",
+                  desc: "You don't know what prompts are actually being sent to the AI. You don't know what it's responding with. If something goes wrong, you have no record of what happened.",
                 },
                 {
-                  title: "Security threats you can't see coming",
-                  desc: "Jailbreak attacks succeed over 90% of the time against unprotected agents. Without real-time governance, one bad prompt can make your AI leak data, ignore policies, or go off-script.",
+                  title: "Security",
+                  desc: "You don't know if users are trying to manipulate your AI. Prompt injection — where an attacker embeds hidden instructions to hijack the AI's behavior — is the number one AI exploit right now. You'd have no idea if it happened to you.",
                 },
                 {
-                  title: "Enterprise trust requires evidence",
-                  desc: "Your board asks how your AI makes decisions. Your compliance team needs an audit trail. Your customers want to trust it. Governance gives you the evidence they need.",
+                  title: "Cost",
+                  desc: "You get a monthly bill from your AI provider. But you don't know which features are expensive, which users are consuming the most, or where you're wasting money. You can't optimize what you can't see.",
+                },
+                {
+                  title: "Quality",
+                  desc: "You don't know when your AI is confident and when it's guessing. Hallucinations — where the AI makes up information and presents it as fact — are invisible without the right tooling.",
                 },
               ].map((item, i) => (
                 <div key={i} className="flex gap-6">
@@ -214,202 +152,385 @@ export default function Home() {
                 </div>
               ))}
             </div>
-          </div>
-        </div>
-      </section>
 
-      {/* ========== IDENTITY SECTION ========== */}
-      <section className="py-28 lg:py-40">
-        <div className="container">
-          <div className="max-w-4xl mx-auto">
-            <p className="text-sm font-medium text-primary tracking-wide mb-6">
-              Built for responsible AI teams
+            <p className="text-lg text-muted-foreground leading-relaxed mt-16 text-center max-w-2xl mx-auto">
+              This is what it looks like to run an AI application without Prysmai.
+              And it's how most teams are operating today.
             </p>
-
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-8 max-w-3xl">
-              Anyone can deploy an agent.{" "}
-              <span className="text-primary">Not everyone can govern one.</span>
-            </h2>
-
-            <p className="text-lg text-muted-foreground leading-relaxed max-w-3xl mb-20">
-              There are two kinds of teams building AI agents. The first kind ships fast
-              and hopes for the best. The second kind builds governance into the foundation.
-              They trace every decision, enforce policies on every action, and can explain
-              exactly why their agent did what it did. Prysm is built for the second kind.
-            </p>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {/* Without Prysm */}
-              <div className="p-8 rounded-xl border border-border/50 relative">
-                <p className="text-xs font-medium tracking-widest uppercase text-muted-foreground mb-8">
-                  Without Prysm
-                </p>
-                <div className="space-y-5">
-                  {[
-                    "Deploying without governance",
-                    "Debugging without traces",
-                    "Explaining without evidence",
-                    "Shipping without audit trails",
-                  ].map((item, i) => (
-                    <div key={i} className="flex items-center gap-3">
-                      <X className="w-4 h-4 shrink-0 text-muted-foreground/50" />
-                      <span className="text-muted-foreground">{item}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* With Prysm */}
-              <div className="p-8 rounded-xl border border-primary/20 bg-primary/[0.03] relative">
-                <p className="text-xs font-medium tracking-widest uppercase text-primary mb-8">
-                  With Prysm
-                </p>
-                <div className="space-y-5">
-                  {[
-                    "Deploying with governance policies",
-                    "Debugging with full decision traces",
-                    "Explaining with audit evidence",
-                    "Shipping with enterprise confidence",
-                  ].map((item, i) => (
-                    <div key={i} className="flex items-center gap-3">
-                      <Check className="w-4 h-4 text-primary shrink-0" />
-                      <span className="text-foreground">{item}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </section>
 
       {/* ========== SOLUTION SECTION ========== */}
-      <section id="solution" className="py-28 lg:py-40">
+      <section id="how-it-works" className="py-28 lg:py-40 border-y border-border/30">
         <div className="container">
           <div className="max-w-4xl mx-auto">
-            <p className="text-sm font-medium text-primary tracking-wide mb-6">
-              What you get
-            </p>
-
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-20 max-w-3xl">
-              Govern every decision your agents make.{" "}
-              <span className="text-primary">Trace why they made it.</span>
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-8">
+              Prysmai gives you{" "}
+              <span className="text-primary">eyes inside your AI.</span>
             </h2>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-12">
-              {[
-                {
-                  icon: Brain,
-                  title: "Agent decision explainability",
-                  desc: "Trace every tool call, every LLM decision, every action your agent takes. See the full decision chain — from input to output — with evidence your compliance team can audit.",
-                },
-                {
-                  icon: ShieldCheck,
-                  title: "Real-time threat governance",
-                  desc: "Enforce security policies on every agent action. Block jailbreaks, detect prompt injection, prevent PII leakage — all in real-time, before threats reach production.",
-                },
-                {
-                  icon: Timer,
-                  title: "Unified workflow tracing",
-                  desc: "See LLM calls, tool executions, and agent decisions in a single correlated timeline. Debug multi-step agent workflows in minutes, not days.",
-                },
-                {
-                  icon: MessageSquareWarning,
-                  title: "Enterprise-ready audit trails",
-                  desc: "Generate compliance-ready reports showing exactly how your agents make decisions. Built for the boards, regulators, and customers who need to trust your AI.",
-                },
-              ].map((item, i) => (
-                <div key={i}>
-                  <item.icon className="w-6 h-6 text-primary mb-4" />
-                  <h3 className="text-lg font-semibold mb-3">{item.title}</h3>
-                  <p className="text-muted-foreground leading-relaxed">{item.desc}</p>
-                </div>
-              ))}
+            <p className="text-lg text-muted-foreground leading-relaxed mb-12 max-w-3xl">
+              Here's how it works. You point your application at Prysmai instead of pointing
+              it directly at OpenAI. That's it. One configuration change. No code rewrites.
+              No new abstractions.
+            </p>
+
+            <p className="text-muted-foreground leading-relaxed mb-16 max-w-3xl">
+              From that moment on, every message going to your AI and every response coming
+              back flows through Prysmai. We capture it, analyze it, and surface it in a
+              dashboard that shows you exactly what your AI is doing — in real time.
+            </p>
+
+            {/* Flow diagram */}
+            <div className="rounded-xl border border-border/50 bg-card/30 p-8 md:p-12 mb-8">
+              <div className="flex flex-col md:flex-row items-center justify-center gap-4 md:gap-6 text-sm font-medium">
+                <div className="px-6 py-3 rounded-lg border border-border bg-background">Your App</div>
+                <span className="text-primary text-lg">→</span>
+                <div className="px-6 py-3 rounded-lg border border-primary/40 bg-primary/10 text-primary">Prysmai</div>
+                <span className="text-primary text-lg">→</span>
+                <div className="px-6 py-3 rounded-lg border border-border bg-background">AI Provider</div>
+              </div>
+              <div className="flex flex-col md:flex-row items-center justify-center gap-4 md:gap-6 text-sm font-medium mt-4">
+                <div className="px-6 py-3 rounded-lg border border-border bg-background">Your App</div>
+                <span className="text-primary text-lg">←</span>
+                <div className="px-6 py-3 rounded-lg border border-primary/40 bg-primary/10 text-primary">Prysmai</div>
+                <span className="text-primary text-lg">←</span>
+                <div className="px-6 py-3 rounded-lg border border-border bg-background">AI Provider</div>
+              </div>
+            </div>
+
+            <p className="text-sm text-muted-foreground text-center italic">
+              Prysmai intercepts every request and response. Your app and your AI provider
+              don't notice a thing. But you now have complete visibility.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* ========== FEATURES — FOUR CAPABILITIES ========== */}
+      <section id="features" className="py-28 lg:py-40">
+        <div className="container">
+          <div className="max-w-5xl mx-auto">
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-20 text-center">
+              Four things Prysmai does that{" "}
+              <span className="text-primary">nothing else does together.</span>
+            </h2>
+
+            {/* Capability 1: Security */}
+            <div className="mb-24">
+              <div className="flex items-center gap-3 mb-6">
+                <Shield className="w-6 h-6 text-primary" />
+                <p className="text-xs font-medium tracking-widest uppercase text-primary">Security</p>
+              </div>
+              <h3 className="text-2xl sm:text-3xl font-bold tracking-tight mb-6">
+                It catches threats before they reach your AI.
+              </h3>
+              <p className="text-muted-foreground leading-relaxed mb-6 max-w-3xl">
+                Every request that flows through Prysmai gets scanned for security threats in
+                real time. We detect prompt injection attacks — the attempts by malicious users
+                to embed hidden instructions that hijack your AI's behavior. We scan for
+                personally identifiable information like email addresses, phone numbers, credit
+                card numbers, and social security numbers, and we can automatically redact that
+                data before it ever reaches your AI provider.
+              </p>
+              <p className="text-muted-foreground leading-relaxed mb-8 max-w-3xl">
+                We score every request on a threat scale from 0 to 100. Clean. Low. Medium. High.
+                When a request crosses your threshold, we block it, flag it, or alert your team —
+                whatever you configure.
+              </p>
+              <p className="text-sm text-primary font-medium">
+                20+ injection patterns detected · 7 attack categories · 8 PII data types
+              </p>
+            </div>
+
+            {/* Capability 2: Observability */}
+            <div className="mb-24">
+              <div className="flex items-center gap-3 mb-6">
+                <Eye className="w-6 h-6 text-primary" />
+                <p className="text-xs font-medium tracking-widest uppercase text-primary">Observability</p>
+              </div>
+              <h3 className="text-2xl sm:text-3xl font-bold tracking-tight mb-6">
+                It shows you everything that's happening, in real time.
+              </h3>
+              <p className="text-muted-foreground leading-relaxed mb-6 max-w-3xl">
+                The Prysmai dashboard is a live view of your AI application. You can see every
+                request as it happens. You can see your cost accumulating in real time. You can
+                see latency distribution, error rates, token usage, and model performance — all
+                in one place.
+              </p>
+              <p className="text-muted-foreground leading-relaxed mb-6 max-w-3xl">
+                You can drill into any individual request and see the full prompt, the full
+                response, and every piece of metadata. You can search and filter by user, by
+                model, by feature, by date range, by cost, by latency. If something goes wrong,
+                you find it in seconds.
+              </p>
+              <p className="text-muted-foreground leading-relaxed mb-8 max-w-3xl">
+                We also measure time-to-first-token — how long it takes for the first word of
+                the response to appear. This is the metric that determines whether your users
+                perceive your application as fast or slow.
+              </p>
+              <p className="text-sm text-primary font-medium">
+                Real-time dashboard · Cost tracking per request · Latency down to the millisecond
+              </p>
+            </div>
+
+            {/* Capability 3: Explainability */}
+            <div className="mb-24">
+              <div className="flex items-center gap-3 mb-6">
+                <Sparkles className="w-6 h-6 text-primary" />
+                <p className="text-xs font-medium tracking-widest uppercase text-primary">Explainability</p>
+              </div>
+              <h3 className="text-2xl sm:text-3xl font-bold tracking-tight mb-6">
+                It tells you when your AI is confident and when it's guessing.
+              </h3>
+              <p className="text-muted-foreground leading-relaxed mb-6 max-w-3xl">
+                When an AI generates a response, it assigns a probability to every word it
+                chooses. Prysmai captures those probabilities — called logprobs — and visualizes
+                them as a color-coded heatmap on every response. Green means the model was
+                confident. Red means it was uncertain.
+              </p>
+              <p className="text-muted-foreground leading-relaxed mb-6 max-w-3xl">
+                When you see a run of red tokens, that's where the model was guessing. That's
+                where hallucinations happen. This is the most reliable hallucination detection
+                available — not because we ask another AI to check the work, but because we read
+                the model's own confidence signals directly.
+              </p>
+              <p className="text-muted-foreground leading-relaxed mb-8 max-w-3xl">
+                You can also ask Prysmai to explain any response. Why did the model say that?
+                What were the key decision points? What was it most uncertain about? The answer
+                is there, in the trace.
+              </p>
+              <p className="text-sm text-primary font-medium">
+                Token-level confidence heatmap · Hallucination detection · "Why did it say that?" explanations
+              </p>
+            </div>
+
+            {/* Capability 4: Governance */}
+            <div>
+              <div className="flex items-center gap-3 mb-6">
+                <Scale className="w-6 h-6 text-primary" />
+                <p className="text-xs font-medium tracking-widest uppercase text-primary">Governance</p>
+              </div>
+              <h3 className="text-2xl sm:text-3xl font-bold tracking-tight mb-6">
+                It watches your AI agents so you don't have to.
+              </h3>
+              <p className="text-muted-foreground leading-relaxed mb-6 max-w-3xl">
+                AI agents are different from chatbots. They don't just answer questions — they
+                take actions. They write code. They call APIs. They access databases. They operate
+                for minutes or hours at a time, making decisions without any human in the loop.
+              </p>
+              <p className="text-muted-foreground leading-relaxed mb-8 max-w-3xl">
+                Prysmai's governance layer monitors agent behavior in real time. It detects when
+                an agent stops working before it finishes its task. It detects when an agent has
+                tools available but isn't using them. It scans any code the agent generates for
+                security vulnerabilities before that code gets executed. And it exposes all of
+                this through the Model Context Protocol — which means any MCP-compatible agent
+                (including Claude Code and Cursor) can connect directly to Prysmai's governance
+                system without any additional code.
+              </p>
+              <p className="text-sm text-primary font-medium">
+                Real-time behavioral monitoring · Code security scanning · MCP endpoint · LangGraph + CrewAI + Agent Framework integrations
+              </p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ========== WHAT WE'RE BUILDING — HONEST TEASER ========== */}
+      {/* ========== INTEGRATION SECTION ========== */}
       <section className="py-28 lg:py-40 border-y border-border/30">
         <div className="container">
           <div className="max-w-4xl mx-auto">
-            <p className="text-sm font-medium text-primary tracking-wide mb-6">
-              What we're building
-            </p>
-
             <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-8">
-              The governance layer for agentic AI.{" "}
-              <span className="text-primary">Built for production.</span>
+              One line of code.{" "}
+              <span className="text-primary">Seriously.</span>
             </h2>
 
-            <p className="text-lg text-muted-foreground leading-relaxed mb-20 max-w-3xl">
-              We're building the infrastructure that makes autonomous AI agents safe,
-              auditable, and compliant — from development through production.
-              Here's what's live and what's coming next.
+            <p className="text-lg text-muted-foreground leading-relaxed mb-12 max-w-3xl">
+              You don't rewrite your application. You don't learn a new SDK. You don't change
+              how your AI works. You just tell your app to talk to Prysmai instead of talking
+              directly to OpenAI.
             </p>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
-              {[
-                {
-                  icon: Scan,
-                  title: "Multi-agent coordination",
-                  desc: "Govern agent-to-agent communication, shared memory access, and cross-agent decision chains. Coming in Phase 3.",
-                },
-                {
-                  icon: Activity,
-                  title: "Compliance reporting",
-                  desc: "Auto-generated audit reports for SOC 2, ISO 27001, and AI-specific regulations. Export-ready evidence for every agent action.",
-                },
-                {
-                  icon: Layers,
-                  title: "Approval workflows",
-                  desc: "Require human approval for high-risk agent actions. Define escalation policies based on action type, risk score, or cost threshold.",
-                },
-              ].map((item, i) => (
-                <div key={i}>
-                  <item.icon className="w-6 h-6 text-primary mb-4" />
-                  <h3 className="text-lg font-semibold mb-3">{item.title}</h3>
-                  <p className="text-muted-foreground leading-relaxed text-sm">{item.desc}</p>
-                </div>
-              ))}
+            <div className="rounded-xl border border-border/50 bg-card/30 overflow-hidden mb-8">
+              <div className="flex items-center gap-2 px-4 py-3 border-b border-border/30 bg-card/50">
+                <Terminal className="w-4 h-4 text-muted-foreground" />
+                <span className="text-xs text-muted-foreground font-medium">Python</span>
+              </div>
+              <pre className="p-6 text-sm leading-relaxed overflow-x-auto">
+                <code className="text-muted-foreground">{`# Before Prysmai
+client = OpenAI(api_key="your-key")
+
+# After Prysmai — that's it
+client = OpenAI(
+    api_key="sk-prysm-your-prysmai-key",
+    base_url="https://api.prysmai.io/v1"
+)`}</code>
+              </pre>
             </div>
 
-            <div className="mt-14 flex items-center justify-center gap-2 text-sm text-muted-foreground">
-              <Sparkles className="w-4 h-4 text-primary" />
-              <span>Governance, tracing, and security are live — enterprise features coming Q2 2026</span>
+            <p className="text-muted-foreground leading-relaxed mb-10 max-w-3xl">
+              Prysmai is fully OpenAI-compatible. If your application works with OpenAI today,
+              it works with Prysmai today. No changes to your prompts, your models, your
+              streaming setup, or your function calling. Everything just works.
+            </p>
+
+            <p className="text-sm text-muted-foreground">
+              <span className="text-primary font-medium">Supported frameworks:</span>{" "}
+              LangChain · LangGraph · CrewAI · Microsoft Agent Framework · LlamaIndex · OpenAI SDK · REST API
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* ========== WHO IT'S FOR ========== */}
+      <section className="py-28 lg:py-40">
+        <div className="container">
+          <div className="max-w-5xl mx-auto">
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-20 text-center">
+              Built for every person on{" "}
+              <span className="text-primary">your AI team.</span>
+            </h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+              {/* Developer */}
+              <div>
+                <Code className="w-6 h-6 text-primary mb-4" />
+                <h3 className="text-lg font-semibold mb-4">If you're building the AI application.</h3>
+                <p className="text-muted-foreground leading-relaxed text-sm mb-4">
+                  You ship code. You don't have time to build observability from scratch. You
+                  need to know when something breaks, why it broke, and how to fix it fast.
+                  Prysmai gives you a production-grade observability layer in minutes. Real-time
+                  logs. Cost tracking. Performance metrics. Hallucination detection. Security
+                  scanning. All of it, without writing a single line of monitoring code.
+                </p>
+                <p className="text-sm text-muted-foreground italic">
+                  No serious engineer runs a web server without logs and metrics. Running an AI
+                  application without Prysmai is the same mistake.
+                </p>
+              </div>
+
+              {/* Security & Compliance */}
+              <div>
+                <ShieldCheck className="w-6 h-6 text-primary mb-4" />
+                <h3 className="text-lg font-semibold mb-4">If you're responsible for keeping it safe.</h3>
+                <p className="text-muted-foreground leading-relaxed text-sm">
+                  AI is a new attack surface. Prompt injection is the number one AI exploit right
+                  now. PII leakage through AI systems is a GDPR and HIPAA violation waiting to
+                  happen. AI agents operating without oversight are a liability. Prysmai is the
+                  security layer your organization needs before it can responsibly deploy AI at
+                  scale. Real-time threat detection. PII redaction. Complete audit trails. Policy
+                  enforcement. All of it, without slowing down your developers.
+                </p>
+              </div>
+
+              {/* Business Leader */}
+              <div>
+                <BarChart3 className="w-6 h-6 text-primary mb-4" />
+                <h3 className="text-lg font-semibold mb-4">If you're responsible for the results.</h3>
+                <p className="text-muted-foreground leading-relaxed text-sm">
+                  AI is expensive and unpredictable. You don't know what you're spending, you
+                  don't know if it's working, and you don't know if it's safe. Prysmai solves
+                  all three. Exact cost tracking across every model and every request. Quality
+                  metrics so you know when your AI is giving good answers and when it's making
+                  things up. Governance controls so your agents operate within defined boundaries.
+                  For any organization serious about deploying AI responsibly, Prysmai is not
+                  optional infrastructure. It's essential infrastructure.
+                </p>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ========== SECURITY SCAN DEMO ========== */}
-      <SecurityScanDemo />
+      {/* ========== VISION SECTION ========== */}
+      <section className="py-28 lg:py-40 border-y border-border/30">
+        <div className="container">
+          <div className="max-w-4xl mx-auto">
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-8">
+              We're at an inflection point.{" "}
+              <span className="text-primary">And most teams aren't ready.</span>
+            </h2>
 
-      {/* ========== FINAL CTA ========== */}
-      <section id="waitlist" className="py-28 lg:py-40">
+            <div className="space-y-6 text-muted-foreground leading-relaxed max-w-3xl mb-12">
+              <p>
+                Right now, most AI applications are reactive. A user asks a question, the AI
+                answers. That's the current state. But the world is moving fast toward agentic
+                AI — systems that don't just answer questions but actually take actions. Write
+                code. Browse the web. Manage workflows. Make decisions.
+              </p>
+              <p>
+                This is already happening. 61% of CEOs are already deploying AI agents. And
+                Gartner predicts that more than 40% of those projects will fail by 2027. Not
+                because the AI isn't capable. Because organizations have no way to govern it.
+                No way to know what the agent did. No way to enforce policies. No way to catch
+                it when it goes off the rails.
+              </p>
+              <p>
+                That's the problem Prysmai is built to solve. We're building the governance
+                platform for the age of autonomous AI. And we're building it at exactly the
+                moment when the world is starting to realize it needs it.
+              </p>
+            </div>
+
+            <Button
+              variant="outline"
+              className="border-border hover:border-primary/40 hover:bg-primary/5"
+              onClick={() => scrollTo("waitlist")}
+            >
+              See Where We're Going
+              <ArrowRight className="w-4 h-4 ml-2" />
+            </Button>
+          </div>
+        </div>
+      </section>
+
+      {/* ========== PRICING TEASER ========== */}
+      <section className="py-28 lg:py-40">
         <div className="container">
           <div className="max-w-2xl mx-auto text-center">
             <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-8">
-              The most trusted AI agents aren't the smartest.{" "}
-              <span className="text-primary">They're the most governed.</span>
+              Start free.{" "}
+              <span className="text-primary">Scale when you're ready.</span>
+            </h2>
+
+            <p className="text-lg text-muted-foreground leading-relaxed mb-12">
+              The free tier includes 10,000 requests per month — enough to get started, see
+              the value, and decide if Prysmai is right for your team. No credit card required.
+            </p>
+
+            <Button
+              variant="outline"
+              className="border-border hover:border-primary/40 hover:bg-primary/5"
+              onClick={() => window.location.href = "/pricing"}
+            >
+              View Pricing
+              <ArrowRight className="w-4 h-4 ml-2" />
+            </Button>
+          </div>
+        </div>
+      </section>
+
+      {/* ========== FINAL CTA ========== */}
+      <section id="waitlist" className="py-28 lg:py-40 border-t border-border/30">
+        <div className="container">
+          <div className="max-w-2xl mx-auto text-center">
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-8">
+              Your AI is running.{" "}
+              <span className="text-primary">Do you know what it's doing?</span>
             </h2>
 
             <p className="text-lg text-muted-foreground mb-12">
-              Stop hoping your agents behave. Start governing them. Join the teams building AI that's auditable, explainable, and safe.
+              Join the teams using Prysmai to see inside their AI applications — and keep them safe.
             </p>
 
             <Button
               className="h-12 px-10 bg-primary text-primary-foreground hover:bg-primary/90 font-medium"
               onClick={() => setEarlyAccessOpen(true)}
             >
-              Get Early Access
+              Get Started Free — it takes 5 minutes
               <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
-
-            <p className="text-xs text-muted-foreground mt-6">
-              No credit card required. Be the first to know when we launch.
-            </p>
           </div>
         </div>
       </section>
@@ -444,7 +565,7 @@ export default function Home() {
               </span>
             </div>
             <p className="text-xs text-muted-foreground">
-              The governance and security layer for autonomous AI agents.
+              Security, governance, and observability for AI applications.
             </p>
             <p className="text-xs text-muted-foreground">
               &copy; {new Date().getFullYear()} Prysm AI

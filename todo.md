@@ -986,3 +986,17 @@
 - [x] Update Docs.tsx CTA section
 - [x] Update meta tags (title, OG, Twitter Card) with governance positioning
 - [x] All 843 vitest tests still passing
+
+## Landing Page Copy Rewrite — March 9, 2026
+- [x] Rewrite Hero section (new headline, subheadline, CTAs, provider trust strip)
+- [x] Rewrite Problem section ("Right now, your AI application is a black box" — 4 cards)
+- [x] Add Solution section ("Prysmai gives you eyes inside your AI" — flow diagram)
+- [x] Add Features section (4 capabilities: Security, Observability, Explainability, Governance)
+- [x] Add Integration section ("One line of code" — code block + frameworks)
+- [x] Add Who It's For section (Developer, Security/Compliance, Business Leader)
+- [x] Rewrite Vision section ("inflection point" — Gartner stats)
+- [x] Add Pricing Teaser section (free tier signal)
+- [x] Rewrite Final CTA section
+- [x] Update meta tags with new copy (title, OG, Twitter)
+- [x] Update Docs page hero copy
+- [x] Update microcopy/UI strings where applicable
