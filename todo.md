@@ -1000,3 +1000,8 @@
 - [x] Update meta tags with new copy (title, OG, Twitter)
 - [x] Update Docs page hero copy
 - [x] Update microcopy/UI strings where applicable
+
+## Integration Section Fix — March 9, 2026
+- [x] Fix Integration section to accurately reflect how Prysmai works (not just OpenAI)
+- [x] Show all supported providers from docs (OpenAI, Anthropic, Gemini, vLLM/Ollama table)
+- [x] Show correct code examples (PrysmClient, pip install, multi-provider)

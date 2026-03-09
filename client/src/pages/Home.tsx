@@ -343,41 +343,90 @@ export default function Home() {
           <div className="max-w-4xl mx-auto">
             <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-8">
               One line of code.{" "}
-              <span className="text-primary">Seriously.</span>
+              <span className="text-primary">Any provider.</span>
             </h2>
 
-            <p className="text-lg text-muted-foreground leading-relaxed mb-12 max-w-3xl">
-              You don't rewrite your application. You don't learn a new SDK. You don't change
-              how your AI works. You just tell your app to talk to Prysmai instead of talking
-              directly to OpenAI.
+            <p className="text-lg text-muted-foreground leading-relaxed mb-6 max-w-3xl">
+              Install the Python SDK, create a client with your Prysm key, and you're done.
+              One key works across every provider — OpenAI, Anthropic, Google Gemini, vLLM,
+              Ollama, or any OpenAI-compatible endpoint. Your provider keys stay in your
+              Prysm dashboard, never in your application code.
             </p>
 
-            <div className="rounded-xl border border-border/50 bg-card/30 overflow-hidden mb-8">
+            <p className="text-muted-foreground leading-relaxed mb-12 max-w-3xl">
+              The code is identical across providers — only the model name changes.
+              Streaming, function calling, async — everything just works.
+            </p>
+
+            {/* Install */}
+            <div className="rounded-xl border border-border/50 bg-card/30 overflow-hidden mb-6">
+              <div className="flex items-center gap-2 px-4 py-3 border-b border-border/30 bg-card/50">
+                <Terminal className="w-4 h-4 text-muted-foreground" />
+                <span className="text-xs text-muted-foreground font-medium">Install</span>
+              </div>
+              <pre className="p-6 text-sm leading-relaxed overflow-x-auto">
+                <code className="text-muted-foreground">{`pip install prysmai`}</code>
+              </pre>
+            </div>
+
+            {/* Usage */}
+            <div className="rounded-xl border border-border/50 bg-card/30 overflow-hidden mb-6">
               <div className="flex items-center gap-2 px-4 py-3 border-b border-border/30 bg-card/50">
                 <Terminal className="w-4 h-4 text-muted-foreground" />
                 <span className="text-xs text-muted-foreground font-medium">Python</span>
               </div>
               <pre className="p-6 text-sm leading-relaxed overflow-x-auto">
-                <code className="text-muted-foreground">{`# Before Prysmai
-client = OpenAI(api_key="your-key")
+                <code className="text-muted-foreground">{`from prysmai import PrysmClient
 
-# After Prysmai — that's it
-client = OpenAI(
-    api_key="sk-prysm-your-prysmai-key",
-    base_url="https://api.prysmai.io/v1"
-)`}</code>
+client = PrysmClient(prysm_key="sk-prysm-...").openai()
+
+# Works with any provider — just change the model name
+response = client.chat.completions.create(
+    model="gpt-4o-mini",       # or claude-3-5-sonnet, gemini-2.0-flash, etc.
+    messages=[{"role": "user", "content": "Hello!"}],
+)
+print(response.choices[0].message.content)`}</code>
               </pre>
             </div>
 
-            <p className="text-muted-foreground leading-relaxed mb-10 max-w-3xl">
-              Prysmai is fully OpenAI-compatible. If your application works with OpenAI today,
-              it works with Prysmai today. No changes to your prompts, your models, your
-              streaming setup, or your function calling. Everything just works.
-            </p>
+            {/* Provider table */}
+            <div className="rounded-xl border border-border/50 bg-card/30 overflow-hidden mb-10">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border/30 bg-card/50">
+                    <th className="text-left px-6 py-3 text-muted-foreground font-medium">Provider</th>
+                    <th className="text-left px-6 py-3 text-muted-foreground font-medium">Model Names</th>
+                    <th className="text-left px-6 py-3 text-muted-foreground font-medium">Notes</th>
+                  </tr>
+                </thead>
+                <tbody className="text-muted-foreground">
+                  <tr className="border-b border-border/20">
+                    <td className="px-6 py-3 font-medium text-foreground">OpenAI</td>
+                    <td className="px-6 py-3">gpt-4o, gpt-4o-mini, o1, etc.</td>
+                    <td className="px-6 py-3">Native support</td>
+                  </tr>
+                  <tr className="border-b border-border/20">
+                    <td className="px-6 py-3 font-medium text-foreground">Anthropic</td>
+                    <td className="px-6 py-3">claude-3-5-sonnet, claude-3-haiku, etc.</td>
+                    <td className="px-6 py-3">Auto-translated to OpenAI format</td>
+                  </tr>
+                  <tr className="border-b border-border/20">
+                    <td className="px-6 py-3 font-medium text-foreground">Google Gemini</td>
+                    <td className="px-6 py-3">gemini-2.0-flash, gemini-1.5-pro, etc.</td>
+                    <td className="px-6 py-3">Native OpenAI-compatible endpoint</td>
+                  </tr>
+                  <tr>
+                    <td className="px-6 py-3 font-medium text-foreground">vLLM / Ollama</td>
+                    <td className="px-6 py-3">Any model on your server</td>
+                    <td className="px-6 py-3">Any OpenAI-compatible endpoint</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
 
             <p className="text-sm text-muted-foreground">
-              <span className="text-primary font-medium">Supported frameworks:</span>{" "}
-              LangChain · LangGraph · CrewAI · Microsoft Agent Framework · LlamaIndex · OpenAI SDK · REST API
+              <span className="text-primary font-medium">Framework integrations:</span>{" "}
+              LangGraph · CrewAI · Microsoft Agent Framework · LlamaIndex · LangChain · OpenAI SDK · REST API
             </p>
           </div>
         </div>
