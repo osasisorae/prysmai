@@ -1,8 +1,9 @@
 /*
- * PRYSM AI LANDING PAGE — V5 (Refined)
+ * PRYSM AI LANDING PAGE — V6 (Governance-First)
  * Design: Clean dark theme with calm confidence
  * Principles: Generous whitespace, 2-color palette (cyan + neutral),
  *   single font (Inter), minimal animation, simplified cards
+ * Positioning: "Security, governance, and observability for autonomous AI agents"
  * Flow: Hero → Stack logos → Problem → Identity → Solution → Teaser → CTA → Research → Footer
  */
 
@@ -102,18 +103,19 @@ export default function Home() {
         <div className="container">
           <div className="max-w-3xl">
             <p className="text-sm font-medium text-primary tracking-wide mb-6">
-              For builders who go deeper
+              Security, governance, and observability for autonomous AI agents
             </p>
 
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.1] mb-8">
-              You wouldn't ship code you can't debug.{" "}
-              <span className="text-primary">Why ship AI you can't understand?</span>
+              Your agents make thousands of decisions.{" "}
+              <span className="text-primary">Do you know which ones to trust?</span>
             </h1>
 
             <p className="text-lg text-muted-foreground leading-relaxed max-w-2xl mb-12">
-              The teams building the most reliable AI agents aren't guessing what their
-              models do. They're seeing inside them. Prysm gives you that vision — so
-              you build with understanding, not hope.
+              The teams shipping the most reliable AI agents aren't just monitoring outputs.
+              They're governing every decision, tracing every tool call, and catching threats
+              before they reach production. Prysm is the governance and security layer that
+              makes autonomous agents auditable, explainable, and safe.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-3">
@@ -148,7 +150,7 @@ export default function Home() {
               />
             </div>
             <p className="text-center text-sm text-muted-foreground mt-6">
-              See through the complexity. Understand what your AI is actually doing.
+              Govern, secure, and observe every decision your agents make.
             </p>
           </div>
         </div>
@@ -161,7 +163,7 @@ export default function Home() {
             Works with your stack
           </p>
           <div className="flex flex-wrap items-center justify-center gap-8 md:gap-12 opacity-50">
-            {["LangChain", "CrewAI", "OpenAI", "Anthropic", "Meta / Llama", "Hugging Face", "AutoGen"].map((name) => (
+            {["LangGraph", "CrewAI", "Agent Framework", "OpenAI", "Anthropic", "Meta / Llama", "Hugging Face"].map((name) => (
               <StackLogo key={name} name={name} />
             ))}
           </div>
@@ -173,35 +175,34 @@ export default function Home() {
         <div className="container">
           <div className="max-w-3xl mx-auto">
             <p className="text-sm font-medium text-primary tracking-wide mb-6">
-              The blind spot
+              The governance gap
             </p>
 
             <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-8">
-              Right now, you're building in the dark.
+              Autonomous agents are powerful. Ungoverned agents are dangerous.
             </h2>
 
             <p className="text-lg text-muted-foreground leading-relaxed mb-20">
-              You've spent weeks perfecting your agent. The prompts are tight. The tools
-              are connected. It works in testing. Then it hits production — and something
-              breaks. A hallucination. A jailbreak. A response that makes no sense. You
-              open the logs and start guessing. Eight hours later, you're still guessing.
-              Not because you're not good enough. Because no one gave you the tools to
-              actually see what's happening inside your model.
+              Your agents call tools, make decisions, and take actions on behalf of your users.
+              But when something goes wrong — a hallucination, a jailbreak, a tool call that
+              shouldn't have happened — you have no audit trail, no explanation, and no way to
+              prevent it from happening again. The problem isn't your agents. It's that no one
+              built the governance layer they need.
             </p>
 
             <div className="space-y-8">
               {[
                 {
-                  title: "You're guessing, not debugging",
-                  desc: "When your agent fails, you can't trace WHY it failed. You read logs, tweak prompts, and hope. That's not engineering. That's gambling.",
+                  title: "No audit trail for agent decisions",
+                  desc: "Your agent chose a tool, called an API, and took an action. Why? You can't answer that — and neither can your compliance team. Every ungoverned decision is a liability.",
                 },
                 {
-                  title: "More vulnerable than you think",
-                  desc: "Jailbreak attacks succeed over 90% of the time against unprotected agents. One bad prompt can make your AI leak data, ignore rules, or go completely off-script.",
+                  title: "Security threats you can't see coming",
+                  desc: "Jailbreak attacks succeed over 90% of the time against unprotected agents. Without real-time governance, one bad prompt can make your AI leak data, ignore policies, or go off-script.",
                 },
                 {
-                  title: "You can't explain what you can't see",
-                  desc: "Your board asks how your AI makes decisions. Your compliance team needs an audit trail. Your customers want to trust it. You don't have answers — because you've never been able to look inside.",
+                  title: "Enterprise trust requires evidence",
+                  desc: "Your board asks how your AI makes decisions. Your compliance team needs an audit trail. Your customers want to trust it. Governance gives you the evidence they need.",
                 },
               ].map((item, i) => (
                 <div key={i} className="flex gap-6">
@@ -222,20 +223,19 @@ export default function Home() {
         <div className="container">
           <div className="max-w-4xl mx-auto">
             <p className="text-sm font-medium text-primary tracking-wide mb-6">
-              A different kind of builder
+              Built for responsible AI teams
             </p>
 
             <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-8 max-w-3xl">
-              Anyone can wrap an API.{" "}
-              <span className="text-primary">Not everyone can understand what's inside.</span>
+              Anyone can deploy an agent.{" "}
+              <span className="text-primary">Not everyone can govern one.</span>
             </h2>
 
             <p className="text-lg text-muted-foreground leading-relaxed max-w-3xl mb-20">
-              There are two kinds of teams building AI agents. The first kind calls an API,
-              writes some prompts, and ships. When it breaks, they shrug. The second kind
-              goes deeper. They want to understand every decision their model makes. They
-              don't just want their agent to work — they want to know WHY it works.
-              Prysm is built for the second kind.
+              There are two kinds of teams building AI agents. The first kind ships fast
+              and hopes for the best. The second kind builds governance into the foundation.
+              They trace every decision, enforce policies on every action, and can explain
+              exactly why their agent did what it did. Prysm is built for the second kind.
             </p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -246,10 +246,10 @@ export default function Home() {
                 </p>
                 <div className="space-y-5">
                   {[
-                    "Deploying and hoping",
-                    "Debugging by guessing",
-                    "Explaining by hand-waving",
-                    "Shipping with anxiety",
+                    "Deploying without governance",
+                    "Debugging without traces",
+                    "Explaining without evidence",
+                    "Shipping without audit trails",
                   ].map((item, i) => (
                     <div key={i} className="flex items-center gap-3">
                       <X className="w-4 h-4 shrink-0 text-muted-foreground/50" />
@@ -266,10 +266,10 @@ export default function Home() {
                 </p>
                 <div className="space-y-5">
                   {[
-                    "Deploying with understanding",
-                    "Debugging with precision",
-                    "Explaining with evidence",
-                    "Shipping with confidence",
+                    "Deploying with governance policies",
+                    "Debugging with full decision traces",
+                    "Explaining with audit evidence",
+                    "Shipping with enterprise confidence",
                   ].map((item, i) => (
                     <div key={i} className="flex items-center gap-3">
                       <Check className="w-4 h-4 text-primary shrink-0" />
@@ -292,31 +292,31 @@ export default function Home() {
             </p>
 
             <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-20 max-w-3xl">
-              See every decision your AI makes.{" "}
-              <span className="text-primary">Understand why it made it.</span>
+              Govern every decision your agents make.{" "}
+              <span className="text-primary">Trace why they made it.</span>
             </h2>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-12">
               {[
                 {
                   icon: Brain,
-                  title: "Understand, don't guess",
-                  desc: "See which internal patterns activated, which features fired, and why your model chose that response. For the first time, you'll actually know what your AI is doing.",
+                  title: "Agent decision explainability",
+                  desc: "Trace every tool call, every LLM decision, every action your agent takes. See the full decision chain — from input to output — with evidence your compliance team can audit.",
                 },
                 {
                   icon: ShieldCheck,
-                  title: "Catch threats before your customers do",
-                  desc: "Prysm analyzes every prompt in real-time and blocks attacks before they reach your model. You set the rules. Prysm enforces them.",
+                  title: "Real-time threat governance",
+                  desc: "Enforce security policies on every agent action. Block jailbreaks, detect prompt injection, prevent PII leakage — all in real-time, before threats reach production.",
                 },
                 {
                   icon: Timer,
-                  title: "Debug in minutes, not days",
-                  desc: "Stop reading logs for hours. Prysm shows you exactly where things went wrong — which layer, which feature, which decision. What took 8 hours now takes 8 minutes.",
+                  title: "Unified workflow tracing",
+                  desc: "See LLM calls, tool executions, and agent decisions in a single correlated timeline. Debug multi-step agent workflows in minutes, not days.",
                 },
                 {
                   icon: MessageSquareWarning,
-                  title: "Answer any question about your AI",
-                  desc: "When your board, your compliance team, or your customers ask how your AI works — you'll have the answer. With evidence.",
+                  title: "Enterprise-ready audit trails",
+                  desc: "Generate compliance-ready reports showing exactly how your agents make decisions. Built for the boards, regulators, and customers who need to trust your AI.",
                 },
               ].map((item, i) => (
                 <div key={i}>
@@ -339,32 +339,32 @@ export default function Home() {
             </p>
 
             <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-8">
-              A new kind of observability.{" "}
-              <span className="text-primary">Built for AI.</span>
+              The governance layer for agentic AI.{" "}
+              <span className="text-primary">Built for production.</span>
             </h2>
 
             <p className="text-lg text-muted-foreground leading-relaxed mb-20 max-w-3xl">
-              We're building tools that let you look inside your AI models in real-time
-              — not just at their outputs, but at the internal processes that produce them.
-              Here's the direction we're heading.
+              We're building the infrastructure that makes autonomous AI agents safe,
+              auditable, and compliant — from development through production.
+              Here's what's live and what's coming next.
             </p>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
               {[
                 {
                   icon: Scan,
-                  title: "Real-time model inspection",
-                  desc: "Watch internal feature activations as your model processes each request. See which concepts light up and which stay silent.",
+                  title: "Multi-agent coordination",
+                  desc: "Govern agent-to-agent communication, shared memory access, and cross-agent decision chains. Coming in Phase 3.",
                 },
                 {
                   icon: Activity,
-                  title: "Prompt threat detection",
-                  desc: "Analyze incoming prompts for adversarial patterns, jailbreak attempts, and injection attacks — before they reach your model.",
+                  title: "Compliance reporting",
+                  desc: "Auto-generated audit reports for SOC 2, ISO 27001, and AI-specific regulations. Export-ready evidence for every agent action.",
                 },
                 {
                   icon: Layers,
-                  title: "Explainability reports",
-                  desc: "Generate human-readable explanations of why your model made a specific decision. Built for compliance, audits, and trust.",
+                  title: "Approval workflows",
+                  desc: "Require human approval for high-risk agent actions. Define escalation policies based on action type, risk score, or cost threshold.",
                 },
               ].map((item, i) => (
                 <div key={i}>
@@ -377,7 +377,7 @@ export default function Home() {
 
             <div className="mt-14 flex items-center justify-center gap-2 text-sm text-muted-foreground">
               <Sparkles className="w-4 h-4 text-primary" />
-              <span>Actively in development — early access coming soon</span>
+              <span>Governance, tracing, and security are live — enterprise features coming Q2 2026</span>
             </div>
           </div>
         </div>
@@ -391,12 +391,12 @@ export default function Home() {
         <div className="container">
           <div className="max-w-2xl mx-auto text-center">
             <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-8">
-              The best AI isn't built by the biggest teams.{" "}
-              <span className="text-primary">It's built by the teams who see the deepest.</span>
+              The most trusted AI agents aren't the smartest.{" "}
+              <span className="text-primary">They're the most governed.</span>
             </h2>
 
             <p className="text-lg text-muted-foreground mb-12">
-              Stop guessing. Start understanding. Join the builders who go deeper.
+              Stop hoping your agents behave. Start governing them. Join the teams building AI that's auditable, explainable, and safe.
             </p>
 
             <Button
@@ -444,7 +444,7 @@ export default function Home() {
               </span>
             </div>
             <p className="text-xs text-muted-foreground">
-              Built for builders who go deeper.
+              The governance and security layer for autonomous AI agents.
             </p>
             <p className="text-xs text-muted-foreground">
               &copy; {new Date().getFullYear()} Prysm AI

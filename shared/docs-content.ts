@@ -36,9 +36,11 @@ export const DOCS: DocSection[] = [
     summary: "What Prysm AI is, how it works, and what you get out of the box.",
     markdown: `# Overview
 
-Prysm AI is an observability and security proxy for LLM applications. It sits between your application and your LLM provider, capturing every request and response with full metrics — latency, token counts, cost, errors, and the complete prompt/completion data. It also scans every request for prompt injection attacks, PII leakage, and content policy violations in real time.
+Prysm AI is the governance and security layer for teams building with autonomous AI agents. It traces every decision your agents make, enforces security policies in real time, and provides the audit evidence enterprises need to trust AI in production.
 
-Instead of adding logging code throughout your application, you route your LLM traffic through Prysm with a single configuration change. The proxy is fully OpenAI-compatible, so any application that uses the OpenAI SDK works with Prysm out of the box.
+Prysm works at two levels. As an observability proxy, it sits between your application and your LLM provider, capturing every request and response with full metrics — latency, token counts, cost, and complete prompt/completion data. As a governance layer, it monitors agent sessions for behavioral anomalies, enforces policies on tool calls and actions, and generates explainability reports for compliance.
+
+The proxy is fully OpenAI-compatible, so any application that uses the OpenAI SDK works with Prysm out of the box. The Python SDK integrates with LangGraph, CrewAI, and Microsoft Agent Framework for deep agent workflow tracing.
 
 \`\`\`
 Your App  →  Prysm Proxy  →  LLM Provider
@@ -74,10 +76,10 @@ Your App  →  Prysm Proxy  →  LLM Provider
     id: "getting-started",
     title: "Getting Started",
     group: "getting-started",
-    summary: "Go from zero to full observability in under 5 minutes.",
+    summary: "Go from zero to full governance and observability in under 5 minutes.",
     markdown: `# Getting Started
 
-Get from zero to full observability in under 5 minutes.
+Get from zero to full governance and observability in under 5 minutes.
 
 ## 1. Create Your Account
 
@@ -147,12 +149,13 @@ The Prysm AI Python SDK (\`prysmai\`) is published on [PyPI](https://pypi.org/pr
 pip install prysmai
 \`\`\`
 
-> **Framework integrations (v0.5.0):** Install with optional dependencies for your framework:
+> **Framework integrations (v0.6.0):** Install with optional dependencies for your framework:
 > \`\`\`bash
-> pip install prysmai[langgraph]    # LangGraph
-> pip install prysmai[crewai]       # CrewAI
-> pip install prysmai[llamaindex]   # LlamaIndex
-> pip install prysmai[all]          # All frameworks
+> pip install prysmai[langgraph]          # LangGraph
+> pip install prysmai[crewai]             # CrewAI
+> pip install prysmai[agent-framework]    # Microsoft Agent Framework
+> pip install prysmai[llamaindex]         # LlamaIndex
+> pip install prysmai[all]                # All frameworks
 > \`\`\`
 
 ## PrysmClient
@@ -1218,7 +1221,21 @@ except openai.APIError as e:
     summary: "Version history and release notes for the Prysm AI SDK and platform.",
     markdown: `# Changelog
 
-## v0.5.0 — March 8, 2026 (Latest)
+## v0.6.0 — March 9, 2026 (Latest)
+
+**Microsoft Agent Framework Integration & Phase 2 Agent Tracing**
+
+- **NEW** \`PrysmAgentMiddleware\` — captures agent run execution (start/end, timing, messages, metadata).
+- **NEW** \`PrysmFunctionMiddleware\` — captures function/tool calls (name, arguments, result, timing).
+- **NEW** \`PrysmChatMiddleware\` — captures LLM chat completions (messages, options, response, tokens).
+- **NEW** \`agent-framework\` optional dependency: \`pip install prysmai[agent-framework]\`.
+- **NEW** Unified Timeline — correlated view of LLM traces, tool events, and session events.
+- **NEW** Tool Performance Dashboard — success rates, latency distributions, failure analysis.
+- **NEW** Agent Decision Explainability — trace backward to find why an agent chose a specific action.
+- **NEW** Directed Workflow Graph — SVG-based execution graph with pan/zoom and node inspection.
+- **NEW** 5 documentation sections in Agent Tracing group.
+
+## v0.5.0 — March 8, 2026
 
 **Governance Layer & LangGraph Integration**
 

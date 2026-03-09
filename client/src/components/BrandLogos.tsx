@@ -74,6 +74,7 @@ export function StackLogo({ name, size = "md" }: { name: string; size?: "sm" | "
 
   const iconMap: Record<string, React.ReactNode> = {
     LangChain: <LangChainLogo className={s.icon} />,
+    LangGraph: <LangChainLogo className={s.icon} />,
     CrewAI: <CrewAILogo className={s.icon} />,
     OpenAI: <OpenAILogo className={s.icon} />,
     Anthropic: <AnthropicLogo className={s.icon} />,

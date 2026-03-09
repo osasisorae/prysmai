@@ -588,8 +588,8 @@ export default function Docs() {
             Prysm AI Documentation
           </h1>
           <p className="text-lg text-muted-foreground max-w-2xl">
-            Full platform documentation for Prysm AI — the observability proxy for LLM applications.
-            Covers the Python SDK, REST API, dashboard features, alerting, team management, and more.
+            Full platform documentation for Prysm AI — the governance and security layer for autonomous AI agents.
+            Covers the Python SDK, REST API, agent tracing, governance policies, security scanning, and more.
           </p>
           <div className="flex items-center gap-4 mt-6">
             <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-secondary/50 border border-border font-mono text-sm">
@@ -602,7 +602,7 @@ export default function Docs() {
               rel="noopener noreferrer"
             >
               <span className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
-                v0.5.0 on PyPI <ExternalLink className="w-3 h-3" />
+                v0.6.0 on PyPI <ExternalLink className="w-3 h-3" />
               </span>
             </a>
           </div>
@@ -618,17 +618,27 @@ export default function Docs() {
             </div>
             <div>
               <h3 className="text-sm font-semibold text-foreground mb-1.5">
-                What&apos;s New in v0.5.0
+                What&apos;s New in v0.6.0
               </h3>
-              <p className="text-xs text-muted-foreground mb-2">Governance Layer &mdash; March 8, 2026</p>
+              <p className="text-xs text-muted-foreground mb-2">Agent Workflow Tracing &mdash; March 9, 2026</p>
               <ul className="text-sm text-muted-foreground space-y-1">
-                <li><strong className="text-foreground">Governance Layer</strong> &mdash; New <a href="#governance" className="text-primary hover:underline"><code className="text-xs bg-secondary/50 px-1.5 py-0.5 rounded">GovernanceSession</code></a> class for behavioral monitoring, code security scanning, and policy enforcement across agent sessions</li>
-                <li><strong className="text-foreground">LangGraph Integration</strong> &mdash; Replaced LangChain with <a href="#fw-langgraph" className="text-primary hover:underline"><code className="text-xs bg-secondary/50 px-1.5 py-0.5 rounded">PrysmGraphMonitor</code></a> &mdash; graph-aware telemetry with node tracking, state transitions, and governance support</li>
-                <li><strong className="text-foreground">CrewAI Governance</strong> &mdash; <a href="#fw-crewai" className="text-primary hover:underline"><code className="text-xs bg-secondary/50 px-1.5 py-0.5 rounded">governance=True</code></a> flag on <code className="text-xs bg-secondary/50 px-1.5 py-0.5 rounded">PrysmCrewMonitor</code> auto-starts behavioral detection for crew runs</li>
-                <li><strong className="text-foreground">Behavioral Detectors</strong> &mdash; Early stopping and tool undertriggering detection with evidence-based severity scoring</li>
-                <li><strong className="text-foreground">MCP Endpoint</strong> &mdash; Model Context Protocol server at <code className="text-xs bg-secondary/50 px-1.5 py-0.5 rounded">/api/mcp</code> for direct agent-to-governance communication</li>
+                <li><strong className="text-foreground">Microsoft Agent Framework</strong> &mdash; New <code className="text-xs bg-secondary/50 px-1.5 py-0.5 rounded">PrysmAgentMiddleware</code>, <code className="text-xs bg-secondary/50 px-1.5 py-0.5 rounded">PrysmFunctionMiddleware</code>, and <code className="text-xs bg-secondary/50 px-1.5 py-0.5 rounded">PrysmChatMiddleware</code> for deep agent tracing via middleware hooks</li>
+                <li><strong className="text-foreground">Unified Timeline</strong> &mdash; Correlated view of LLM calls, tool executions, and agent decisions in a single timeline with filtering and pagination</li>
+                <li><strong className="text-foreground">Agent Decision Explainability</strong> &mdash; Trace why agents chose specific tools and actions, with full context (preceding events, triggering LLM calls)</li>
+                <li><strong className="text-foreground">Workflow Graph</strong> &mdash; Directed graph visualization of agent execution flows with node-type coloring, pan/zoom, and detail inspection</li>
+                <li><strong className="text-foreground">Tool Performance Dashboard</strong> &mdash; Success rates, latency scatter plots, and failure analysis for all tool calls across sessions</li>
               </ul>
               <details className="mt-3">
+                <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground">v0.5.0 highlights</summary>
+                <ul className="text-sm text-muted-foreground space-y-1 mt-2">
+                  <li><strong className="text-foreground">Governance Layer</strong> &mdash; GovernanceSession for behavioral monitoring, code security scanning, and policy enforcement</li>
+                  <li><strong className="text-foreground">LangGraph Integration</strong> &mdash; Graph-aware telemetry with node tracking, state transitions, and governance support</li>
+                  <li><strong className="text-foreground">CrewAI Governance</strong> &mdash; governance=True flag for automatic behavioral detection during crew runs</li>
+                  <li><strong className="text-foreground">Behavioral Detectors</strong> &mdash; Early stopping and tool undertriggering detection</li>
+                  <li><strong className="text-foreground">MCP Endpoint</strong> &mdash; Model Context Protocol server for direct agent-to-governance communication</li>
+                </ul>
+              </details>
+              <details className="mt-2">
                 <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground">v0.4.1 highlights</summary>
                 <ul className="text-sm text-muted-foreground space-y-1 mt-2">
                   <li><strong className="text-foreground">SDK Bug Fixes</strong> &mdash; Fixed <code className="text-xs bg-secondary/50 px-1.5 py-0.5 rounded">AttributeError</code> in callback handler, fixed CrewAI delegation tool crashes</li>
@@ -874,12 +884,13 @@ print(response.choices[0].message.content)`}
             <CodeBlock code="pip install prysmai" language="bash" filename="Terminal" />
 
             <Callout type="tip">
-              <strong>Framework integrations (v0.5.0):</strong> Install with optional dependencies for your framework:
+              <strong>Framework integrations (v0.6.0):</strong> Install with optional dependencies for your framework:
               <CodeBlock
-                code={`pip install prysmai[langgraph]    # LangGraph
-pip install prysmai[crewai]       # CrewAI
-pip install prysmai[llamaindex]   # LlamaIndex
-pip install prysmai[all]          # All frameworks`}
+                code={`pip install prysmai[langgraph]         # LangGraph
+pip install prysmai[crewai]            # CrewAI
+pip install prysmai[agent-framework]   # Microsoft Agent Framework
+pip install prysmai[llamaindex]        # LlamaIndex
+pip install prysmai[all]               # All frameworks`}
                 language="bash"
               />
             </Callout>
@@ -3376,12 +3387,30 @@ except openai.APIError as e:
             <SectionHeading id="changelog">Changelog</SectionHeading>
 
             <div className="space-y-8">
-              {/* v0.5.0 */}
+              {/* v0.6.0 */}
               <div className="border border-border rounded-lg p-6">
                 <div className="flex items-center gap-3 mb-4">
-                  <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/30">v0.5.0</span>
-                  <span className="text-sm text-muted-foreground">March 8, 2026</span>
+                  <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/30">v0.6.0</span>
+                  <span className="text-sm text-muted-foreground">March 9, 2026</span>
                   <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-green-500/10 text-green-400 border border-green-500/30">LATEST</span>
+                </div>
+                <h4 className="text-sm font-semibold text-foreground mb-3">Agent Workflow Tracing & Microsoft Agent Framework</h4>
+                <div className="space-y-2 text-sm text-muted-foreground">
+                  <p><span className="text-primary font-mono text-xs">NEW</span> <IC>PrysmAgentMiddleware</IC>, <IC>PrysmFunctionMiddleware</IC>, <IC>PrysmChatMiddleware</IC> &mdash; Microsoft Agent Framework integration via middleware hooks for agent, function/tool, and chat/LLM tracing.</p>
+                  <p><span className="text-primary font-mono text-xs">NEW</span> Unified Timeline &mdash; correlated view of LLM calls, tool executions, and agent decisions in a single filterable, paginated timeline.</p>
+                  <p><span className="text-primary font-mono text-xs">NEW</span> Agent Decision Explainability &mdash; trace why agents chose specific tools and actions, with full context (preceding events, triggering LLM calls, confidence scores).</p>
+                  <p><span className="text-primary font-mono text-xs">NEW</span> Workflow Graph &mdash; directed graph visualization of agent execution flows with node-type coloring (LLM, tool, decision, delegation, error), pan/zoom, and detail inspection.</p>
+                  <p><span className="text-primary font-mono text-xs">NEW</span> Tool Performance Dashboard &mdash; success rates, latency scatter plots, and failure analysis for all tool calls across sessions.</p>
+                  <p><span className="text-primary font-mono text-xs">NEW</span> Trace Tree endpoint &mdash; hierarchical view of execution with parent-child relationships between events.</p>
+                  <p><span className="text-primary font-mono text-xs">NEW</span> 5 new documentation sections in Agent Tracing group covering all v0.6.0 features.</p>
+                </div>
+              </div>
+
+              {/* v0.5.0 */}
+              <div className="border border-border/50 rounded-lg p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-secondary text-muted-foreground border border-border">v0.5.0</span>
+                  <span className="text-sm text-muted-foreground">March 8, 2026</span>
                 </div>
                 <h4 className="text-sm font-semibold text-foreground mb-3">Governance Layer & LangGraph Integration</h4>
                 <div className="space-y-2 text-sm text-muted-foreground">
@@ -3438,9 +3467,9 @@ except openai.APIError as e:
 
             {/* ─── CTA ─── */}
             <div className="mt-20 mb-8 p-8 rounded-lg border border-border bg-secondary/20 text-center">
-              <h3 className="text-xl font-bold mb-2">Ready to see inside your AI?</h3>
+              <h3 className="text-xl font-bold mb-2">Ready to govern your AI agents?</h3>
               <p className="text-muted-foreground mb-6 max-w-lg mx-auto">
-                Get your API key and start capturing traces in under 5 minutes.
+                Get your API key and start tracing agent decisions in under 5 minutes.
               </p>
               <div className="flex items-center justify-center gap-3">
                 <Button

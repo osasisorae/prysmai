@@ -966,3 +966,23 @@
 - [x] Build and publish prysmai v0.6.0 to PyPI (https://pypi.org/project/prysmai/0.6.0/)
 - [x] Push prysmai-python SDK repo to GitHub (tagged v0.6.0)
 - [x] Push prysmai web app repo to GitHub (cleaned .manus secrets from history)
+
+## Docs v0.6.0 Update + Governance Repositioning — March 9, 2026
+- [x] Update docs version badge from v0.5.0 to v0.6.0
+- [x] Update docs What's New banner with v0.6.0 Agent Framework highlights
+- [x] Add v0.6.0 changelog entry to Docs page
+- [x] Add Agent Framework to framework install instructions in Docs
+- [x] Add Agent Framework SDK section to website docs (docs-content.ts)
+- [x] Reposition tagline from "observability proxy" to "governance and security layer for autonomous AI agents"
+- [x] Rewrite hero section copy (headline, subheadline, CTA) — governance-first
+- [x] Rewrite problem section ("The Blind Spot" → "The Governance Gap")
+- [x] Rewrite identity section ("builders who go deeper" → "responsible AI teams")
+- [x] Rewrite solution section (observability → governance + tracing)
+- [x] Rewrite "What We're Building" teaser (future roadmap → governance roadmap)
+- [x] Rewrite final CTA and footer tagline
+- [x] Update stack logos (added LangGraph + Agent Framework)
+- [x] Update docs-content.ts overview ("observability proxy" → "governance and security layer")
+- [x] Update Docs.tsx hero description
+- [x] Update Docs.tsx CTA section
+- [x] Update meta tags (title, OG, Twitter Card) with governance positioning
+- [x] All 843 vitest tests still passing
