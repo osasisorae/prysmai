@@ -120,6 +120,13 @@
       "when": 1772984955313,
       "tag": "0016_tense_ricochet",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "5",
+      "when": 1773070222551,
+      "tag": "0017_lucky_luke_cage",
+      "breakpoints": true
     }
   ]
 }

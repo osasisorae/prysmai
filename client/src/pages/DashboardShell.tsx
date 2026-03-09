@@ -27,6 +27,10 @@ import {
   Lightbulb,
   GitBranch,
   Layers,
+  DollarSign,
+  Lock,
+  Repeat,
+  Network,
 } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -50,6 +54,10 @@ import ToolPerformance from "./ToolPerformance";
 import AgentDecisions from "./AgentDecisions";
 import WorkflowGraph from "./WorkflowGraph";
 import UnifiedTimeline from "./UnifiedTimeline";
+import FinancialAnomalies from "./FinancialAnomalies";
+import ResourceAccess from "./ResourceAccess";
+import LoopDetection from "./LoopDetection";
+import MultiAgentMonitor from "./MultiAgentMonitor";
 
 const NAV_ITEMS = [
   { id: "overview", label: "Overview", icon: LayoutDashboard, path: "/dashboard" },
@@ -65,6 +73,10 @@ const NAV_ITEMS = [
   { id: "decisions", label: "Decisions", icon: Lightbulb, path: "/dashboard/decisions" },
   { id: "workflow", label: "Workflow", icon: GitBranch, path: "/dashboard/workflow" },
   { id: "timeline", label: "Timeline", icon: Layers, path: "/dashboard/timeline" },
+  { id: "financial", label: "Cost Alerts", icon: DollarSign, path: "/dashboard/financial" },
+  { id: "resources", label: "Access Control", icon: Lock, path: "/dashboard/resources" },
+  { id: "loops", label: "Loop Detection", icon: Repeat, path: "/dashboard/loops" },
+  { id: "multiagent", label: "Multi-Agent", icon: Network, path: "/dashboard/multiagent" },
   { id: "billing", label: "Billing", icon: CreditCard, path: "/dashboard/billing" },
   { id: "settings", label: "Settings", icon: SettingsIcon, path: "/dashboard/settings" },
 ];
@@ -330,6 +342,10 @@ export default function DashboardShell() {
           {activeNav.id === "decisions" && <AgentDecisions projectId={activeProject.id} />}
           {activeNav.id === "workflow" && <WorkflowGraph projectId={activeProject.id} />}
           {activeNav.id === "timeline" && <UnifiedTimeline projectId={activeProject.id} />}
+          {activeNav.id === "financial" && <FinancialAnomalies projectId={activeProject.id} />}
+          {activeNav.id === "resources" && <ResourceAccess projectId={activeProject.id} />}
+          {activeNav.id === "loops" && <LoopDetection projectId={activeProject.id} />}
+          {activeNav.id === "multiagent" && <MultiAgentMonitor projectId={activeProject.id} />}
           {activeNav.id === "billing" && <Billing />}
           {activeNav.id === "settings" && <SettingsPage projectId={activeProject.id} />}
         </div>

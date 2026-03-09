@@ -1005,3 +1005,40 @@
 - [x] Fix Integration section to accurately reflect how Prysmai works (not just OpenAI)
 - [x] Show all supported providers from docs (OpenAI, Anthropic, Gemini, vLLM/Ollama table)
 - [x] Show correct code examples (PrysmClient, pip install, multi-provider)
+
+## Recommendation 2: Deepen Governance Layer — March 9, 2026
+
+### 1. Financial Anomaly Detection
+- [x] Python SDK: FinancialAnomalyDetector class (cost baseline tracking, deviation alerts, halt on threshold)
+- [x] Server: financial_anomalies table in schema
+- [x] Server: financial anomaly detection logic + tRPC endpoints (14 procedures in detectors-router.ts)
+- [x] Dashboard: Financial Anomaly monitoring page (FinancialAnomalies.tsx)
+- [x] Docs: Financial anomaly detection documentation
+
+### 2. Unauthorized Resource Access Detection
+- [x] Python SDK: ResourceAccessDetector class (allowed resource envelope, violation detection)
+- [x] Server: resource_access_violations table in schema
+- [x] Server: resource access detection logic + tRPC endpoints
+- [x] Dashboard: Resource Access monitoring page (ResourceAccess.tsx)
+- [x] Docs: Resource access detection documentation
+
+### 3. Agent Loop Detection
+- [x] Python SDK: LoopDetector class (circular tool patterns, repetitive states, circuit breakers)
+- [x] Server: loop_detections table in schema
+- [x] Server: loop detection logic + tRPC endpoints
+- [x] Dashboard: Loop Detection monitoring page (LoopDetection.tsx)
+- [x] Docs: Loop detection documentation
+
+### 4. Multi-Agent Coordination Monitoring
+- [x] Python SDK: MultiAgentMonitor class (inter-agent comms, conflict detection, network view)
+- [x] Server: multi_agent_events + agent_network_snapshots tables in schema
+- [x] Server: multi-agent coordination logic + tRPC endpoints
+- [x] Dashboard: Multi-Agent Network monitoring page (MultiAgentMonitor.tsx)
+- [x] Docs: Multi-agent coordination documentation
+
+### Cross-cutting
+- [x] Write pytest tests for all 4 Python SDK detectors (221 tests passing)
+- [x] Write vitest tests for all server endpoints (895 total tests passing, 37 test files)
+- [x] Update governance dashboard navigation to include new sub-pages (4 new nav items)
+- [ ] Add blog post about governance layer expansion
+- [x] Bump Python SDK to v0.7.0 with 4 new detectors

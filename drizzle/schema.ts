@@ -854,3 +854,219 @@ export const sessionSummaries = mysqlTable(
 
 export type SessionSummary = typeof sessionSummaries.$inferSelect;
 export type InsertSessionSummary = typeof sessionSummaries.$inferInsert;
+
+// ═══════════════════════════════════════════════════════════════
+// RECOMMENDATION 2: ADVANCED GOVERNANCE DETECTORS
+// ═══════════════════════════════════════════════════════════════
+
+// ─── Financial Anomaly Alerts ───
+// Tracks cost anomalies detected by the FinancialAnomalyDetector.
+
+export const financialAlerts = mysqlTable(
+  "financial_alerts",
+  {
+    id: bigint("id", { mode: "number" }).autoincrement().primaryKey(),
+    sessionId: bigint("sessionId", { mode: "number" }).notNull(),
+    projectId: int("projectId").notNull(),
+    eventId: bigint("eventId", { mode: "number" }), // FK → session_events
+    // Alert details
+    alertType: mysqlEnum("alertType", [
+      "cost_spike", "budget_exceeded", "velocity_anomaly", "cumulative_overrun",
+    ]).notNull(),
+    severity: mysqlEnum("severity", ["info", "warning", "critical", "halt"]).notNull(),
+    // Financial data
+    currentCostCents: int("currentCostCents").notNull(),
+    baselineCostCents: int("baselineCostCents"),
+    budgetLimitCents: int("budgetLimitCents"),
+    deviationPercent: decimal("deviationPercent", { precision: 8, scale: 2 }),
+    cumulativeCostCents: int("cumulativeCostCents"),
+    // Context
+    model: varchar("model", { length: 128 }),
+    tokenCount: int("tokenCount"),
+    message: text("message").notNull(),
+    evidence: json("evidence").$type<Record<string, unknown>>(),
+    // Resolution
+    status: mysqlEnum("status", ["open", "acknowledged", "resolved", "false_positive"]).default("open"),
+    resolvedBy: int("resolvedBy"),
+    resolvedAt: bigint("resolvedAt", { mode: "number" }),
+    detectedAt: bigint("detectedAt", { mode: "number" }).notNull(),
+  },
+  (table) => [
+    index("finalert_session_idx").on(table.sessionId),
+    index("finalert_project_type_idx").on(table.projectId, table.alertType),
+    index("finalert_project_severity_idx").on(table.projectId, table.severity),
+    index("finalert_project_time_idx").on(table.projectId, table.detectedAt),
+  ]
+);
+
+export type FinancialAlert = typeof financialAlerts.$inferSelect;
+export type InsertFinancialAlert = typeof financialAlerts.$inferInsert;
+
+// ─── Resource Access Violations ───
+// Tracks unauthorized resource access detected by ResourceAccessDetector.
+
+export const resourceAccessViolations = mysqlTable(
+  "resource_access_violations",
+  {
+    id: bigint("id", { mode: "number" }).autoincrement().primaryKey(),
+    sessionId: bigint("sessionId", { mode: "number" }).notNull(),
+    projectId: int("projectId").notNull(),
+    eventId: bigint("eventId", { mode: "number" }),
+    // Violation details
+    violationType: mysqlEnum("violationType", [
+      "unauthorized_tool", "blocked_tool", "unauthorized_domain", "blocked_domain",
+      "unauthorized_file", "blocked_file",
+    ]).notNull(),
+    severity: mysqlEnum("severity", ["info", "warning", "critical"]).notNull(),
+    // Resource info
+    resourceName: varchar("resourceName", { length: 512 }).notNull(), // tool name, domain, or file path
+    resourceCategory: mysqlEnum("resourceCategory", ["tool", "domain", "file"]).notNull(),
+    // Context
+    agentId: varchar("agentId", { length: 128 }),
+    message: text("message").notNull(),
+    evidence: json("evidence").$type<Record<string, unknown>>(),
+    // Resolution
+    status: mysqlEnum("status", ["open", "acknowledged", "resolved", "false_positive"]).default("open"),
+    resolvedBy: int("resolvedBy"),
+    resolvedAt: bigint("resolvedAt", { mode: "number" }),
+    detectedAt: bigint("detectedAt", { mode: "number" }).notNull(),
+  },
+  (table) => [
+    index("resaccess_session_idx").on(table.sessionId),
+    index("resaccess_project_type_idx").on(table.projectId, table.violationType),
+    index("resaccess_project_severity_idx").on(table.projectId, table.severity),
+    index("resaccess_project_time_idx").on(table.projectId, table.detectedAt),
+  ]
+);
+
+export type ResourceAccessViolation = typeof resourceAccessViolations.$inferSelect;
+export type InsertResourceAccessViolation = typeof resourceAccessViolations.$inferInsert;
+
+// ─── Loop Detections ───
+// Tracks agent loop patterns detected by LoopDetector.
+
+export const loopDetections = mysqlTable(
+  "loop_detections",
+  {
+    id: bigint("id", { mode: "number" }).autoincrement().primaryKey(),
+    sessionId: bigint("sessionId", { mode: "number" }).notNull(),
+    projectId: int("projectId").notNull(),
+    // Detection details
+    loopType: mysqlEnum("loopType", [
+      "repeated_tool", "circular_sequence", "llm_loop", "state_oscillation",
+    ]).notNull(),
+    severity: mysqlEnum("severity", ["info", "warning", "critical", "halt"]).notNull(),
+    // Pattern data
+    pattern: json("pattern").$type<string[]>().notNull(), // The repeating sequence
+    repetitionCount: int("repetitionCount").notNull(),
+    windowSize: int("windowSize"),
+    circuitBreakerTriggered: boolean("circuitBreakerTriggered").default(false),
+    // Context
+    message: text("message").notNull(),
+    evidence: json("evidence").$type<Record<string, unknown>>(),
+    // Resolution
+    status: mysqlEnum("status", ["open", "acknowledged", "resolved", "false_positive"]).default("open"),
+    resolvedBy: int("resolvedBy"),
+    resolvedAt: bigint("resolvedAt", { mode: "number" }),
+    detectedAt: bigint("detectedAt", { mode: "number" }).notNull(),
+  },
+  (table) => [
+    index("loopdet_session_idx").on(table.sessionId),
+    index("loopdet_project_type_idx").on(table.projectId, table.loopType),
+    index("loopdet_project_severity_idx").on(table.projectId, table.severity),
+    index("loopdet_project_time_idx").on(table.projectId, table.detectedAt),
+  ]
+);
+
+export type LoopDetection = typeof loopDetections.$inferSelect;
+export type InsertLoopDetection = typeof loopDetections.$inferInsert;
+
+// ─── Multi-Agent Events ───
+// Tracks multi-agent coordination events detected by MultiAgentMonitor.
+
+export const multiAgentEvents = mysqlTable(
+  "multi_agent_events",
+  {
+    id: bigint("id", { mode: "number" }).autoincrement().primaryKey(),
+    sessionId: bigint("sessionId", { mode: "number" }).notNull(),
+    projectId: int("projectId").notNull(),
+    // Event details
+    eventType: mysqlEnum("eventType", [
+      "unexpected_agent", "circular_delegation", "deep_delegation",
+      "instruction_conflict", "orphaned_delegation", "communication",
+    ]).notNull(),
+    severity: mysqlEnum("severity", ["info", "warning", "critical"]).notNull(),
+    // Agent info
+    fromAgent: varchar("fromAgent", { length: 128 }),
+    toAgent: varchar("toAgent", { length: 128 }),
+    agentId: varchar("agentId", { length: 128 }),
+    // Coordination data
+    delegationChain: json("delegationChain").$type<string[]>(),
+    delegationDepth: int("delegationDepth"),
+    conflictingInstructions: json("conflictingInstructions").$type<Array<{
+      instruction: string;
+      fromAgent: string;
+      timestamp: number;
+    }>>(),
+    // Context
+    message: text("message").notNull(),
+    evidence: json("evidence").$type<Record<string, unknown>>(),
+    // Resolution
+    status: mysqlEnum("status", ["open", "acknowledged", "resolved", "false_positive"]).default("open"),
+    resolvedBy: int("resolvedBy"),
+    resolvedAt: bigint("resolvedAt", { mode: "number" }),
+    detectedAt: bigint("detectedAt", { mode: "number" }).notNull(),
+  },
+  (table) => [
+    index("maevt_session_idx").on(table.sessionId),
+    index("maevt_project_type_idx").on(table.projectId, table.eventType),
+    index("maevt_project_severity_idx").on(table.projectId, table.severity),
+    index("maevt_project_time_idx").on(table.projectId, table.detectedAt),
+    index("maevt_from_agent_idx").on(table.sessionId, table.fromAgent),
+    index("maevt_to_agent_idx").on(table.sessionId, table.toAgent),
+  ]
+);
+
+export type MultiAgentEvent = typeof multiAgentEvents.$inferSelect;
+export type InsertMultiAgentEvent = typeof multiAgentEvents.$inferInsert;
+
+// ─── Agent Network Snapshots ───
+// Periodic snapshots of the multi-agent network topology for visualization.
+
+export const agentNetworkSnapshots = mysqlTable(
+  "agent_network_snapshots",
+  {
+    id: bigint("id", { mode: "number" }).autoincrement().primaryKey(),
+    sessionId: bigint("sessionId", { mode: "number" }).notNull(),
+    projectId: int("projectId").notNull(),
+    // Network topology
+    agents: json("agents").$type<Array<{
+      agentId: string;
+      agentType: string;
+      eventCount: number;
+      delegationsSent: number;
+      delegationsReceived: number;
+      firstSeen: number;
+      lastSeen: number;
+    }>>().notNull(),
+    edges: json("edges").$type<Array<{
+      from: string;
+      to: string;
+      type: string; // "delegation" | "message"
+      count: number;
+    }>>().notNull(),
+    // Summary
+    totalAgents: int("totalAgents").notNull(),
+    totalDelegations: int("totalDelegations").default(0),
+    totalMessages: int("totalMessages").default(0),
+    activeConflicts: int("activeConflicts").default(0),
+    snapshotAt: bigint("snapshotAt", { mode: "number" }).notNull(),
+  },
+  (table) => [
+    index("agentnet_session_idx").on(table.sessionId),
+    index("agentnet_project_time_idx").on(table.projectId, table.snapshotAt),
+  ]
+);
+
+export type AgentNetworkSnapshot = typeof agentNetworkSnapshots.$inferSelect;
+export type InsertAgentNetworkSnapshot = typeof agentNetworkSnapshots.$inferInsert;

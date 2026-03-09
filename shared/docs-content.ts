@@ -23,6 +23,7 @@ export const DOC_GROUPS = [
   { key: "security", label: "Security & Analysis" },
   { key: "reference", label: "Reference" },
   { key: "agent-tracing", label: "Agent Tracing" },
+  { key: "governance", label: "Advanced Governance" },
 ] as const;
 
 export const DOCS: DocSection[] = [
@@ -1460,6 +1461,186 @@ The Workflow Graph renders a directed execution graph for any agent session, sho
 ## Dashboard
 
 Navigate to **Dashboard → Workflow**, select a session, and the graph renders automatically.
+`,
+  },
+  // ═══════════════════════════════════════════════════════════
+  // GROUP: Advanced Governance
+  // ═══════════════════════════════════════════════════════════
+  {
+    id: "financial-anomaly-detection",
+    title: "Financial Anomaly Detection",
+    group: "governance",
+    summary: "Detect when an agent's cost trajectory deviates from baseline and alert or halt execution.",
+    markdown: `# Financial Anomaly Detection
+
+Monitor and control AI spending in real time. The Financial Anomaly Detector tracks per-session and per-project cost trajectories, detecting deviations from established baselines.
+
+## Python SDK
+
+\`\`\`python
+from prysmai import GovernanceSession
+from prysmai.detectors import FinancialAnomalyDetector
+
+detector = FinancialAnomalyDetector(
+    budget_limit=5.00,           # Hard budget cap per session ($)
+    cost_per_1k_input=0.003,     # Input token cost
+    cost_per_1k_output=0.015,    # Output token cost
+    spike_threshold=3.0,         # Alert if cost exceeds 3x the rolling average
+    window_size=10,              # Rolling window of 10 calls
+)
+
+session = GovernanceSession(client, project_id=1)
+session.attach_detector(detector)
+\`\`\`
+
+## Detection Types
+
+| Type | Description |
+|------|-------------|
+| budget_exceeded | Session cost exceeded the configured budget limit |
+| cost_spike | Single call cost exceeded spike_threshold × rolling average |
+| rate_anomaly | Cost accumulation rate significantly above baseline |
+| projection_breach | Projected session cost will exceed budget at current rate |
+
+## Dashboard
+
+Navigate to **Dashboard → Cost Anomalies** to view:
+- Total spend, anomaly count, and budget breach metrics
+- Anomaly log with severity, cost data, and resolution actions
+- Filter by type, severity, and status
+`,
+  },
+  {
+    id: "resource-access-detection",
+    title: "Resource Access Detection",
+    group: "governance",
+    summary: "Define an agent's allowed resource envelope and detect out-of-scope access in real time.",
+    markdown: `# Unauthorized Resource Access Detection
+
+Define exactly which domains, file paths, and tools an agent is allowed to access. The Resource Access Detector flags any out-of-scope access in real time.
+
+## Python SDK
+
+\`\`\`python
+from prysmai.detectors import ResourceAccessDetector
+
+detector = ResourceAccessDetector(
+    allowed_domains=["api.openai.com", "*.internal.corp"],
+    allowed_tools=["search", "calculator", "database_query"],
+    allowed_file_patterns=["/data/*", "/tmp/*"],
+    blocked_domains=["*.malware.com"],
+    blocked_file_patterns=["/etc/shadow", "/root/*"],
+)
+
+session.attach_detector(detector)
+\`\`\`
+
+## Detection Types
+
+| Type | Description |
+|------|-------------|
+| unauthorized_domain | Agent accessed a domain not in the allowed list |
+| blocked_domain | Agent accessed an explicitly blocked domain |
+| unauthorized_tool | Agent invoked a tool not in the allowed list |
+| unauthorized_file | Agent accessed a file path outside allowed patterns |
+| blocked_file | Agent accessed an explicitly blocked file path |
+
+## Dashboard
+
+Navigate to **Dashboard → Resource Access** to view:
+- Violation counts by type and severity
+- Full violation log with domain/tool/path details
+- Acknowledge, resolve, or mark as false positive
+`,
+  },
+  {
+    id: "loop-detection",
+    title: "Agent Loop Detection",
+    group: "governance",
+    summary: "Detect circular tool call patterns and repetitive state transitions with configurable circuit breakers.",
+    markdown: `# Agent Loop Detection
+
+Detect when agents get stuck in circular patterns — repeated tool calls, oscillating states, or LLM loops. Configurable circuit breakers can automatically halt runaway agents.
+
+## Python SDK
+
+\`\`\`python
+from prysmai.detectors import LoopDetector
+
+detector = LoopDetector(
+    max_repetitions=3,          # Alert after 3 repetitions of a pattern
+    window_size=20,             # Look back 20 events for patterns
+    min_pattern_length=2,       # Minimum sequence length to consider a loop
+    max_pattern_length=5,       # Maximum sequence length to check
+    circuit_breaker_threshold=5, # Halt after 5 repetitions
+)
+
+session.attach_detector(detector)
+\`\`\`
+
+## Detection Types
+
+| Type | Description |
+|------|-------------|
+| repeated_tool | Same tool called repeatedly with identical arguments |
+| circular_sequence | A sequence of tool calls repeating in a cycle |
+| llm_loop | LLM producing near-identical outputs repeatedly |
+| state_oscillation | Agent state toggling between two values |
+
+## Circuit Breaker
+
+When \`circuit_breaker_threshold\` is reached, the detector raises a \`CircuitBreakerTriggered\` detection with severity \`halt\`, signaling the governance session to stop the agent.
+
+## Dashboard
+
+Navigate to **Dashboard → Loop Detection** to view:
+- Total loops detected, circuit breaker triggers, and pattern analysis
+- Detection log with pattern visualization and repetition counts
+`,
+  },
+  {
+    id: "multi-agent-monitoring",
+    title: "Multi-Agent Coordination Monitoring",
+    group: "governance",
+    summary: "Track inter-agent communication, detect conflicting instructions, and view agent network topology.",
+    markdown: `# Multi-Agent Coordination Monitoring
+
+Track how agents communicate, delegate tasks, and coordinate. Detect conflicting instructions, circular delegations, and unexpected agent appearances.
+
+## Python SDK
+
+\`\`\`python
+from prysmai.detectors import MultiAgentMonitor
+
+monitor = MultiAgentMonitor(
+    expected_agents=["planner", "researcher", "writer"],
+    max_delegation_depth=3,
+    detect_conflicts=True,
+)
+
+session.attach_detector(monitor)
+\`\`\`
+
+## Detection Types
+
+| Type | Description |
+|------|-------------|
+| unexpected_agent | An agent not in the expected list appeared |
+| circular_delegation | Agent A → B → C → A delegation cycle detected |
+| deep_delegation | Delegation chain exceeded max_delegation_depth |
+| instruction_conflict | Two agents received contradictory instructions |
+| orphaned_delegation | A delegation was sent but never received |
+
+## Agent Network View
+
+The **Agent Network** tab in the dashboard shows:
+- All tracked agents with event counts and delegation metrics
+- Delegation flows between agents with direction and frequency
+- Real-time topology of your multi-agent system
+
+## Dashboard
+
+Navigate to **Dashboard → Multi-Agent** to view the overview, event log, and agent network.
 `,
   },
 ];
